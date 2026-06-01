@@ -12,7 +12,14 @@ export default function Home() {
   }, []);
 
   async function loadDogs() {
-    const { data } = await supabase.from("dogs").select("*");
+    const { data } = await supabase
+      .from("dogs")
+      .select(`
+        *,
+        dog_images (
+          image_url
+        )
+      `);
     setDogs(data || []);
   }
 
@@ -29,7 +36,6 @@ export default function Home() {
     loadDogs();
   }
 
-  // 📸 A TERVEDBEN LÉVŐ KÉPFELTÖLTŐ FUNKCIÓ (handleImageUpload)
   async function handleImageUpload(event: any, dogId: any) {
     try {
       setUploading(dogId);
@@ -38,17 +44,14 @@ export default function Home() {
 
       const fileName = `${Date.now()}-${file.name}`;
 
-      // 1. Feltöltés a Supabase Storage-ba (dog-images vödörbe)
       const { data, error } = await supabase.storage
         .from("dog-images")
         .upload(fileName, file);
 
       if (error) throw error;
 
-      // 2. Publikus link legenerálása
       const url = `https://kktqvuzasdktpytuguef.supabase.co/storage/v1/object/public/dog-images/${fileName}`;
 
-      // 3. Mentés az adatbázisba (dog_images táblába)
       await supabase.from("dog_images").insert({
         dog_id: dogId,
         image_url: url
@@ -72,29 +75,43 @@ export default function Home() {
       </button>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 15 }}>
-        {dogs.map((d: any) => (
-          <div key={d.id} style={{ border: "1px solid #ccc", padding: 15, borderRadius: 5, maxWidth: 400 }}>
-            <h3>{d.name}</h3>
-            <p>Sex: {d.sex}</p>
+        {dogs.map((d: any) => {
+          const hasImage = d.dog_images && d.dog_images.length > 0;
+          const imageUrl = hasImage ? d.dog_images[0].image_url : null;
 
-            {/* 📸 Képkiválasztó gomb minden egyes kutyához */}
-            <div style={{ marginTop: 10, marginBottom: 15, background: "#f9f9f9", padding: 10, borderRadius: 4 }}>
-              <label style={{ display: "block", marginBottom: 5, fontSize: "0.9rem", fontWeight: "bold" }}>
-                {uploading === d.id ? "Uploading..." : "Dog Image:"}
-              </label>
-              <input 
-                type="file" 
-                accept="image/*" 
-                disabled={uploading !== null}
-                onChange={(e) => handleImageUpload(e, d.id)} 
-              />
+          return (
+            <div key={d.id} style={{ border: "1px solid #ccc", padding: 15, borderRadius: 5, maxWidth: 400 }}>
+              <h3>{d.name}</h3>
+              <p>Sex: {d.sex}</p>
+
+              {imageUrl && (
+                <div style={{ marginTop: 10, marginBottom: 10 }}>
+                  <img 
+                    src={imageUrl} 
+                    alt="Dog" 
+                    style={{ width: "100%", maxHeight: "250px", objectFit: "cover", borderRadius: 6 }} 
+                  />
+                </div>
+              )}
+
+              <div style={{ marginTop: 10, marginBottom: 15, background: "#f9f9f9", padding: 10, borderRadius: 4 }}>
+                <label style={{ display: "block", marginBottom: 5, fontSize: "0.9rem", fontWeight: "bold" }}>
+                  {uploading === d.id ? "Uploading..." : "Dog Image:"}
+                </label>
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  disabled={uploading !== null}
+                  onChange={(e) => handleImageUpload(e, d.id)} 
+                />
+              </div>
+
+              <button onClick={() => deleteDog(d.id)} style={{ background: "#ff4d4d", color: "white", border: "none", padding: "5px 10px", borderRadius: 3, cursor: "pointer" }}>
+                Delete
+              </button>
             </div>
-
-            <button onClick={() => deleteDog(d.id)} style={{ background: "#ff4d4d", color: "white", border: "none", padding: "5px 10px", borderRadius: 3, cursor: "pointer" }}>
-              Delete
-            </button>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
