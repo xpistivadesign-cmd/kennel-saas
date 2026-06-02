@@ -5,10 +5,12 @@ import { supabase } from "../../../../lib/supabase";
 import { useRouter } from "next/navigation";
 
 type Sex = "male" | "female";
+type Status = "active" | "deceased";
 
 export default function DogEditPage({ params }: { params: { id: string } }) {
   const [name, setName] = useState("");
   const [sex, setSex] = useState<Sex>("female");
+  const [status, setStatus] = useState<Status>("active");
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -38,6 +40,7 @@ export default function DogEditPage({ params }: { params: { id: string } }) {
 
       setName(data.name || "");
       setSex(data.sex || "female");
+      setStatus(data.status || "active");
     } catch (error: any) {
       console.error(error);
       alert("Hiba a kutya betöltésekor: " + error.message);
@@ -57,14 +60,13 @@ export default function DogEditPage({ params }: { params: { id: string } }) {
         .update({
           name,
           sex,
+          status,
         })
         .eq("id", dogId);
 
       if (error) throw error;
 
       alert("Kutya sikeresen frissítve 🐶");
-
-      // UX: nem azonnal kidob, hanem stabil visszatöltés
       await loadDog();
     } catch (error: any) {
       console.error(error);
@@ -77,63 +79,62 @@ export default function DogEditPage({ params }: { params: { id: string } }) {
   if (loading) {
     return (
       <div style={{ padding: 20, textAlign: "center" }}>
-        <h3>Kutya adatainak betöltése...</h3>
+        <h3>Kutya betöltése...</h3>
       </div>
     );
   }
 
   return (
-    <div style={{ padding: 20, fontFamily: "sans-serif", maxWidth: 600, margin: "0 auto" }}>
+    <div style={{ padding: 20, maxWidth: 600, margin: "0 auto", fontFamily: "sans-serif" }}>
       
       <button
         onClick={() => router.push("/")}
-        style={{ marginBottom: 20, cursor: "pointer", padding: "8px 12px" }}
+        style={{ marginBottom: 20, padding: "8px 12px", cursor: "pointer" }}
       >
-        ⬅️ Vissza a Dashboardra
+        ⬅️ Vissza
       </button>
 
       <h1>🐕 Kutya szerkesztése</h1>
 
-      <form
-        onSubmit={handleSave}
-        style={{ display: "flex", flexDirection: "column", gap: 15, marginTop: 20 }}
-      >
-
+      <form onSubmit={handleSave} style={{ display: "flex", flexDirection: "column", gap: 15, marginTop: 20 }}>
+        
         <div>
-          <label style={{ display: "block", fontWeight: "bold", marginBottom: 5 }}>
-            Név:
+          <label style={{ fontWeight: "bold", marginBottom: 5, display: "block" }}>
+            Név
           </label>
           <input
-            type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
-            style={{
-              width: "100%",
-              padding: 8,
-              borderRadius: 4,
-              border: "1px solid #ccc",
-            }}
+            style={{ width: "100%", padding: 8 }}
           />
         </div>
 
         <div>
-          <label style={{ display: "block", fontWeight: "bold", marginBottom: 5 }}>
-            Nem:
+          <label style={{ fontWeight: "bold", marginBottom: 5, display: "block" }}>
+            Nem
           </label>
-
           <select
             value={sex}
             onChange={(e) => setSex(e.target.value as Sex)}
-            style={{
-              width: "100%",
-              padding: 8,
-              borderRadius: 4,
-              border: "1px solid #ccc",
-            }}
+            style={{ width: "100%", padding: 8 }}
           >
-            <option value="female">Szuka (Female)</option>
-            <option value="male">Kan (Male)</option>
+            <option value="female">Szuka</option>
+            <option value="male">Kan</option>
+          </select>
+        </div>
+
+        <div>
+          <label style={{ fontWeight: "bold", marginBottom: 5, display: "block" }}>
+            Státusz
+          </label>
+          <select
+            value={status}
+            onChange={(e) => setStatus(e.target.value as Status)}
+            style={{ width: "100%", padding: 8 }}
+          >
+            <option value="active">🟢 Él</option>
+            <option value="deceased">⚫ Elhunyt</option>
           </select>
         </div>
 
@@ -141,17 +142,16 @@ export default function DogEditPage({ params }: { params: { id: string } }) {
           type="submit"
           disabled={saving}
           style={{
-            padding: "12px",
+            marginTop: 10,
+            padding: 12,
             background: "#0070f3",
             color: "white",
             border: "none",
-            borderRadius: 4,
             cursor: "pointer",
             fontWeight: "bold",
-            marginTop: 10,
           }}
         >
-          {saving ? "Mentés..." : "Adatok mentése 💾"}
+          {saving ? "Mentés..." : "Mentés 💾"}
         </button>
 
       </form>
