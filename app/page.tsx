@@ -5,365 +5,346 @@ import { supabase } from "../lib/supabase";
 import { useRouter } from "next/navigation";
 
 export default function Home() {
-const [user, setUser] = useState<any>(null);
-const [dogs, setDogs] = useState<any[]>([]);
-const [uploading, setUploading] = useState<string | null>(null);
-const [loading, setLoading] = useState(true);
-const router = useRouter();
+  const [user, setUser] = useState<any>(null);
+  const [dogs, setDogs] = useState<any[]>([]);
+  const [uploading, setUploading] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
-useEffect(() => {
-checkUser();
-}, []);
+  useEffect(() => {
+    checkUser();
+  }, []);
 
-async function checkUser() {
-const {
-data: { user },
-} = await supabase.auth.getUser();
+  async function checkUser() {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-```
-if (!user) {
-  router.push("/login");
-} else {
-  setUser(user);
-  await loadDogs();
-}
-setLoading(false);
-```
+    if (!user) {
+      router.push("/login");
+    } else {
+      setUser(user);
+      await loadDogs();
+    }
+    setLoading(false);
+  }
 
-}
+  async function loadDogs() {
+    const { data } = await supabase.from("dogs").select(`
+      *,
+      dog_images (
+        image_url
+      )
+    `);
 
-async function loadDogs() {
-const { data } = await supabase.from("dogs").select(`         *,
-        dog_images (
-          image_url
-        )
-      `);
+    setDogs(data || []);
+  }
 
-```
-setDogs(data || []);
-```
+  async function addDog() {
+    await supabase.from("dogs").insert({
+      name: "New Dog",
+      sex: "female",
+    });
 
-}
+    loadDogs();
+  }
 
-async function addDog() {
-await supabase.from("dogs").insert({
-name: "New Dog",
-sex: "female",
-});
+  async function deleteDog(id: any) {
+    await supabase.from("dogs").delete().eq("id", id);
+    loadDogs();
+  }
 
-```
-loadDogs();
-```
+  async function handleImageUpload(event: any, dogId: any) {
+    try {
+      setUploading(dogId);
 
-}
+      const file = event.target.files[0];
+      if (!file) return;
 
-async function deleteDog(id: any) {
-await supabase.from("dogs").delete().eq("id", id);
-loadDogs();
-}
+      const fileName = `${Date.now()}-${file.name}`;
 
-async function handleImageUpload(event: any, dogId: any) {
-try {
-setUploading(dogId);
+      const { error } = await supabase.storage
+        .from("dog-images")
+        .upload(fileName, file);
 
-```
-  const file = event.target.files[0];
-  if (!file) return;
+      if (error) throw error;
 
-  const fileName = `${Date.now()}-${file.name}`;
+      const url =
+        "https://kktqvuzasdktpytuguef.supabase.co/storage/v1/object/public/dog-images/" +
+        fileName;
 
-  const { error } = await supabase.storage
-    .from("dog-images")
-    .upload(fileName, file);
+      await supabase.from("dog_images").insert({
+        dog_id: dogId,
+        image_url: url,
+      });
 
-  if (error) throw error;
+      alert("Kép sikeresen feltöltve! 📸");
+      loadDogs();
+    } catch (error: any) {
+      alert("Hiba történt a feltöltés során: " + error.message);
+    } finally {
+      setUploading(null);
+    }
+  }
 
-  const url =
-    "https://kktqvuzasdktpytuguef.supabase.co/storage/v1/object/public/dog-images/" +
-    fileName;
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    router.push("/login");
+  }
 
-  await supabase.from("dog_images").insert({
-    dog_id: dogId,
-    image_url: url,
-  });
+  if (loading) {
+    return (
+      <div style={{ padding: 20, textAlign: "center" }}>
+        <h3>Rendszer betöltése...</h3>
+      </div>
+    );
+  }
 
-  alert("Kép sikeresen feltöltve! 📸");
-  loadDogs();
-} catch (error: any) {
-  alert("Hiba történt a feltöltés során: " + error.message);
-} finally {
-  setUploading(null);
-}
-```
-
-}
-
-async function handleLogout() {
-await supabase.auth.signOut();
-router.push("/login");
-}
-
-if (loading) {
-return (
-<div style={{ padding: 20, textAlign: "center" }}> <h3>Rendszer betöltése...</h3> </div>
-);
-}
-
-return (
-<div
-style={{
-padding: 20,
-fontFamily: "sans-serif",
-maxWidth: 1200,
-margin: "0 auto",
-}}
->
-<div
-style={{
-display: "flex",
-justifyContent: "space-between",
-alignItems: "center",
-borderBottom: "2px solid #eee",
-paddingBottom: 10,
-marginBottom: 20,
-}}
-> <h1>🐶 Guerrero de las Montanas Dashboard</h1>
-
-```
+  return (
     <div
       style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 15,
-      }}
-    >
-      <a
-        href="/settings"
-        style={{
-          textDecoration: "none",
-          color: "#0070f3",
-          fontWeight: "bold",
-        }}
-      >
-        ⚙️ Settings
-      </a>
-
-      <span
-        style={{
-          fontSize: "0.9rem",
-          color: "#666",
-        }}
-      >
-        👤 {user?.email}
-      </span>
-
-      <button
-        onClick={handleLogout}
-        style={{
-          background: "#333",
-          color: "white",
-          border: "none",
-          padding: "8px 15px",
-          borderRadius: 4,
-          cursor: "pointer",
-        }}
-      >
-        Kijelentkezés
-      </button>
-    </div>
-  </div>
-
-  <div
-    style={{
-      display: "grid",
-      gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-      gap: 20,
-      marginBottom: 30,
-    }}
-  >
-    <div
-      style={{
-        border: "1px solid #ccc",
         padding: 20,
-        borderRadius: 8,
-        background: "#f8f9fa",
+        fontFamily: "sans-serif",
+        maxWidth: 1200,
+        margin: "0 auto",
       }}
     >
-      <h4
+      <div
         style={{
-          margin: "0 0 10px 0",
-          color: "#555",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          borderBottom: "2px solid #eee",
+          paddingBottom: 10,
+          marginBottom: 20,
         }}
       >
-        🐶 Összes kutya
-      </h4>
+        <h1>🐶 Guerrero de las Montanas Dashboard</h1>
 
-      <p
-        style={{
-          fontSize: "2rem",
-          fontWeight: "bold",
-          margin: 0,
-        }}
-      >
-        {dogs.length}
-      </p>
-    </div>
-
-    <div
-      style={{
-        border: "1px solid #ccc",
-        padding: 20,
-        borderRadius: 8,
-        background: "#f8f9fa",
-        opacity: 0.6,
-      }}
-    >
-      <h4
-        style={{
-          margin: "0 0 10px 0",
-          color: "#555",
-        }}
-      >
-        🐾 Aktív almok
-      </h4>
-
-      <p
-        style={{
-          fontSize: "2rem",
-          fontWeight: "bold",
-          margin: 0,
-        }}
-      >
-        0
-      </p>
-    </div>
-
-    <div
-      style={{
-        border: "1px solid #ccc",
-        padding: 20,
-        borderRadius: 8,
-        background: "#f8f9fa",
-        opacity: 0.6,
-      }}
-    >
-      <h4
-        style={{
-          margin: "0 0 10px 0",
-          color: "#555",
-        }}
-      >
-        💰 Bevételek
-      </h4>
-
-      <p
-        style={{
-          fontSize: "2rem",
-          fontWeight: "bold",
-          margin: 0,
-        }}
-      >
-        $0
-      </p>
-    </div>
-  </div>
-
-  <h2>🐕 Kutyák kezelése</h2>
-
-  <button
-    onClick={addDog}
-    style={{
-      padding: "10px 20px",
-      marginBottom: 20,
-      background: "#0070f3",
-      color: "white",
-      border: "none",
-      borderRadius: 4,
-      cursor: "pointer",
-      fontWeight: "bold",
-    }}
-  >
-    + Add Dog
-  </button>
-
-  <div
-    style={{
-      display: "grid",
-      gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
-      gap: 20,
-    }}
-  >
-    {dogs.map((d: any) => {
-      const hasImage =
-        d.dog_images && d.dog_images.length > 0;
-
-      const imageUrl = hasImage
-        ? d.dog_images[0].image_url
-        : null;
-
-      return (
         <div
-          key={d.id}
           style={{
-            border: "1px solid #ddd",
-            padding: 15,
-            borderRadius: 8,
             display: "flex",
-            flexDirection: "column",
-            justifyContent: "space-between",
+            alignItems: "center",
+            gap: 15,
           }}
         >
-          <div>
-            <h3>{d.name}</h3>
+          <a
+            href="/settings"
+            style={{
+              textDecoration: "none",
+              color: "#0070f3",
+              fontWeight: "bold",
+            }}
+          >
+            ⚙️ Settings
+          </a>
 
-            <p>Sex: {d.sex}</p>
+          <span
+            style={{
+              fontSize: "0.9rem",
+              color: "#666",
+            }}
+          >
+            👤 {user?.email}
+          </span>
 
-            {imageUrl && (
-              <img
-                src={imageUrl}
-                alt="Dog"
-                style={{
-                  width: "100%",
-                  maxHeight: 200,
-                  objectFit: "cover",
-                  borderRadius: 6,
-                }}
-              />
-            )}
-          </div>
+          <button
+            onClick={handleLogout}
+            style={{
+              background: "#333",
+              color: "white",
+              border: "none",
+              padding: "8px 15px",
+              borderRadius: 4,
+              cursor: "pointer",
+            }}
+          >
+            Kijelentkezés
+          </button>
+        </div>
+      </div>
 
-          <div>
-            <input
-              type="file"
-              accept="image/*"
-              disabled={uploading !== null}
-              onChange={(e) =>
-                handleImageUpload(e, d.id)
-              }
-            />
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+          gap: 20,
+          marginBottom: 30,
+        }}
+      >
+        <div
+          style={{
+            border: "1px solid #ccc",
+            padding: 20,
+            borderRadius: 8,
+            background: "#f8f9fa",
+          }}
+        >
+          <h4
+            style={{
+              margin: "0 0 10px 0",
+              color: "#555",
+            }}
+          >
+            🐶 Összes kutya
+          </h4>
 
-            <button
-              onClick={() => deleteDog(d.id)}
+          <p
+            style={{
+              fontSize: "2rem",
+              fontWeight: "bold",
+              margin: 0,
+            }}
+          >
+            {dogs.length}
+          </p>
+        </div>
+
+        <div
+          style={{
+            border: "1px solid #ccc",
+            padding: 20,
+            borderRadius: 8,
+            background: "#f8f9fa",
+            opacity: 0.6,
+          }}
+        >
+          <h4
+            style={{
+              margin: "0 0 10px 0",
+              color: "#555",
+            }}
+          >
+            🐾 Aktív almok
+          </h4>
+
+          <p
+            style={{
+              fontSize: "2rem",
+              fontWeight: "bold",
+              margin: 0,
+            }}
+          >
+            0
+          </p>
+        </div>
+
+        <div
+          style={{
+            border: "1px solid #ccc",
+            padding: 20,
+            borderRadius: 8,
+            background: "#f8f9fa",
+            opacity: 0.6,
+          }}
+        >
+          <h4
+            style={{
+              margin: "0 0 10px 0",
+              color: "#555",
+            }}
+          >
+            💰 Bevételek
+          </h4>
+
+          <p
+            style={{
+              fontSize: "2rem",
+              fontWeight: "bold",
+              margin: 0,
+            }}
+          >
+            $0
+          </p>
+        </div>
+      </div>
+
+      <h2>🐕 Kutyák kezelése</h2>
+
+      <button
+        onClick={addDog}
+        style={{
+          padding: "10px 20px",
+          marginBottom: 20,
+          background: "#0070f3",
+          color: "white",
+          border: "none",
+          borderRadius: 4,
+          cursor: "pointer",
+          fontWeight: "bold",
+        }}
+      >
+        + Add Dog
+      </button>
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+          gap: 20,
+        }}
+      >
+        {dogs.map((d: any) => {
+          const hasImage = d.dog_images && d.dog_images.length > 0;
+          const imageUrl = hasImage ? d.dog_images[0].image_url : null;
+
+          return (
+            <div
+              key={d.id}
               style={{
-                background: "#ff4d4d",
-                color: "white",
-                border: "none",
-                padding: "8px 12px",
-                borderRadius: 4,
-                cursor: "pointer",
-                width: "100%",
-                marginTop: 10,
+                border: "1px solid #ddd",
+                padding: 15,
+                borderRadius: 8,
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "space-between",
               }}
             >
-              Delete
-            </button>
-          </div>
-        </div>
-      );
-    })}
-  </div>
-</div>
-```
+              <div>
+                <h3>{d.name}</h3>
+                <p>Sex: {d.sex}</p>
+                {imageUrl && (
+                  <img
+                    src={imageUrl}
+                    alt="Dog"
+                    style={{
+                      width: "100%",
+                      maxHeight: 200,
+                      objectFit: "cover",
+                      borderRadius: 6,
+                    }}
+                  />
+                )}
+              </div>
 
-);
+              <div>
+                <input
+                  type="file"
+                  accept="image/*"
+                  disabled={uploading !== null}
+                  onChange={(e) => handleImageUpload(e, d.id)}
+                />
+
+                <button
+                  onClick={() => deleteDog(d.id)}
+                  style={{
+                    background: "#ff4d4d",
+                    color: "white",
+                    border: "none",
+                    padding: "8px 12px",
+                    borderRadius: 4,
+                    cursor: "pointer",
+                    width: "100%",
+                    marginTop: 10,
+                  }}
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
