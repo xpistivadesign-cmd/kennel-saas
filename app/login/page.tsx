@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, FormEvent } from "react";
 import { supabase } from "../../lib/supabase";
 import { useRouter } from "next/navigation";
 
@@ -11,7 +11,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  async function handleLogin(e: React.FormEvent) {
+  async function handleLogin(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
     setLoading(true);
@@ -27,7 +27,8 @@ export default function Login() {
       alert("Sikeres bejelentkezés! 🎉");
       router.push("/");
     } catch (err: any) {
-      setError(err.message);
+      console.error("Bejelentkezési hiba részletei:", err);
+      setError(err?.message || "Ismeretlen hiba történt a belépés során.");
     } finally {
       setLoading(false);
     }
@@ -36,7 +37,7 @@ export default function Login() {
   return (
     <div style={{ maxWidth: 400, margin: "100px auto", padding: 20, border: "1px solid #ccc", borderRadius: 8, fontFamily: "sans-serif" }}>
       <h2>🔑 Bejelentkezés</h2>
-      {error && <p style={{ color: "red" }}>{error}</p>}
+      {error && <p style={{ color: "red", fontWeight: "bold" }}>{error}</p>}
       
       <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         <label>E-mail cím:</label>
