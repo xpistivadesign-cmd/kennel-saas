@@ -4,347 +4,132 @@ import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { useRouter } from "next/navigation";
 
-export default function Home() {
-  const [user, setUser] = useState<any>(null);
-  const [dogs, setDogs] = useState<any[]>([]);
-  const [uploading, setUploading] = useState<string | null>(null);
+type Stats = {
+  totalDogs: number;
+  activeDogs: number;
+  deceasedDogs: number;
+  totalImages: number;
+};
+
+export default function Dashboard() {
+  const [stats, setStats] = useState<Stats>({
+    totalDogs: 0,
+    activeDogs: 0,
+    deceasedDogs: 0,
+    totalImages: 0,
+  });
+
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
-    checkUser();
+    loadStats();
   }, []);
 
-  async function checkUser() {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      router.push("/login");
-    } else {
-      setUser(user);
-      await loadDogs();
-    }
-    setLoading(false);
-  }
-
-  async function loadDogs() {
-    const { data } = await supabase.from("dogs").select(`
-      *,
-      dog_images (
-        image_url
-      )
-    `);
-
-    setDogs(data || []);
-  }
-
-  async function addDog() {
-    await supabase.from("dogs").insert({
-      name: "New Dog",
-      sex: "female",
-    });
-
-    loadDogs();
-  }
-
-  async function deleteDog(id: any) {
-    await supabase.from("dogs").delete().eq("id", id);
-    loadDogs();
-  }
-
-  async function handleImageUpload(event: any, dogId: any) {
+  async function loadStats() {
     try {
-      setUploading(dogId);
+      const { data: dogs } = await supabase.from("dogs").select("id, status");
+      const { data: images } = await supabase.from("dog_images").select("id");
 
-      const file = event.target.files[0];
-      if (!file) return;
+      const totalDogs = dogs?.length || 0;
+      const activeDogs = dogs?.filter((d) => d.status === "active").length || 0;
+      const deceasedDogs = dogs?.filter((d) => d.status === "deceased").length || 0;
+      const totalImages = images?.length || 0;
 
-      const fileName = `${Date.now()}-${file.name}`;
-
-      const { error } = await supabase.storage
-        .from("dog-images")
-        .upload(fileName, file);
-
-      if (error) throw error;
-
-      const url =
-        "https://kktqvuzasdktpytuguef.supabase.co/storage/v1/object/public/dog-images/" +
-        fileName;
-
-      await supabase.from("dog_images").insert({
-        dog_id: dogId,
-        image_url: url,
+      setStats({
+        totalDogs,
+        activeDogs,
+        deceasedDogs,
+        totalImages,
       });
-
-      alert("Kép sikeresen feltöltve! 📸");
-      loadDogs();
-    } catch (error: any) {
-      alert("Hiba történt a feltöltés során: " + error.message);
+    } catch (error) {
+      console.error("Stats error:", error);
     } finally {
-      setUploading(null);
+      setLoading(false);
     }
-  }
-
-  async function handleLogout() {
-    await supabase.auth.signOut();
-    router.push("/login");
   }
 
   if (loading) {
     return (
       <div style={{ padding: 20, textAlign: "center" }}>
-        <h3>Rendszer betöltése...</h3>
+        <h3>Dashboard betöltése...</h3>
       </div>
     );
   }
 
   return (
-    <div
-      style={{
-        padding: 20,
-        fontFamily: "sans-serif",
-        maxWidth: 1200,
-        margin: "0 auto",
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          borderBottom: "2px solid #eee",
-          paddingBottom: 10,
-          marginBottom: 20,
-        }}
-      >
-        <h1>🐶 Guerrero de las Montanas Dashboard</h1>
+    <div style={{ padding: 20, fontFamily: "sans-serif", maxWidth: 900, margin: "0 auto" }}>
+      
+      <h1>🐶 Kennel Dashboard</h1>
+      <p style={{ color: "#666" }}>Áttekintés a teljes állományról</p>
 
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 15,
-          }}
-        >
-          <a
-            href="/settings"
-            style={{
-              textDecoration: "none",
-              color: "#0070f3",
-              fontWeight: "bold",
-            }}
-          >
-            ⚙️ Settings
-          </a>
-
-          <span
-            style={{
-              fontSize: "0.9rem",
-              color: "#666",
-            }}
-          >
-            👤 {user?.email}
-          </span>
-
-          <button
-            onClick={handleLogout}
-            style={{
-              background: "#333",
-              color: "white",
-              border: "none",
-              padding: "8px 15px",
-              borderRadius: 4,
-              cursor: "pointer",
-            }}
-          >
-            Kijelentkezés
-          </button>
-        </div>
-      </div>
-
+      {/* STATS GRID */}
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-          gap: 20,
-          marginBottom: 30,
+          gridTemplateColumns: "repeat(4, 1fr)",
+          gap: 15,
+          marginTop: 20,
         }}
       >
-        <div
-          style={{
-            border: "1px solid #ccc",
-            padding: 20,
-            borderRadius: 8,
-            background: "#f8f9fa",
-          }}
-        >
-          <h4
-            style={{
-              margin: "0 0 10px 0",
-              color: "#555",
-            }}
-          >
-            🐶 Összes kutya
-          </h4>
-
-          <p
-            style={{
-              fontSize: "2rem",
-              fontWeight: "bold",
-              margin: 0,
-            }}
-          >
-            {dogs.length}
-          </p>
+        <div style={card}>
+          <h2>🐕 {stats.totalDogs}</h2>
+          <p>Összes kutya</p>
         </div>
 
-        <div
-          style={{
-            border: "1px solid #ccc",
-            padding: 20,
-            borderRadius: 8,
-            background: "#f8f9fa",
-            opacity: 0.6,
-          }}
-        >
-          <h4
-            style={{
-              margin: "0 0 10px 0",
-              color: "#555",
-            }}
-          >
-            🐾 Aktív almok
-          </h4>
-
-          <p
-            style={{
-              fontSize: "2rem",
-              fontWeight: "bold",
-              margin: 0,
-            }}
-          >
-            0
-          </p>
+        <div style={card}>
+          <h2 style={{ color: "green" }}>🟢 {stats.activeDogs}</h2>
+          <p>Élő kutyák</p>
         </div>
 
-        <div
-          style={{
-            border: "1px solid #ccc",
-            padding: 20,
-            borderRadius: 8,
-            background: "#f8f9fa",
-            opacity: 0.6,
-          }}
-        >
-          <h4
-            style={{
-              margin: "0 0 10px 0",
-              color: "#555",
-            }}
-          >
-            💰 Bevételek
-          </h4>
+        <div style={card}>
+          <h2 style={{ color: "gray" }}>⚫ {stats.deceasedDogs}</h2>
+          <p>Elhunyt kutyák</p>
+        </div>
 
-          <p
-            style={{
-              fontSize: "2rem",
-              fontWeight: "bold",
-              margin: 0,
-            }}
-          >
-            $0
-          </p>
+        <div style={card}>
+          <h2>📸 {stats.totalImages}</h2>
+          <p>Képek összesen</p>
         </div>
       </div>
 
-      <h2>🐕 Kutyák kezelése</h2>
+      {/* QUICK ACTIONS */}
+      <div style={{ marginTop: 30 }}>
+        <h2>⚡ Gyors műveletek</h2>
 
-      <button
-        onClick={addDog}
-        style={{
-          padding: "10px 20px",
-          marginBottom: 20,
-          background: "#0070f3",
-          color: "white",
-          border: "none",
-          borderRadius: 4,
-          cursor: "pointer",
-          fontWeight: "bold",
-        }}
-      >
-        + Add Dog
-      </button>
+        <button
+          onClick={() => router.push("/dogs/new")}
+          style={button}
+        >
+          ➕ Új kutya hozzáadása
+        </button>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
-          gap: 20,
-        }}
-      >
-        {dogs.map((d: any) => {
-          const hasImage = d.dog_images && d.dog_images.length > 0;
-          const imageUrl = hasImage ? d.dog_images[0].image_url : null;
-
-          return (
-            <div
-              key={d.id}
-              style={{
-                border: "1px solid #ddd",
-                padding: 15,
-                borderRadius: 8,
-                display: "flex",
-                flexDirection: "column",
-                justifyContent: "space-between",
-              }}
-            >
-              <div>
-                <h3>{d.name}</h3>
-                <p>Sex: {d.sex}</p>
-                {imageUrl && (
-                  <img
-                    src={imageUrl}
-                    alt="Dog"
-                    style={{
-                      width: "100%",
-                      maxHeight: 200,
-                      objectFit: "cover",
-                      borderRadius: 6,
-                    }}
-                  />
-                )}
-              </div>
-
-              <div>
-                <input
-                  type="file"
-                  accept="image/*"
-                  disabled={uploading !== null}
-                  onChange={(e) => handleImageUpload(e, d.id)}
-                />
-
-                <button
-                  onClick={() => deleteDog(d.id)}
-                  style={{
-                    background: "#ff4d4d",
-                    color: "white",
-                    border: "none",
-                    padding: "8px 12px",
-                    borderRadius: 4,
-                    cursor: "pointer",
-                    width: "100%",
-                    marginTop: 10,
-                  }}
-                >
-                  Delete
-                </button>
-              </div>
-            </div>
-          );
-        })}
+        <button
+          onClick={() => router.push("/settings")}
+          style={{ ...button, marginLeft: 10, background: "#555" }}
+        >
+          ⚙️ Kennel beállítások
+        </button>
       </div>
+
     </div>
   );
 }
+
+const card: React.CSSProperties = {
+  padding: 20,
+  borderRadius: 10,
+  border: "1px solid #ddd",
+  textAlign: "center",
+  background: "#fff",
+};
+
+const button: React.CSSProperties = {
+  padding: "12px 16px",
+  background: "#0070f3",
+  color: "white",
+  border: "none",
+  borderRadius: 6,
+  cursor: "pointer",
+  marginTop: 10,
+};
