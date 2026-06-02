@@ -115,7 +115,7 @@ export default function SettingsPage() {
         }
       }
 
-      alert("Beállítások mentve 💾");
+      alert("Mentve 💾");
     } catch (err: any) {
       console.error(err);
       alert("Mentési hiba: " + err.message);
@@ -136,11 +136,11 @@ export default function SettingsPage() {
       const cleanName = file.name.replace(/[^a-zA-Z0-9.]/g, "_");
       const fileName = `${userId}/${Date.now()}-${cleanName}`;
 
-      const { error: uploadError } = await supabase.storage
+      const { error } = await supabase.storage
         .from("kennel-logos")
         .upload(fileName, file, { upsert: true });
 
-      if (uploadError) throw uploadError;
+      if (error) throw error;
 
       const { data } = supabase.storage
         .from("kennel-logos")
@@ -148,13 +148,13 @@ export default function SettingsPage() {
 
       setLogoUrl(data.publicUrl);
     } catch (err: any) {
-      console.error(err);
       alert("Upload hiba: " + err.message);
     } finally {
       setUploadingLogo(false);
     }
   }
 
+  // ✅ EZ A FUNKCIÓ IDE KERÜL (komponensen BELÜL)
   function copyLink(slug: string) {
     const url = `${window.location.origin}/k/${slug}`;
     navigator.clipboard.writeText(url);
@@ -174,33 +174,33 @@ export default function SettingsPage() {
   return (
     <div style={{ padding: 20, maxWidth: 600, margin: "0 auto", fontFamily: "sans-serif" }}>
       
-      <button onClick={() => router.push("/")} style={{ marginBottom: 20 }}>
+      <button onClick={() => router.push("/")}>
         ⬅️ Dashboard
       </button>
 
-      <h1>⚙️ Kennel Settings</h1>
+      <h1>⚙️ Settings</h1>
 
-      <form onSubmit={handleSave} style={{ display: "flex", flexDirection: "column", gap: 15, marginTop: 20 }}>
+      <form onSubmit={handleSave} style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 20 }}>
         
         <input
-          placeholder="Kennel neve"
           value={name}
           onChange={(e) => setName(e.target.value)}
+          placeholder="Kennel neve"
           required
           style={{ padding: 8 }}
         />
 
         <textarea
-          placeholder="Leírás"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
+          placeholder="Leírás"
           style={{ padding: 8 }}
         />
 
         <input
-          placeholder="Weboldal"
           value={website}
           onChange={(e) => setWebsite(e.target.value)}
+          placeholder="Weboldal"
           style={{ padding: 8 }}
         />
 
@@ -217,7 +217,7 @@ export default function SettingsPage() {
           />
         </div>
 
-        <input type="file" onChange={handleLogoUpload} disabled={uploadingLogo} />
+        <input type="file" onChange={handleLogoUpload} />
 
         {logoUrl && (
           <img src={logoUrl} style={{ width: 120, borderRadius: 8 }} />
@@ -239,15 +239,13 @@ export default function SettingsPage() {
         </button>
       </form>
 
-      <hr style={{ margin: "20px 0" }} />
-
-      <div>
-        <h3>🔗 Share link</h3>
-        <p>/k/{currentSlug}</p>
-
+      {/* ✅ COPY LINK GOMB IDE KERÜL A FORM ALÁ */}
+      {kennelId && (
         <button
+          type="button"
           onClick={() => copyLink(currentSlug)}
           style={{
+            marginTop: 20,
             padding: 10,
             background: "black",
             color: "white",
@@ -255,9 +253,10 @@ export default function SettingsPage() {
             cursor: "pointer",
           }}
         >
-          Link másolása
+          🔗 Share link másolása
         </button>
-      </div>
+      )}
+
     </div>
   );
 }
