@@ -8,6 +8,7 @@ type Dog = {
   id: string;
   name: string;
   sex: "male" | "female";
+  status: "active" | "deceased";
 };
 
 type DogImage = {
@@ -37,6 +38,7 @@ export default function DogProfilePage({ params }: { params: { id: string } }) {
       .maybeSingle();
 
     if (error || !data) {
+      alert("Kutya nem található 🐶");
       router.push("/");
       return;
     }
@@ -74,13 +76,11 @@ export default function DogProfilePage({ params }: { params: { id: string } }) {
         .from("dog-images")
         .getPublicUrl(fileName);
 
-      const imageUrl = data.publicUrl;
-
       const { error: dbError } = await supabase
         .from("dog_images")
         .insert({
           dog_id: dogId,
-          image_url: imageUrl,
+          image_url: data.publicUrl,
         });
 
       if (dbError) throw dbError;
@@ -88,14 +88,18 @@ export default function DogProfilePage({ params }: { params: { id: string } }) {
       await loadImages();
       e.target.value = "";
     } catch (error: any) {
-      alert("Hiba feltöltés közben: " + error.message);
+      alert("Hiba: " + error.message);
     } finally {
       setUploading(false);
     }
   }
 
   if (loading) {
-    return <div style={{ padding: 20 }}>Betöltés...</div>;
+    return (
+      <div style={{ padding: 20, textAlign: "center" }}>
+        <h3>Betöltés...</h3>
+      </div>
+    );
   }
 
   if (!dog) return null;
@@ -112,6 +116,28 @@ export default function DogProfilePage({ params }: { params: { id: string } }) {
       <p>
         <b>Nem:</b> {dog.sex === "male" ? "Kan" : "Szuka"}
       </p>
+
+      <p>
+        {dog.status === "active" ? (
+          <span style={{ color: "green", fontWeight: "bold" }}>🟢 Él</span>
+        ) : (
+          <span style={{ color: "gray", fontWeight: "bold" }}>⚫ Elhunyt</span>
+        )}
+      </p>
+
+      <button
+        onClick={() => router.push(`/dogs/${dog.id}/edit`)}
+        style={{
+          padding: "10px 14px",
+          background: "#0070f3",
+          color: "white",
+          border: "none",
+          cursor: "pointer",
+          marginTop: 10,
+        }}
+      >
+        ✏️ Szerkesztés
+      </button>
 
       <hr style={{ margin: "20px 0" }} />
 
