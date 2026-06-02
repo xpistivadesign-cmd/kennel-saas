@@ -4,10 +4,18 @@ import { useEffect, useState, FormEvent, ChangeEvent } from "react";
 import { supabase } from "../../lib/supabase";
 import { useRouter } from "next/navigation";
 
+function slugify(text: string) {
+  return text
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-");
+}
+
 export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [uploadingLogo, setUploadingLogo] = useState(false);
 
   const [kennelId, setKennelId] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
@@ -15,17 +23,20 @@ export default function SettingsPage() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [website, setWebsite] = useState("");
+
   const [primaryColor, setPrimaryColor] = useState("#0070f3");
   const [secondaryColor, setSecondaryColor] = useState("#ffffff");
+
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
 
   const router = useRouter();
 
   useEffect(() => {
-    loadKennelData();
+    loadKennel();
   }, []);
 
-  async function loadKennelData() {
+  async function loadKennel() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
 
@@ -53,9 +64,9 @@ export default function SettingsPage() {
         setSecondaryColor(data.secondary_color || "#ffffff");
         setLogoUrl(data.logo_url || null);
       }
-    } catch (error: any) {
-      console.error(error);
-      alert("Hiba a kennel adatok betöltésekor: " + error.message);
+    } catch (err: any) {
+      console.error(err);
+      alert("Hiba: " + err.message);
     } finally {
       setLoading(false);
     }
@@ -67,20 +78,23 @@ export default function SettingsPage() {
 
     setSaving(true);
 
-    const payload = {
+    const slug = slugify(name);
+
+    const updateData = {
       name,
       description,
       website,
       primary_color: primaryColor,
       secondary_color: secondaryColor,
       logo_url: logoUrl,
+      slug,
     };
 
     try {
       if (kennelId) {
         const { error } = await supabase
           .from("kennels")
-          .update(payload)
+          .update(updateData)
           .eq("id", kennelId);
 
         if (error) throw error;
@@ -88,7 +102,7 @@ export default function SettingsPage() {
         const { data, error } = await supabase
           .from("kennels")
           .insert({
-            ...payload,
+            ...updateData,
             user_id: userId,
           })
           .select()
@@ -101,29 +115,30 @@ export default function SettingsPage() {
         }
       }
 
-      await loadKennelData();
-      alert("Beállítások sikeresen mentve 💾");
-    } catch (error: any) {
-      console.error(error);
-      alert("Mentési hiba: " + error.message);
+      alert("Beállítások mentve 💾");
+    } catch (err: any) {
+      console.error(err);
+      alert("Mentési hiba: " + err.message);
     } finally {
       setSaving(false);
     }
   }
 
-  async function handleLogoUpload(event: ChangeEvent<HTMLInputElement>) {
+  async function handleLogoUpload(e: ChangeEvent<HTMLInputElement>) {
     try {
-      const file = event.target.files?.[0];
-      if (!file || !userId) return;
+      if (!userId) return;
+
+      const file = e.target.files?.[0];
+      if (!file) return;
 
       setUploadingLogo(true);
 
       const cleanName = file.name.replace(/[^a-zA-Z0-9.]/g, "_");
-      const fileName = `${userId}/logo-${Date.now()}-${cleanName}`;
+      const fileName = `${userId}/${Date.now()}-${cleanName}`;
 
       const { error: uploadError } = await supabase.storage
         .from("kennel-logos")
-        .upload(fileName, file);
+        .upload(fileName, file, { upsert: true });
 
       if (uploadError) throw uploadError;
 
@@ -132,130 +147,117 @@ export default function SettingsPage() {
         .getPublicUrl(fileName);
 
       setLogoUrl(data.publicUrl);
-
-      // reset file input (fontos UX fix)
-      event.target.value = "";
-
-      alert("Logó feltöltve 🎨 (ne felejtsd el menteni)");
-    } catch (error: any) {
-      console.error(error);
-      alert("Logó feltöltési hiba: " + error.message);
+    } catch (err: any) {
+      console.error(err);
+      alert("Upload hiba: " + err.message);
     } finally {
       setUploadingLogo(false);
     }
   }
 
+  function copyLink(slug: string) {
+    const url = `${window.location.origin}/k/${slug}`;
+    navigator.clipboard.writeText(url);
+    alert("Link kimásolva: " + url);
+  }
+
   if (loading) {
     return (
       <div style={{ padding: 20, textAlign: "center" }}>
-        <h3>Beállítások betöltése...</h3>
+        <h3>Betöltés...</h3>
       </div>
     );
   }
 
+  const currentSlug = slugify(name);
+
   return (
     <div style={{ padding: 20, maxWidth: 600, margin: "0 auto", fontFamily: "sans-serif" }}>
       
-      <button
-        onClick={() => router.push("/")}
-        style={{ marginBottom: 20, padding: "8px 12px", cursor: "pointer" }}
-      >
-        ⬅️ Vissza
+      <button onClick={() => router.push("/")} style={{ marginBottom: 20 }}>
+        ⬅️ Dashboard
       </button>
 
       <h1>⚙️ Kennel Settings</h1>
-      <p style={{ color: "#666" }}>
-        Itt tudod testre szabni a kennel profilodat.
-      </p>
 
       <form onSubmit={handleSave} style={{ display: "flex", flexDirection: "column", gap: 15, marginTop: 20 }}>
+        
+        <input
+          placeholder="Kennel neve"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          required
+          style={{ padding: 8 }}
+        />
 
-        <div>
-          <label><b>Kennel neve</b></label>
+        <textarea
+          placeholder="Leírás"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          style={{ padding: 8 }}
+        />
+
+        <input
+          placeholder="Weboldal"
+          value={website}
+          onChange={(e) => setWebsite(e.target.value)}
+          style={{ padding: 8 }}
+        />
+
+        <div style={{ display: "flex", gap: 10 }}>
           <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-            style={{ width: "100%", padding: 8 }}
+            type="color"
+            value={primaryColor}
+            onChange={(e) => setPrimaryColor(e.target.value)}
           />
-        </div>
-
-        <div>
-          <label><b>Leírás</b></label>
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            rows={4}
-            style={{ width: "100%", padding: 8 }}
-          />
-        </div>
-
-        <div>
-          <label><b>Weboldal</b></label>
           <input
-            value={website}
-            onChange={(e) => setWebsite(e.target.value)}
-            placeholder="https://..."
-            style={{ width: "100%", padding: 8 }}
+            type="color"
+            value={secondaryColor}
+            onChange={(e) => setSecondaryColor(e.target.value)}
           />
         </div>
 
-        <div style={{ display: "flex", gap: 20 }}>
-          <div>
-            <label><b>Elsődleges szín</b></label>
-            <input
-              type="color"
-              value={primaryColor}
-              onChange={(e) => setPrimaryColor(e.target.value)}
-            />
-          </div>
+        <input type="file" onChange={handleLogoUpload} disabled={uploadingLogo} />
 
-          <div>
-            <label><b>Másodlagos szín</b></label>
-            <input
-              type="color"
-              value={secondaryColor}
-              onChange={(e) => setSecondaryColor(e.target.value)}
-            />
-          </div>
-        </div>
-
-        <div>
-          <label><b>Logó</b></label>
-
-          {logoUrl && (
-            <img
-              src={logoUrl}
-              alt="logo"
-              style={{ width: 120, height: 120, objectFit: "cover", marginTop: 10 }}
-            />
-          )}
-
-          <input
-            type="file"
-            accept="image/*"
-            disabled={uploadingLogo}
-            onChange={handleLogoUpload}
-          />
-        </div>
+        {logoUrl && (
+          <img src={logoUrl} style={{ width: 120, borderRadius: 8 }} />
+        )}
 
         <button
           type="submit"
           disabled={saving}
           style={{
-            marginTop: 10,
             padding: 12,
             background: "#0070f3",
             color: "white",
             border: "none",
             cursor: "pointer",
-            fontWeight: "bold"
+            fontWeight: "bold",
           }}
         >
           {saving ? "Mentés..." : "Mentés 💾"}
         </button>
-
       </form>
+
+      <hr style={{ margin: "20px 0" }} />
+
+      <div>
+        <h3>🔗 Share link</h3>
+        <p>/k/{currentSlug}</p>
+
+        <button
+          onClick={() => copyLink(currentSlug)}
+          style={{
+            padding: 10,
+            background: "black",
+            color: "white",
+            border: "none",
+            cursor: "pointer",
+          }}
+        >
+          Link másolása
+        </button>
+      </div>
     </div>
   );
 }
