@@ -4,51 +4,63 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useParams } from "next/navigation";
 
+type Dog = {
+  id: string;
+  name: string;
+  sex: string | null;
+  breed: string | null;
+  is_public: boolean;
+  description: string | null;
+};
+
 type Photo = {
   id: string;
   image_url: string;
 };
 
-type Dog = {
-  id: string;
-  name: string;
-  sex?: string | null;
-};
-
-export default function PublicDogProfile() {
+export default function PublicDogProfilePage() {
   const params = useParams();
   const dogId = Array.isArray(params.id) ? params.id[0] : params.id;
 
   const [dog, setDog] = useState<Dog | null>(null);
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
 
-  const [form, setForm] = useState({
-    name: "",
-    email: "",
-    message: "",
-    has_yard: false,
-  });
+  // LEAD FORM
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [message, setMessage] = useState("");
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
 
-  const [submitted, setSubmitted] = useState(false);
-
-  // -------------------------
-  // LOAD PUBLIC DATA
-  // -------------------------
   async function load() {
     if (!dogId) return;
 
     setLoading(true);
 
     try {
+      // 1. Dog lekérés
       const { data: dogData } = await supabase
         .from("dogs")
-        .select("id, name, sex")
+        .select("id, name, sex, breed, is_public, description")
         .eq("id", dogId)
         .single();
 
-      if (dogData) setDog(dogData);
+      if (!dogData) {
+        setNotFound(true);
+        return;
+      }
 
+      // 2. PUBLIC CHECK (EZ A KRITIKUS BIZTONSÁG)
+      if (!dogData.is_public) {
+        setNotFound(true);
+        return;
+      }
+
+      setDog(dogData);
+
+      // 3. Photos
       const { data: photoData } = await supabase
         .from("dog_photos")
         .select("id, image_url")
@@ -56,6 +68,9 @@ export default function PublicDogProfile() {
         .order("created_at", { ascending: false });
 
       setPhotos(photoData || []);
+    } catch (err) {
+      console.error(err);
+      setNotFound(true);
     } finally {
       setLoading(false);
     }
@@ -65,229 +80,192 @@ export default function PublicDogProfile() {
     load();
   }, [dogId]);
 
-  // -------------------------
-  // SUBMIT LEAD
-  // -------------------------
   async function submitLead() {
-    if (!dogId) return;
+    if (!dog) return;
 
-    if (!form.name || !form.email) {
-      alert("Please fill name and email");
+    if (!name || !email || !message) {
+      alert("Please fill all fields");
       return;
     }
+
+    setSending(true);
 
     const { error } = await supabase.from("dog_leads").insert({
-      dog_id: dogId,
-      name: form.name,
-      email: form.email,
-      message: form.message,
-      has_yard: form.has_yard,
+      dog_id: dog.id,
+      name,
+      email,
+      message,
     });
 
+    setSending(false);
+
     if (error) {
-      alert(error.message);
+      alert("Error sending message");
       return;
     }
 
-    setSubmitted(true);
-    setForm({
-      name: "",
-      email: "",
-      message: "",
-      has_yard: false,
-    });
+    setSent(true);
+    setName("");
+    setEmail("");
+    setMessage("");
   }
 
-  // -------------------------
-  // UI STATES
-  // -------------------------
   if (loading) {
     return (
       <div style={center}>
-        Loading public profile...
+        Loading kennel profile...
       </div>
     );
   }
 
-  if (!dog) {
+  if (notFound || !dog) {
     return (
       <div style={center}>
-        <h2>🐶 Dog not found</h2>
+        <h2>🐶 Dog not available</h2>
+        <p>This profile is private or does not exist.</p>
       </div>
     );
   }
 
-  // -------------------------
-  // UI
-  // -------------------------
   return (
-    <div style={wrap}>
+    <div style={container}>
+
       {/* HEADER */}
-      <div style={header}>
-        <h1>🐶 {dog.name}</h1>
+      <h1 style={{ fontSize: 32, marginBottom: 4 }}>
+        🐶 {dog.name}
+      </h1>
 
-        <p style={{ color: "#666" }}>
-          {dog.sex === "female"
-            ? "Female"
-            : dog.sex === "male"
-            ? "Male"
-            : "Unknown"}
+      <p style={{ color: "#666" }}>
+        {dog.breed || "Unknown breed"} •{" "}
+        {dog.sex === "female" ? "Female" : "Male"}
+      </p>
+
+      {dog.description && (
+        <p style={{ marginTop: 10, color: "#444" }}>
+          {dog.description}
         </p>
-      </div>
+      )}
 
-      {/* HERO */}
-      <div style={hero}>
-        <h2>Meet {dog.name}</h2>
-        <p>Official breeder profile page</p>
-      </div>
-
-      {/* GALLERY */}
-      <h3 style={{ marginTop: 30 }}>📸 Gallery</h3>
+      {/* PHOTOS */}
+      <h2 style={{ marginTop: 30 }}>📸 Photos</h2>
 
       {photos.length === 0 ? (
-        <p style={{ color: "#999" }}>No photos yet</p>
+        <p style={{ color: "#999" }}>No photos available</p>
       ) : (
         <div style={grid}>
           {photos.map((p) => (
-            <img key={p.id} src={p.image_url} style={img} />
+            <img
+              key={p.id}
+              src={p.image_url}
+              style={img}
+              alt="dog"
+            />
           ))}
         </div>
       )}
 
       {/* LEAD FORM */}
-      <div style={card}>
-        <h3>🐾 Interested in {dog.name}?</h3>
+      <div style={formBox}>
+        <h2>💬 Inquire about this puppy</h2>
 
-        {submitted ? (
-          <p style={{ color: "green" }}>
-            ✔ Inquiry sent! The breeder will contact you soon.
+        <input
+          placeholder="Your name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          style={input}
+        />
+
+        <input
+          placeholder="Your email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          style={input}
+        />
+
+        <textarea
+          placeholder="Your message"
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          style={textarea}
+        />
+
+        <button
+          onClick={submitLead}
+          disabled={sending}
+          style={button}
+        >
+          {sending ? "Sending..." : "Send Inquiry"}
+        </button>
+
+        {sent && (
+          <p style={{ color: "green", marginTop: 10 }}>
+            ✅ Message sent! The breeder will contact you soon.
           </p>
-        ) : (
-          <>
-            <input
-              placeholder="Your name"
-              value={form.name}
-              onChange={(e) =>
-                setForm({ ...form, name: e.target.value })
-              }
-              style={input}
-            />
-
-            <input
-              placeholder="Email"
-              value={form.email}
-              onChange={(e) =>
-                setForm({ ...form, email: e.target.value })
-              }
-              style={input}
-            />
-
-            <textarea
-              placeholder="Message"
-              value={form.message}
-              onChange={(e) =>
-                setForm({ ...form, message: e.target.value })
-              }
-              style={input}
-            />
-
-            <label style={{ display: "block", marginTop: 10 }}>
-              <input
-                type="checkbox"
-                checked={form.has_yard}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    has_yard: e.target.checked,
-                  })
-                }
-              />
-              I have a yard
-            </label>
-
-            <button onClick={submitLead} style={btn}>
-              Send Inquiry
-            </button>
-          </>
         )}
-      </div>
-
-      {/* FOOTER */}
-      <div style={footer}>
-        Share this page with others 💌
       </div>
     </div>
   );
 }
 
-// -------------------------
-// STYLES
-// -------------------------
-const wrap: React.CSSProperties = {
-  maxWidth: 900,
+/* STYLES */
+
+const container = {
+  maxWidth: 800,
   margin: "40px auto",
   padding: 20,
   fontFamily: "sans-serif",
 };
 
-const header: React.CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
+const center = {
+  textAlign: "center",
+  marginTop: 80,
+  fontFamily: "sans-serif",
 };
 
-const hero: React.CSSProperties = {
-  marginTop: 20,
-  padding: 20,
-  background: "#f6f8fa",
-  borderRadius: 12,
-};
-
-const grid: React.CSSProperties = {
+const grid = {
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
+  gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
   gap: 10,
+  marginTop: 10,
 };
 
-const img: React.CSSProperties = {
+const img = {
   width: "100%",
-  height: 180,
+  height: 160,
   objectFit: "cover",
   borderRadius: 10,
 };
 
-const card: React.CSSProperties = {
-  marginTop: 30,
+const formBox = {
+  marginTop: 40,
   padding: 20,
   border: "1px solid #eee",
   borderRadius: 12,
+  background: "#fafafa",
 };
 
-const input: React.CSSProperties = {
+const input = {
   width: "100%",
   padding: 10,
-  marginTop: 10,
+  marginBottom: 10,
   borderRadius: 8,
   border: "1px solid #ddd",
 };
 
-const btn: React.CSSProperties = {
-  marginTop: 10,
+const textarea = {
+  width: "100%",
+  padding: 10,
+  height: 100,
+  marginBottom: 10,
+  borderRadius: 8,
+  border: "1px solid #ddd",
+};
+
+const button = {
   padding: "10px 14px",
   background: "#0070f3",
   color: "white",
   border: "none",
   borderRadius: 8,
   cursor: "pointer",
-};
-
-const footer: React.CSSProperties = {
-  marginTop: 40,
-  textAlign: "center",
-  color: "#777",
-};
-
-const center: React.CSSProperties = {
-  padding: 40,
-  textAlign: "center",
 };
