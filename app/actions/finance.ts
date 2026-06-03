@@ -2,53 +2,45 @@
 
 import { createClient } from "@/lib/supabase/server";
 
-/**
- * 📊 FINANCE OVERVIEW
- * Bevételek + kiadások + alap aggregáció
- */
 export async function getFinanceOverview() {
   const supabase = await createClient();
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return [];
 
-  // Kölykök eladási adatai
-  const { data: puppies, error } = await supabase
+  const { data, error } = await supabase
     .from("puppies")
     .select(`
       id,
       name,
       price,
-      status,
+      deposit_paid,
       buyer_name,
       buyer_phone,
-      litters (
-        litter_letter
-      )
+      buyer_address,
+      litters ( litter_letter )
     `)
     .order("created_at", { ascending: false });
 
   if (error) {
-    console.error("Finance fetch error:", error.message);
+    console.error(error.message);
     return [];
   }
 
   return (
-    puppies?.map((p: any) => ({
+    data?.map((p: any) => ({
       id: p.id,
       puppyName: p.name,
       litter: p.litters?.litter_letter ?? null,
       buyerName: p.buyer_name ?? null,
       buyerPhone: p.buyer_phone ?? null,
       price: p.price ?? 0,
-      status: p.status ?? "unknown"
+      deposit: p.deposit_paid ?? 0,
+      remaining: (p.price ?? 0) - (p.deposit_paid ?? 0)
     })) ?? []
   );
 }
 
-/**
- * 📄 KUTYA ADÁSVÉTELI SZERZŐDÉS GENERÁLÁS
- */
 export async function generatePuppyContract(puppyId: string) {
   const supabase = await createClient();
 
@@ -58,12 +50,11 @@ export async function generatePuppyContract(puppyId: string) {
       id,
       name,
       price,
+      deposit_paid,
       buyer_name,
       buyer_phone,
       buyer_address,
-      litters (
-        litter_letter
-      )
+      litters ( litter_letter )
     `)
     .eq("id", puppyId)
     .single();
@@ -72,12 +63,17 @@ export async function generatePuppyContract(puppyId: string) {
     throw new Error("Puppy not found");
   }
 
+  const deposit = data.deposit_paid ?? 0;
+  const price = data.price ?? 0;
+
   return {
     puppyName: data.name,
     litter: data.litters?.litter_letter ?? null,
     buyerName: data.buyer_name,
     buyerPhone: data.buyer_phone,
     buyerAddress: data.buyer_address,
-    price: data.price
+    price,
+    deposit,
+    remaining: price - deposit
   };
 }
