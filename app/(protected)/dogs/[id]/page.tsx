@@ -1,195 +1,241 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
-import { useParams, useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import { createClient } from "@supabase/supabase-js";
+import { format, addDays, differenceInDays } from "date-fns";
 
-type Event = {
-  id: string;
-  type: string;
-  title: string;
-  description: string | null;
-  created_at: string;
-};
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
-export default function DogProfilePage() {
-  const params = useParams();
-  const router = useRouter();
+type Dog = any;
+type Mating = any;
+type Litter = any;
 
-  const dogId = Array.isArray(params.id) ? params.id[0] : params.id;
+export default function DogProfilePage({ params }: { params: { id: string } }) {
+  const [dog, setDog] = useState<Dog | null>(null);
+  const [matings, setMatings] = useState<Mating[]>([]);
+  const [litter, setLitter] = useState<Litter | null>(null);
 
-  const [dog, setDog] = useState<any>(null);
-  const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const [newEvent, setNewEvent] = useState({
-    type: "note",
-    title: "",
-    description: "",
-  });
+  // form states
+  const [mateMaleId, setMateMaleId] = useState("");
+  const [matingDate, setMatingDate] = useState("");
 
-  // -------------------------
-  // LOAD DOG + EVENTS
-  // -------------------------
+  useEffect(() => {
+    load();
+  }, []);
+
   async function load() {
     setLoading(true);
-
-    const { data: auth } = await supabase.auth.getUser();
-    const user = auth?.user;
-
-    if (!user || !dogId) return;
 
     const { data: dogData } = await supabase
       .from("dogs")
       .select("*")
-      .eq("id", dogId)
-      .eq("user_id", user.id)
+      .eq("id", params.id)
       .single();
 
-    setDog(dogData);
-
-    const { data: eventsData } = await supabase
-      .from("dog_events")
+    const { data: matingData } = await supabase
+      .from("matings")
       .select("*")
-      .eq("dog_id", dogId)
-      .order("created_at", { ascending: false });
+      .eq("female_id", params.id)
+      .order("mating_date", { ascending: false });
 
-    setEvents(eventsData || []);
+    const { data: litterData } = await supabase
+      .from("litters")
+      .select("*, matings(*)")
+      .eq("matings.female_id", params.id)
+      .maybeSingle();
+
+    setDog(dogData);
+    setMatings(matingData || []);
+    setLitter(litterData || null);
 
     setLoading(false);
   }
 
-  useEffect(() => {
-    load();
-  }, [dogId]);
+  async function createMating() {
+    if (!mateMaleId || !matingDate) return;
 
-  // -------------------------
-  // ADD EVENT
-  // -------------------------
-  async function addEvent() {
-    const { data: auth } = await supabase.auth.getUser();
-    const user = auth?.user;
+    const due = addDays(new Date(matingDate), 63);
 
-    if (!user) return;
+    const { data } = await supabase
+      .from("matings")
+      .insert({
+        female_id: params.id,
+        male_id: mateMaleId,
+        mating_date: matingDate,
+        estimated_due_date: format(due, "yyyy-MM-dd"),
+        method: "natural",
+      })
+      .select()
+      .single();
 
-    await supabase.from("dog_events").insert({
-      dog_id: dogId,
-      user_id: user.id,
-      type: newEvent.type,
-      title: newEvent.title,
-      description: newEvent.description,
-    });
-
-    setNewEvent({ type: "note", title: "", description: "" });
-    load();
+    setMatings([data, ...matings]);
+    setMateMaleId("");
+    setMatingDate("");
   }
 
-  if (loading) return <div style={{ padding: 40 }}>Loading...</div>;
+  async function generateLitter(matingId: string) {
+    const { data } = await supabase
+      .from("litters")
+      .insert({
+        mating_id: matingId,
+        birth_date: new Date().toISOString().split("T")[0],
+        status: "born",
+        male_count: 0,
+        female_count: 0,
+      })
+      .select()
+      .single();
+
+    setLitter(data);
+  }
+
+  const activeMating = matings?.[0];
+
+  const daysLeft = useMemo(() => {
+    if (!activeMating?.estimated_due_date) return null;
+    return differenceInDays(
+      new Date(activeMating.estimated_due_date),
+      new Date()
+    );
+  }, [activeMating]);
+
+  if (loading) {
+    return (
+      <div className="p-10 text-gray-500">
+        Loading kennel system...
+      </div>
+    );
+  }
 
   return (
-    <div style={wrap}>
-      <h1>🐶 {dog?.name} – Timeline</h1>
+    <div className="p-6 space-y-8 max-w-5xl mx-auto">
+      {/* HEADER */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold">{dog?.name}</h1>
+          <p className="text-gray-500">
+            {dog?.breed} • {dog?.sex}
+          </p>
+        </div>
 
-      {/* ADD EVENT */}
-      <div style={card}>
-        <h3>Add Event</h3>
+        <div className="text-right">
+          <div className="text-sm text-gray-500">Status</div>
+          <div className="font-semibold">{dog?.status}</div>
+        </div>
+      </div>
 
-        <select
-          value={newEvent.type}
-          onChange={(e) =>
-            setNewEvent({ ...newEvent, type: e.target.value })
-          }
-          style={input}
+      {/* BREEDING DASHBOARD */}
+      <div className="grid grid-cols-3 gap-4">
+        <div className="p-4 border rounded-xl">
+          <div className="text-sm text-gray-500">Last Mating</div>
+          <div className="text-lg font-semibold">
+            {activeMating?.mating_date || "None"}
+          </div>
+        </div>
+
+        <div className="p-4 border rounded-xl">
+          <div className="text-sm text-gray-500">Due Date</div>
+          <div className="text-lg font-semibold">
+            {activeMating?.estimated_due_date || "—"}
+          </div>
+        </div>
+
+        <div className="p-4 border rounded-xl">
+          <div className="text-sm text-gray-500">Countdown</div>
+          <div className="text-2xl font-bold text-indigo-600">
+            {daysLeft !== null ? `${daysLeft} days` : "—"}
+          </div>
+        </div>
+      </div>
+
+      {/* MATING CREATION */}
+      <div className="p-6 border rounded-xl space-y-4">
+        <h2 className="text-xl font-semibold">Create Mating</h2>
+
+        <div className="grid grid-cols-2 gap-4">
+          <input
+            className="border p-2 rounded"
+            placeholder="Male Dog ID"
+            value={mateMaleId}
+            onChange={(e) => setMateMaleId(e.target.value)}
+          />
+
+          <input
+            type="date"
+            className="border p-2 rounded"
+            value={matingDate}
+            onChange={(e) => setMatingDate(e.target.value)}
+          />
+        </div>
+
+        <button
+          onClick={createMating}
+          className="bg-black text-white px-4 py-2 rounded"
         >
-          <option value="note">Note</option>
-          <option value="vaccination">Vaccination</option>
-          <option value="health">Health</option>
-          <option value="status_change">Status change</option>
-        </select>
-
-        <input
-          placeholder="Title"
-          value={newEvent.title}
-          onChange={(e) =>
-            setNewEvent({ ...newEvent, title: e.target.value })
-          }
-          style={input}
-        />
-
-        <textarea
-          placeholder="Description"
-          value={newEvent.description}
-          onChange={(e) =>
-            setNewEvent({ ...newEvent, description: e.target.value })
-          }
-          style={input}
-        />
-
-        <button onClick={addEvent} style={btn}>
-          Add Event
+          + Create Mating
         </button>
       </div>
 
-      {/* TIMELINE */}
-      <h3 style={{ marginTop: 30 }}>📜 History</h3>
+      {/* MATINGS LIST */}
+      <div className="space-y-3">
+        <h2 className="text-xl font-semibold">Matings</h2>
 
-      <div>
-        {events.length === 0 ? (
-          <p style={{ color: "#999" }}>No events yet</p>
-        ) : (
-          events.map((ev) => (
-            <div key={ev.id} style={eventCard}>
-              <div style={{ fontWeight: "bold" }}>
-                {ev.title}
+        {matings.map((m) => (
+          <div
+            key={m.id}
+            className="p-4 border rounded-xl flex justify-between items-center"
+          >
+            <div>
+              <div className="font-semibold">
+                {m.mating_date}
               </div>
-
-              <div style={{ fontSize: 12, color: "#666" }}>
-                {ev.type} •{" "}
-                {new Date(ev.created_at).toLocaleString()}
+              <div className="text-sm text-gray-500">
+                Due: {m.estimated_due_date}
               </div>
-
-              {ev.description && (
-                <p style={{ marginTop: 6 }}>{ev.description}</p>
-              )}
             </div>
-          ))
-        )}
+
+            <button
+              onClick={() => generateLitter(m.id)}
+              className="bg-green-600 text-white px-3 py-1 rounded"
+            >
+              Generate Litter
+            </button>
+          </div>
+        ))}
       </div>
+
+      {/* LITTER */}
+      {litter && (
+        <div className="p-6 border rounded-xl space-y-3 bg-gray-50">
+          <h2 className="text-xl font-semibold">Litter</h2>
+
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <div className="text-sm text-gray-500">Born</div>
+              <div className="font-semibold">{litter.birth_date}</div>
+            </div>
+
+            <div>
+              <div className="text-sm text-gray-500">Male</div>
+              <div className="font-semibold">{litter.male_count}</div>
+            </div>
+
+            <div>
+              <div className="text-sm text-gray-500">Female</div>
+              <div className="font-semibold">{litter.female_count}</div>
+            </div>
+          </div>
+
+          <button className="bg-indigo-600 text-white px-4 py-2 rounded">
+            + Add Puppies (UI next step)
+          </button>
+        </div>
+      )}
     </div>
   );
 }
-
-// -------------------------
-const wrap: React.CSSProperties = {
-  maxWidth: 800,
-  margin: "40px auto",
-  fontFamily: "sans-serif",
-};
-
-const card: React.CSSProperties = {
-  padding: 20,
-  border: "1px solid #eee",
-  borderRadius: 12,
-};
-
-const input: React.CSSProperties = {
-  width: "100%",
-  padding: 10,
-  marginTop: 10,
-  borderRadius: 8,
-  border: "1px solid #ddd",
-};
-
-const btn: React.CSSProperties = {
-  marginTop: 10,
-  padding: "10px 14px",
-  background: "#0070f3",
-  color: "white",
-  border: "none",
-  borderRadius: 8,
-};
-
-const eventCard: React.CSSProperties = {
-  padding: 12,
-  borderBottom: "1px solid #eee",
-};
