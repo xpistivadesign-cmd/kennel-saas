@@ -4,10 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useParams, useRouter } from "next/navigation";
 
-interface Photo {
+type Photo = {
   id: string;
   image_url: string;
-}
+};
 
 export default function DogGalleryPage() {
   const params = useParams();
@@ -18,72 +18,74 @@ export default function DogGalleryPage() {
 
   const [dogName, setDogName] = useState("Dog");
   const [photos, setPhotos] = useState<Photo[]>([]);
-  const [previewFile, setPreviewFile] = useState<File | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [dragActive, setDragActive] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // FULLSCREEN VIEWER
+  const [dragActive, setDragActive] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [previewFile, setPreviewFile] = useState<File | null>(null);
+
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
-  // -------------------------
-  // LOAD
-  // -------------------------
-  async function loadGallery() {
+  // -----------------------
+  // LOAD DATA
+  // -----------------------
+  async function load() {
     if (!dogId) return;
 
-    const { data: dog } = await supabase
-      .from("dogs")
-      .select("name")
-      .eq("id", dogId)
-      .single();
+    setLoading(true);
 
-    if (dog) setDogName(dog.name);
+    const [{ data: dog }, { data: photos }] = await Promise.all([
+      supabase.from("dogs").select("name").eq("id", dogId).single(),
+      supabase
+        .from("dog_photos")
+        .select("id, image_url")
+        .eq("dog_id", dogId)
+        .order("created_at", { ascending: false }),
+    ]);
 
-    const { data } = await supabase
-      .from("dog_photos")
-      .select("id, image_url")
-      .eq("dog_id", dogId)
-      .order("created_at", { ascending: false });
-
-    if (data) setPhotos(data);
+    if (dog?.name) setDogName(dog.name);
+    if (photos) setPhotos(photos);
 
     setLoading(false);
   }
 
   useEffect(() => {
-    loadGallery();
+    load();
   }, [dogId]);
 
-  // -------------------------
+  // -----------------------
   // UPLOAD
-  // -------------------------
-  async function uploadFile(file: File) {
+  // -----------------------
+  async function upload(file: File) {
     if (!dogId) return;
 
     setUploading(true);
 
-    const fileExt = file.name.split(".").pop();
-    const fileName = `${dogId}/${Date.now()}.${fileExt}`;
+    const ext = file.name.split(".").pop();
+    const path = `${dogId}/${Date.now()}.${ext}`;
 
     try {
-      const { error } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from("dog-photos")
-        .upload(fileName, file);
+        .upload(path, file);
 
-      if (error) throw error;
+      if (uploadError) throw uploadError;
 
       const {
         data: { publicUrl },
-      } = supabase.storage.from("dog-photos").getPublicUrl(fileName);
+      } = supabase.storage.from("dog-photos").getPublicUrl(path);
 
-      await supabase.from("dog_photos").insert({
-        dog_id: dogId,
-        image_url: publicUrl,
-      });
+      const { error: dbError } = await supabase
+        .from("dog_photos")
+        .insert({
+          dog_id: dogId,
+          image_url: publicUrl,
+        });
+
+      if (dbError) throw dbError;
 
       setPreviewFile(null);
-      await loadGallery();
+      await load();
     } catch (err: any) {
       alert(err.message);
     } finally {
@@ -91,94 +93,74 @@ export default function DogGalleryPage() {
     }
   }
 
-  // -------------------------
+  // -----------------------
   // DELETE
-  // -------------------------
-  async function handleDelete(photoId: string, imageUrl: string) {
+  // -----------------------
+  async function remove(photo: Photo) {
     if (!confirm("Delete this photo?")) return;
 
-    const path = imageUrl.split("dog-photos/")[1];
+    const path = photo.image_url.split("dog-photos/")[1];
 
     if (path) {
       await supabase.storage.from("dog-photos").remove([path]);
     }
 
-    await supabase.from("dog_photos").delete().eq("id", photoId);
+    await supabase.from("dog_photos").delete().eq("id", photo.id);
 
-    setPhotos((prev) => prev.filter((p) => p.id !== photoId));
+    setPhotos((prev) => prev.filter((p) => p.id !== photo.id));
   }
 
-  // -------------------------
-  // DRAG & DROP
-  // -------------------------
-  function onDrop(e: React.DragEvent) {
-    e.preventDefault();
-    setDragActive(false);
-
-    const file = e.dataTransfer.files?.[0];
-    if (file) setPreviewFile(file);
-  }
-
-  // -------------------------
-  // KEYBOARD NAV (MODAL)
-  // -------------------------
+  // -----------------------
+  // KEY NAV (MODAL)
+  // -----------------------
   useEffect(() => {
-    function handleKey(e: KeyboardEvent) {
+    function onKey(e: KeyboardEvent) {
       if (activeIndex === null) return;
 
       if (e.key === "Escape") setActiveIndex(null);
-      if (e.key === "ArrowRight")
-        setActiveIndex((prev) =>
-          prev === null ? null : (prev + 1) % photos.length
+
+      if (e.key === "ArrowRight") {
+        setActiveIndex((i) =>
+          i === null ? null : (i + 1) % photos.length
         );
-      if (e.key === "ArrowLeft")
-        setActiveIndex((prev) =>
-          prev === null
+      }
+
+      if (e.key === "ArrowLeft") {
+        setActiveIndex((i) =>
+          i === null
             ? null
-            : (prev - 1 + photos.length) % photos.length
+            : (i - 1 + photos.length) % photos.length
         );
+      }
     }
 
-    window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
   }, [activeIndex, photos.length]);
 
+  // -----------------------
+  // UI STATES
+  // -----------------------
   if (loading) {
     return (
-      <div style={{ padding: 40, textAlign: "center" }}>
+      <div style={center}>
         Loading gallery...
       </div>
     );
   }
 
-  // -------------------------
+  // -----------------------
   // UI
-  // -------------------------
+  // -----------------------
   return (
-    <div
-      style={{
-        maxWidth: 1000,
-        margin: "40px auto",
-        padding: 20,
-        fontFamily: "sans-serif",
-      }}
-    >
+    <div style={wrap}>
       {/* HEADER */}
-      <div style={{ display: "flex", justifyContent: "space-between" }}>
-        <button
-          onClick={() => router.push(`/dogs/${dogId}`)}
-          style={{
-            background: "none",
-            border: "none",
-            color: "#0070f3",
-            fontWeight: "bold",
-            cursor: "pointer",
-          }}
-        >
+      <div style={header}>
+        <button onClick={() => router.push(`/dogs/${dogId}`)} style={link}>
           ← Back
         </button>
 
-        <h2 style={{ margin: 0 }}>📸 {dogName} Gallery</h2>
+        <h2 style={{ margin: 0 }}>{dogName} Gallery</h2>
       </div>
 
       {/* DROPZONE */}
@@ -188,82 +170,54 @@ export default function DogGalleryPage() {
           e.preventDefault();
           setDragActive(true);
         }}
-        onDragLeave={(e) => {
+        onDragLeave={() => setDragActive(false)}
+        onDrop={(e) => {
           e.preventDefault();
           setDragActive(false);
+
+          const file = e.dataTransfer.files?.[0];
+          if (file) setPreviewFile(file);
         }}
-        onDrop={onDrop}
         style={{
-          marginTop: 30,
-          padding: 40,
-          borderRadius: 12,
-          border: dragActive
-            ? "2px solid #0070f3"
-            : "2px dashed #ccc",
-          textAlign: "center",
+          ...dropzone,
+          borderColor: dragActive ? "#0070f3" : "#ccc",
           background: dragActive ? "#f0f7ff" : "#fafafa",
-          cursor: "pointer",
         }}
       >
         Drag & Drop or Click to Upload
+
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/*"
           hidden
-          onChange={(e) =>
-            e.target.files?.[0] &&
-            setPreviewFile(e.target.files[0])
-          }
+          accept="image/*"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) setPreviewFile(file);
+          }}
         />
       </div>
 
       {/* PREVIEW */}
       {previewFile && (
-        <div
-          style={{
-            marginTop: 20,
-            padding: 20,
-            border: "1px solid #eee",
-            borderRadius: 12,
-          }}
-        >
+        <div style={card}>
           <img
             src={URL.createObjectURL(previewFile)}
-            style={{
-              width: "100%",
-              maxHeight: 300,
-              objectFit: "cover",
-              borderRadius: 8,
-            }}
+            style={previewImg}
           />
 
-          <div style={{ marginTop: 10 }}>
+          <div>
             <button
-              onClick={() => uploadFile(previewFile)}
+              onClick={() => upload(previewFile)}
               disabled={uploading}
-              style={{
-                padding: "10px 16px",
-                background: "#0070f3",
-                color: "white",
-                border: "none",
-                borderRadius: 8,
-                cursor: "pointer",
-                marginRight: 10,
-              }}
+              style={btnPrimary}
             >
               {uploading ? "Uploading..." : "Upload"}
             </button>
 
             <button
               onClick={() => setPreviewFile(null)}
-              style={{
-                padding: "10px 16px",
-                border: "none",
-                borderRadius: 8,
-                background: "#eee",
-                cursor: "pointer",
-              }}
+              style={btnSecondary}
             >
               Cancel
             </button>
@@ -272,81 +226,151 @@ export default function DogGalleryPage() {
       )}
 
       {/* GRID */}
-      <div
-        style={{
-          marginTop: 30,
-          display: "grid",
-          gridTemplateColumns:
-            "repeat(auto-fill, minmax(200px, 1fr))",
-          gap: 16,
-        }}
-      >
+      <div style={grid}>
         {photos.map((p, i) => (
-          <div
-            key={p.id}
-            style={{
-              position: "relative",
-              borderRadius: 10,
-              overflow: "hidden",
-              cursor: "pointer",
-            }}
-          >
+          <div key={p.id} style={imgWrap}>
             <img
               src={p.image_url}
               onClick={() => setActiveIndex(i)}
-              style={{
-                width: "100%",
-                height: 180,
-                objectFit: "cover",
-              }}
+              style={img}
             />
 
-            <button
-              onClick={() =>
-                handleDelete(p.id, p.image_url)
-              }
-              style={{
-                position: "absolute",
-                top: 8,
-                right: 8,
-                background: "rgba(255,0,0,0.8)",
-                color: "white",
-                border: "none",
-                borderRadius: 6,
-                padding: "4px 8px",
-                fontSize: 12,
-              }}
-            >
-              Delete
+            <button onClick={() => remove(p)} style={deleteBtn}>
+              ×
             </button>
           </div>
         ))}
       </div>
 
-      {/* FULLSCREEN MODAL */}
+      {/* MODAL */}
       {activeIndex !== null && photos[activeIndex] && (
         <div
           onClick={() => setActiveIndex(null)}
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.9)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 999,
-          }}
+          style={modal}
         >
           <img
             src={photos[activeIndex].image_url}
-            style={{
-              maxWidth: "90%",
-              maxHeight: "90%",
-              borderRadius: 10,
-            }}
+            style={modalImg}
           />
         </div>
       )}
     </div>
   );
 }
+
+// -----------------------
+// STYLES (clean + stable)
+// -----------------------
+const wrap: React.CSSProperties = {
+  maxWidth: 1000,
+  margin: "40px auto",
+  padding: 20,
+  fontFamily: "sans-serif",
+};
+
+const header: React.CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  marginBottom: 20,
+};
+
+const link: React.CSSProperties = {
+  background: "none",
+  border: "none",
+  color: "#0070f3",
+  cursor: "pointer",
+  fontWeight: "bold",
+};
+
+const dropzone: React.CSSProperties = {
+  marginTop: 20,
+  padding: 40,
+  borderRadius: 12,
+  border: "2px dashed #ccc",
+  textAlign: "center",
+  cursor: "pointer",
+};
+
+const card: React.CSSProperties = {
+  marginTop: 20,
+  padding: 20,
+  border: "1px solid #eee",
+  borderRadius: 12,
+};
+
+const previewImg: React.CSSProperties = {
+  width: "100%",
+  maxHeight: 300,
+  objectFit: "cover",
+  borderRadius: 8,
+};
+
+const grid: React.CSSProperties = {
+  marginTop: 30,
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
+  gap: 16,
+};
+
+const imgWrap: React.CSSProperties = {
+  position: "relative",
+  borderRadius: 10,
+  overflow: "hidden",
+};
+
+const img: React.CSSProperties = {
+  width: "100%",
+  height: 180,
+  objectFit: "cover",
+  cursor: "pointer",
+};
+
+const deleteBtn: React.CSSProperties = {
+  position: "absolute",
+  top: 8,
+  right: 8,
+  background: "rgba(255,0,0,0.8)",
+  color: "white",
+  border: "none",
+  borderRadius: 6,
+  padding: "4px 8px",
+  cursor: "pointer",
+};
+
+const modal: React.CSSProperties = {
+  position: "fixed",
+  inset: 0,
+  background: "rgba(0,0,0,0.95)",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+};
+
+const modalImg: React.CSSProperties = {
+  maxWidth: "90%",
+  maxHeight: "90%",
+  borderRadius: 10,
+};
+
+const center: React.CSSProperties = {
+  padding: 40,
+  textAlign: "center",
+};
+
+const btnPrimary: React.CSSProperties = {
+  marginRight: 10,
+  padding: "10px 16px",
+  background: "#0070f3",
+  color: "white",
+  border: "none",
+  borderRadius: 8,
+  cursor: "pointer",
+};
+
+const btnSecondary: React.CSSProperties = {
+  padding: "10px 16px",
+  background: "#eee",
+  border: "none",
+  borderRadius: 8,
+  cursor: "pointer",
+};
