@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useParams, useRouter } from "next/navigation";
 
@@ -14,59 +14,50 @@ export default function DogGalleryPage() {
   const router = useRouter();
 
   const dogId = Array.isArray(params.id) ? params.id[0] : params.id;
-
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const [dogName, setDogName] = useState("Dog");
   const [photos, setPhotos] = useState<Photo[]>([]);
+  const [previewFile, setPreviewFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
-  const [previewFile, setPreviewFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // ----------------------------
-  // LOAD DATA
-  // ----------------------------
+  // FULLSCREEN VIEWER
+  const [activeIndex, setActiveIndex] = useState<number | null>(null);
+
+  // -------------------------
+  // LOAD
+  // -------------------------
   async function loadGallery() {
     if (!dogId) return;
 
-    try {
-      const { data: dogData } = await supabase
-        .from("dogs")
-        .select("name")
-        .eq("id", dogId)
-        .single();
+    const { data: dog } = await supabase
+      .from("dogs")
+      .select("name")
+      .eq("id", dogId)
+      .single();
 
-      if (dogData) setDogName(dogData.name);
+    if (dog) setDogName(dog.name);
 
-      const { data: photosData } = await supabase
-        .from("dog_photos")
-        .select("id, image_url")
-        .eq("dog_id", dogId)
-        .order("created_at", { ascending: false });
+    const { data } = await supabase
+      .from("dog_photos")
+      .select("id, image_url")
+      .eq("dog_id", dogId)
+      .order("created_at", { ascending: false });
 
-      if (photosData) setPhotos(photosData);
-    } catch (err) {
-      console.error("Error loading gallery:", err);
-    } finally {
-      setLoading(false);
-    }
+    if (data) setPhotos(data);
+
+    setLoading(false);
   }
 
   useEffect(() => {
     loadGallery();
   }, [dogId]);
 
-  // ----------------------------
-  // FILE SELECT
-  // ----------------------------
-  function handleFile(file: File) {
-    setPreviewFile(file);
-  }
-
-  // ----------------------------
-  // UPLOAD TO SUPABASE
-  // ----------------------------
+  // -------------------------
+  // UPLOAD
+  // -------------------------
   async function uploadFile(file: File) {
     if (!dogId) return;
 
@@ -76,105 +67,97 @@ export default function DogGalleryPage() {
     const fileName = `${dogId}/${Date.now()}.${fileExt}`;
 
     try {
-      // 1. upload storage
-      const { error: uploadError } = await supabase.storage
+      const { error } = await supabase.storage
         .from("dog-photos")
         .upload(fileName, file);
 
-      if (uploadError) throw uploadError;
+      if (error) throw error;
 
-      // 2. public url
       const {
         data: { publicUrl },
       } = supabase.storage.from("dog-photos").getPublicUrl(fileName);
 
-      // 3. db insert
-      const { error: dbError } = await supabase
-        .from("dog_photos")
-        .insert({
-          dog_id: dogId,
-          image_url: publicUrl,
-        });
-
-      if (dbError) throw dbError;
+      await supabase.from("dog_photos").insert({
+        dog_id: dogId,
+        image_url: publicUrl,
+      });
 
       setPreviewFile(null);
       await loadGallery();
     } catch (err: any) {
-      alert("Upload failed: " + err.message);
+      alert(err.message);
     } finally {
       setUploading(false);
     }
   }
 
-  // ----------------------------
-  // DELETE PHOTO
-  // ----------------------------
+  // -------------------------
+  // DELETE
+  // -------------------------
   async function handleDelete(photoId: string, imageUrl: string) {
     if (!confirm("Delete this photo?")) return;
 
-    try {
-      const pathParts = imageUrl.split("dog-photos/");
-      const storagePath = pathParts[1];
+    const path = imageUrl.split("dog-photos/")[1];
 
-      if (storagePath) {
-        await supabase.storage
-          .from("dog-photos")
-          .remove([storagePath]);
-      }
-
-      const { error } = await supabase
-        .from("dog_photos")
-        .delete()
-        .eq("id", photoId);
-
-      if (error) throw error;
-
-      setPhotos((prev) => prev.filter((p) => p.id !== photoId));
-    } catch (err: any) {
-      alert("Delete failed: " + err.message);
+    if (path) {
+      await supabase.storage.from("dog-photos").remove([path]);
     }
+
+    await supabase.from("dog_photos").delete().eq("id", photoId);
+
+    setPhotos((prev) => prev.filter((p) => p.id !== photoId));
   }
 
-  // ----------------------------
-  // DRAG & DROP HANDLERS
-  // ----------------------------
-  function onDragOver(e: React.DragEvent) {
-    e.preventDefault();
-    setDragActive(true);
-  }
-
-  function onDragLeave(e: React.DragEvent) {
-    e.preventDefault();
-    setDragActive(false);
-  }
-
+  // -------------------------
+  // DRAG & DROP
+  // -------------------------
   function onDrop(e: React.DragEvent) {
     e.preventDefault();
     setDragActive(false);
 
     const file = e.dataTransfer.files?.[0];
-    if (file) handleFile(file);
+    if (file) setPreviewFile(file);
   }
 
-  // ----------------------------
-  // UI STATES
-  // ----------------------------
+  // -------------------------
+  // KEYBOARD NAV (MODAL)
+  // -------------------------
+  useEffect(() => {
+    function handleKey(e: KeyboardEvent) {
+      if (activeIndex === null) return;
+
+      if (e.key === "Escape") setActiveIndex(null);
+      if (e.key === "ArrowRight")
+        setActiveIndex((prev) =>
+          prev === null ? null : (prev + 1) % photos.length
+        );
+      if (e.key === "ArrowLeft")
+        setActiveIndex((prev) =>
+          prev === null
+            ? null
+            : (prev - 1 + photos.length) % photos.length
+        );
+    }
+
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [activeIndex, photos.length]);
+
   if (loading) {
     return (
-      <div style={{ padding: 40, textAlign: "center", fontFamily: "sans-serif" }}>
+      <div style={{ padding: 40, textAlign: "center" }}>
         Loading gallery...
       </div>
     );
   }
 
-  // ----------------------------
-  // MAIN UI
-  // ----------------------------
+  // -------------------------
+  // UI
+  // -------------------------
   return (
     <div
       style={{
-        maxWidth: 900,
+        maxWidth: 1000,
         margin: "40px auto",
         padding: 20,
         fontFamily: "sans-serif",
@@ -192,17 +175,23 @@ export default function DogGalleryPage() {
             cursor: "pointer",
           }}
         >
-          ← Back to Profile
+          ← Back
         </button>
 
-        <h2 style={{ margin: 0 }}>📸 {dogName}'s Gallery</h2>
+        <h2 style={{ margin: 0 }}>📸 {dogName} Gallery</h2>
       </div>
 
       {/* DROPZONE */}
       <div
         onClick={() => fileInputRef.current?.click()}
-        onDragOver={onDragOver}
-        onDragLeave={onDragLeave}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragActive(true);
+        }}
+        onDragLeave={(e) => {
+          e.preventDefault();
+          setDragActive(false);
+        }}
         onDrop={onDrop}
         style={{
           marginTop: 30,
@@ -211,32 +200,25 @@ export default function DogGalleryPage() {
           border: dragActive
             ? "2px solid #0070f3"
             : "2px dashed #ccc",
-          background: dragActive ? "#f0f7ff" : "#fafafa",
           textAlign: "center",
+          background: dragActive ? "#f0f7ff" : "#fafafa",
           cursor: "pointer",
-          transition: "0.2s",
         }}
       >
-        <p style={{ fontSize: 16, fontWeight: "bold" }}>
-          Drag & Drop images here or click to upload
-        </p>
-        <p style={{ fontSize: 12, color: "#888" }}>
-          JPG / PNG supported
-        </p>
-
+        Drag & Drop or Click to Upload
         <input
           ref={fileInputRef}
           type="file"
           accept="image/*"
           hidden
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) handleFile(file);
-          }}
+          onChange={(e) =>
+            e.target.files?.[0] &&
+            setPreviewFile(e.target.files[0])
+          }
         />
       </div>
 
-      {/* PREVIEW UPLOAD */}
+      {/* PREVIEW */}
       {previewFile && (
         <div
           style={{
@@ -244,77 +226,74 @@ export default function DogGalleryPage() {
             padding: 20,
             border: "1px solid #eee",
             borderRadius: 12,
-            background: "#fff",
           }}
         >
-          <p style={{ fontWeight: "bold" }}>Preview:</p>
-
           <img
             src={URL.createObjectURL(previewFile)}
-            alt="preview"
             style={{
               width: "100%",
               maxHeight: 300,
               objectFit: "cover",
               borderRadius: 8,
-              marginBottom: 10,
             }}
           />
 
-          <button
-            onClick={() => uploadFile(previewFile)}
-            disabled={uploading}
-            style={{
-              padding: "10px 16px",
-              background: "#0070f3",
-              color: "white",
-              border: "none",
-              borderRadius: 8,
-              cursor: "pointer",
-              fontWeight: "bold",
-            }}
-          >
-            {uploading ? "Uploading..." : "Upload Photo"}
-          </button>
+          <div style={{ marginTop: 10 }}>
+            <button
+              onClick={() => uploadFile(previewFile)}
+              disabled={uploading}
+              style={{
+                padding: "10px 16px",
+                background: "#0070f3",
+                color: "white",
+                border: "none",
+                borderRadius: 8,
+                cursor: "pointer",
+                marginRight: 10,
+              }}
+            >
+              {uploading ? "Uploading..." : "Upload"}
+            </button>
 
-          <button
-            onClick={() => setPreviewFile(null)}
-            style={{
-              marginLeft: 10,
-              padding: "10px 16px",
-              background: "#eee",
-              border: "none",
-              borderRadius: 8,
-              cursor: "pointer",
-            }}
-          >
-            Cancel
-          </button>
+            <button
+              onClick={() => setPreviewFile(null)}
+              style={{
+                padding: "10px 16px",
+                border: "none",
+                borderRadius: 8,
+                background: "#eee",
+                cursor: "pointer",
+              }}
+            >
+              Cancel
+            </button>
+          </div>
         </div>
       )}
 
-      {/* GALLERY GRID */}
+      {/* GRID */}
       <div
         style={{
           marginTop: 30,
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
+          gridTemplateColumns:
+            "repeat(auto-fill, minmax(200px, 1fr))",
           gap: 16,
         }}
       >
-        {photos.map((photo) => (
+        {photos.map((p, i) => (
           <div
-            key={photo.id}
+            key={p.id}
             style={{
               position: "relative",
               borderRadius: 10,
               overflow: "hidden",
-              border: "1px solid #eee",
+              cursor: "pointer",
             }}
           >
             <img
-              src={photo.image_url}
-              alt="dog"
+              src={p.image_url}
+              onClick={() => setActiveIndex(i)}
               style={{
                 width: "100%",
                 height: 180,
@@ -324,7 +303,7 @@ export default function DogGalleryPage() {
 
             <button
               onClick={() =>
-                handleDelete(photo.id, photo.image_url)
+                handleDelete(p.id, p.image_url)
               }
               style={{
                 position: "absolute",
@@ -336,7 +315,6 @@ export default function DogGalleryPage() {
                 borderRadius: 6,
                 padding: "4px 8px",
                 fontSize: 12,
-                cursor: "pointer",
               }}
             >
               Delete
@@ -344,6 +322,31 @@ export default function DogGalleryPage() {
           </div>
         ))}
       </div>
+
+      {/* FULLSCREEN MODAL */}
+      {activeIndex !== null && photos[activeIndex] && (
+        <div
+          onClick={() => setActiveIndex(null)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.9)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 999,
+          }}
+        >
+          <img
+            src={photos[activeIndex].image_url}
+            style={{
+              maxWidth: "90%",
+              maxHeight: "90%",
+              borderRadius: 10,
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 }
