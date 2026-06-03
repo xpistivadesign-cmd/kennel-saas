@@ -1,52 +1,61 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { createClient } from "@supabase/supabase-js";
-import { format, addDays, differenceInDays } from "date-fns";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { supabase } from "@/lib/supabase";
+import { addDays, differenceInDays, format } from "date-fns";
 
 type Dog = any;
 type Mating = any;
 type Litter = any;
 
-export default function DogProfilePage({ params }: { params: { id: string } }) {
+export default function DogProfilePage({
+  params,
+}: {
+  params: { id: string };
+}) {
   const [dog, setDog] = useState<Dog | null>(null);
   const [matings, setMatings] = useState<Mating[]>([]);
   const [litter, setLitter] = useState<Litter | null>(null);
-
   const [loading, setLoading] = useState(true);
 
-  // form states
   const [mateMaleId, setMateMaleId] = useState("");
   const [matingDate, setMatingDate] = useState("");
 
   useEffect(() => {
     load();
-  }, []);
+  }, [params.id]);
 
   async function load() {
     setLoading(true);
 
-    const { data: dogData } = await supabase
+    // 🐶 DOG
+    const { data: dogData, error: dogError } = await supabase
       .from("dogs")
       .select("*")
       .eq("id", params.id)
       .single();
 
-    const { data: matingData } = await supabase
+    if (dogError) console.error(dogError);
+
+    // ❤️ MATINGS
+    const { data: matingData, error: matingError } = await supabase
       .from("matings")
       .select("*")
       .eq("female_id", params.id)
       .order("mating_date", { ascending: false });
 
+    if (matingError) console.error(matingError);
+
+    // 🐾 LITTERS (FIXED: no join on non-existing relation)
     const { data: litterData } = await supabase
       .from("litters")
-      .select("*, matings(*)")
-      .eq("matings.female_id", params.id)
+      .select("*")
+      .in(
+        "mating_id",
+        (matingData || []).map((m) => m.id)
+      )
+      .order("created_at", { ascending: false })
+      .limit(1)
       .maybeSingle();
 
     setDog(dogData);
@@ -61,7 +70,7 @@ export default function DogProfilePage({ params }: { params: { id: string } }) {
 
     const due = addDays(new Date(matingDate), 63);
 
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("matings")
       .insert({
         female_id: params.id,
@@ -73,13 +82,19 @@ export default function DogProfilePage({ params }: { params: { id: string } }) {
       .select()
       .single();
 
-    setMatings([data, ...matings]);
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    setMatings((prev) => [data, ...prev]);
+
     setMateMaleId("");
     setMatingDate("");
   }
 
   async function generateLitter(matingId: string) {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("litters")
       .insert({
         mating_id: matingId,
@@ -91,13 +106,19 @@ export default function DogProfilePage({ params }: { params: { id: string } }) {
       .select()
       .single();
 
+    if (error) {
+      console.error(error);
+      return;
+    }
+
     setLitter(data);
   }
 
-  const activeMating = matings?.[0];
+  const activeMating = matings[0];
 
   const daysLeft = useMemo(() => {
     if (!activeMating?.estimated_due_date) return null;
+
     return differenceInDays(
       new Date(activeMating.estimated_due_date),
       new Date()
@@ -114,6 +135,7 @@ export default function DogProfilePage({ params }: { params: { id: string } }) {
 
   return (
     <div className="p-6 space-y-8 max-w-5xl mx-auto">
+
       {/* HEADER */}
       <div className="flex justify-between items-center">
         <div>
@@ -129,31 +151,28 @@ export default function DogProfilePage({ params }: { params: { id: string } }) {
         </div>
       </div>
 
-      {/* BREEDING DASHBOARD */}
+      {/* DASHBOARD */}
       <div className="grid grid-cols-3 gap-4">
-        <div className="p-4 border rounded-xl">
-          <div className="text-sm text-gray-500">Last Mating</div>
-          <div className="text-lg font-semibold">
-            {activeMating?.mating_date || "None"}
-          </div>
-        </div>
+        <Card
+          label="Last Mating"
+          value={activeMating?.mating_date || "None"}
+        />
 
-        <div className="p-4 border rounded-xl">
-          <div className="text-sm text-gray-500">Due Date</div>
-          <div className="text-lg font-semibold">
-            {activeMating?.estimated_due_date || "—"}
-          </div>
-        </div>
+        <Card
+          label="Due Date"
+          value={activeMating?.estimated_due_date || "—"}
+        />
 
-        <div className="p-4 border rounded-xl">
-          <div className="text-sm text-gray-500">Countdown</div>
-          <div className="text-2xl font-bold text-indigo-600">
-            {daysLeft !== null ? `${daysLeft} days` : "—"}
-          </div>
-        </div>
+        <Card
+          label="Countdown"
+          value={
+            daysLeft !== null ? `${daysLeft} days` : "—"
+          }
+          highlight
+        />
       </div>
 
-      {/* MATING CREATION */}
+      {/* CREATE MATING */}
       <div className="p-6 border rounded-xl space-y-4">
         <h2 className="text-xl font-semibold">Create Mating</h2>
 
@@ -181,9 +200,13 @@ export default function DogProfilePage({ params }: { params: { id: string } }) {
         </button>
       </div>
 
-      {/* MATINGS LIST */}
+      {/* MATINGS */}
       <div className="space-y-3">
         <h2 className="text-xl font-semibold">Matings</h2>
+
+        {matings.length === 0 && (
+          <p className="text-gray-500">No matings yet</p>
+        )}
 
         {matings.map((m) => (
           <div
@@ -215,27 +238,56 @@ export default function DogProfilePage({ params }: { params: { id: string } }) {
           <h2 className="text-xl font-semibold">Litter</h2>
 
           <div className="grid grid-cols-3 gap-3">
-            <div>
-              <div className="text-sm text-gray-500">Born</div>
-              <div className="font-semibold">{litter.birth_date}</div>
-            </div>
-
-            <div>
-              <div className="text-sm text-gray-500">Male</div>
-              <div className="font-semibold">{litter.male_count}</div>
-            </div>
-
-            <div>
-              <div className="text-sm text-gray-500">Female</div>
-              <div className="font-semibold">{litter.female_count}</div>
-            </div>
+            <Info label="Born" value={litter.birth_date} />
+            <Info label="Male" value={litter.male_count} />
+            <Info label="Female" value={litter.female_count} />
           </div>
 
           <button className="bg-indigo-600 text-white px-4 py-2 rounded">
-            + Add Puppies (UI next step)
+            + Add Puppies
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+/* ---------------- UI COMPONENTS ---------------- */
+
+function Card({
+  label,
+  value,
+  highlight,
+}: {
+  label: string;
+  value: any;
+  highlight?: boolean;
+}) {
+  return (
+    <div className="p-4 border rounded-xl">
+      <div className="text-sm text-gray-500">{label}</div>
+      <div
+        className={`text-lg font-semibold ${
+          highlight ? "text-indigo-600 text-2xl" : ""
+        }`}
+      >
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function Info({
+  label,
+  value,
+}: {
+  label: string;
+  value: any;
+}) {
+  return (
+    <div>
+      <div className="text-sm text-gray-500">{label}</div>
+      <div className="font-semibold">{value}</div>
     </div>
   );
 }
