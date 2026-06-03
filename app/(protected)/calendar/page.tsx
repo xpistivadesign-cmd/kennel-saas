@@ -1,225 +1,173 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { useRouter } from "next/navigation";
+import { differenceInDays } from "date-fns";
 
-type Event = {
-  id: string;
-  title: string;
-  type: string;
-  reminder_date: string | null;
-  created_at: string;
-  dog_id: string;
-  dogs: { name: string };
-};
+type Dog = any;
+type Mating = any;
 
-export default function CalendarPage() {
-  const router = useRouter();
-
-  const [events, setEvents] = useState<Event[]>([]);
+export default function BreedingCalendar() {
+  const [dogs, setDogs] = useState<Dog[]>([]);
+  const [matings, setMatings] = useState<Mating[]>([]);
   const [loading, setLoading] = useState(true);
-
-  const [title, setTitle] = useState("");
-  const [type, setType] = useState("vaccination");
-  const [date, setDate] = useState("");
-  const [dogId, setDogId] = useState("");
-
-  const [dogs, setDogs] = useState<{ id: string; name: string }[]>([]);
-
-  async function load() {
-    setLoading(true);
-
-    const { data: auth } = await supabase.auth.getUser();
-    const user = auth?.user;
-
-    if (!user) {
-      router.push("/login");
-      return;
-    }
-
-    // dogs
-    const { data: dogsData } = await supabase
-      .from("dogs")
-      .select("id, name")
-      .eq("user_id", user.id);
-
-    setDogs(dogsData || []);
-
-    // events
-    const { data: eventsData } = await supabase
-      .from("dog_events")
-      .select(`
-        id,
-        title,
-        type,
-        reminder_date,
-        created_at,
-        dog_id,
-        dogs!inner ( name, user_id )
-      `)
-      .eq("dogs.user_id", user.id)
-      .order("reminder_date", { ascending: true });
-
-    setEvents((eventsData as any) || []);
-    setLoading(false);
-  }
 
   useEffect(() => {
     load();
   }, []);
 
-  async function createEvent() {
-    if (!title || !dogId) return alert("Missing fields");
+  async function load() {
+    setLoading(true);
 
-    const { error } = await supabase.from("dog_events").insert({
-      title,
-      type,
-      reminder_date: date || null,
-      dog_id: dogId,
-    });
+    const [{ data: dogsData }, { data: matingData }] =
+      await Promise.all([
+        supabase.from("dogs").select("*").eq("sex", "female"),
+        supabase.from("matings").select("*"),
+      ]);
 
-    if (error) {
-      alert(error.message);
-      return;
-    }
-
-    setTitle("");
-    setDate("");
-    setDogId("");
-
-    await load();
+    setDogs(dogsData || []);
+    setMatings(matingData || []);
+    setLoading(false);
   }
 
-  const today = new Date();
+  const enriched = useMemo(() => {
+    return dogs.map((dog) => {
+      const related = matings
+        .filter((m) => m.female_id === dog.id)
+        .sort(
+          (a, b) =>
+            new Date(b.mating_date).getTime() -
+            new Date(a.mating_date).getTime()
+        );
 
-  const upcoming = events.filter((e) => {
-    if (!e.reminder_date) return false;
-    return new Date(e.reminder_date).getTime() >= today.getTime();
-  });
+      const last = related[0];
 
-  const past = events.filter((e) => {
-    if (!e.reminder_date) return false;
-    return new Date(e.reminder_date).getTime() < today.getTime();
-  });
+      const daysLeft = last?.estimated_due_date
+        ? differenceInDays(
+            new Date(last.estimated_due_date),
+            new Date()
+          )
+        : null;
+
+      const progress =
+        last?.estimated_due_date && last?.mating_date
+          ? Math.min(
+              100,
+              Math.max(
+                0,
+                (63 -
+                  Math.max(
+                    0,
+                    differenceInDays(
+                      new Date(last.estimated_due_date),
+                      new Date()
+                    )
+                  )) /
+                  63 *
+                  100
+              )
+            )
+          : 0;
+
+      return {
+        ...dog,
+        lastMating: last,
+        daysLeft,
+        progress,
+      };
+    });
+  }, [dogs, matings]);
 
   if (loading) {
-    return <div style={{ padding: 40 }}>Loading calendar...</div>;
+    return (
+      <div className="p-10 text-gray-500">
+        Loading breeding calendar...
+      </div>
+    );
   }
 
   return (
-    <div style={{ maxWidth: 1000, margin: "40px auto", padding: 20, fontFamily: "sans-serif" }}>
-      
-      <button onClick={() => router.push("/")} style={btn}>
-        ← Back
-      </button>
+    <div className="p-6 max-w-6xl mx-auto space-y-6">
 
-      <h1>📅 Kennel Calendar</h1>
-      <p style={{ color: "#666" }}>Manage all breeding events, vaccinations and reminders</p>
-
-      {/* CREATE EVENT */}
-      <div style={card}>
-        <h3>➕ New Event</h3>
-
-        <input
-          placeholder="Title (e.g. Vaccination)"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          style={input}
-        />
-
-        <select value={type} onChange={(e) => setType(e.target.value)} style={input}>
-          <option value="vaccination">Vaccination</option>
-          <option value="breeding">Breeding</option>
-          <option value="vet">Vet Visit</option>
-          <option value="reminder">Reminder</option>
-        </select>
-
-        <input
-          type="date"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-          style={input}
-        />
-
-        <select value={dogId} onChange={(e) => setDogId(e.target.value)} style={input}>
-          <option value="">Select dog</option>
-          {dogs.map((d) => (
-            <option key={d.id} value={d.id}>
-              {d.name}
-            </option>
-          ))}
-        </select>
-
-        <button onClick={createEvent} style={primaryBtn}>
-          Save Event
-        </button>
+      {/* HEADER */}
+      <div>
+        <h1 className="text-3xl font-bold">
+          📅 Breeding Calendar
+        </h1>
+        <p className="text-gray-500">
+          Lifecycle timeline for all females
+        </p>
       </div>
 
-      {/* UPCOMING */}
-      <h2>🟢 Upcoming</h2>
-      {upcoming.length === 0 ? (
-        <p style={{ color: "#999" }}>No upcoming events</p>
-      ) : (
-        upcoming.map((e) => (
-          <div key={e.id} style={eventCard}>
-            <b>{e.title}</b>
-            <div style={{ fontSize: 12, color: "#666" }}>
-              {e.dogs.name} • {e.type}
-            </div>
-            <div>{e.reminder_date}</div>
-          </div>
-        ))
-      )}
+      {/* GRID */}
+      <div className="grid gap-4">
+        {enriched.map((dog) => (
+          <div
+            key={dog.id}
+            className="border rounded-xl p-5 space-y-3 hover:shadow-lg transition"
+          >
 
-      {/* PAST */}
-      <h2 style={{ marginTop: 30 }}>⚪ Past</h2>
-      {past.map((e) => (
-        <div key={e.id} style={{ ...eventCard, opacity: 0.6 }}>
-          <b>{e.title}</b>
-          <div style={{ fontSize: 12 }}>{e.dogs.name}</div>
-          <div>{e.reminder_date}</div>
-        </div>
-      ))}
+            {/* TOP */}
+            <div className="flex justify-between items-center">
+              <div>
+                <div className="font-bold text-lg">
+                  {dog.name}
+                </div>
+                <div className="text-sm text-gray-500">
+                  {dog.breed}
+                </div>
+              </div>
+
+              <div className="text-right">
+                <div className="text-sm text-gray-500">
+                  Last mating
+                </div>
+                <div className="font-semibold">
+                  {dog.lastMating?.mating_date || "—"}
+                </div>
+              </div>
+            </div>
+
+            {/* PROGRESS BAR */}
+            <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-indigo-600"
+                style={{ width: `${dog.progress}%` }}
+              />
+            </div>
+
+            {/* BOTTOM METRICS */}
+            <div className="flex justify-between text-sm">
+              <div>
+                ⏳{" "}
+                {dog.daysLeft !== null
+                  ? `${dog.daysLeft} days left`
+                  : "No pregnancy"}
+              </div>
+
+              <div>
+                ❤️{" "}
+                {dog.lastMating ? "Pregnant cycle" : "Idle"}
+              </div>
+            </div>
+
+            {/* ACTIONS */}
+            <div className="flex gap-2 pt-2">
+              <button className="px-3 py-1 border rounded text-sm">
+                + Heat
+              </button>
+
+              <button className="px-3 py-1 border rounded text-sm">
+                + Mating
+              </button>
+
+              <button className="px-3 py-1 bg-black text-white rounded text-sm">
+                Open Profile
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
-
-const card = {
-  padding: 16,
-  border: "1px solid #eee",
-  borderRadius: 12,
-  marginBottom: 20,
-};
-
-const eventCard = {
-  padding: 12,
-  border: "1px solid #eee",
-  borderRadius: 10,
-  marginBottom: 10,
-};
-
-const input = {
-  display: "block",
-  width: "100%",
-  marginBottom: 10,
-  padding: 10,
-  border: "1px solid #ddd",
-  borderRadius: 8,
-};
-
-const btn = {
-  marginBottom: 20,
-  padding: "8px 12px",
-  border: "1px solid #ccc",
-  background: "white",
-  borderRadius: 8,
-};
-
-const primaryBtn = {
-  padding: "10px 14px",
-  background: "#0070f3",
-  color: "white",
-  border: "none",
-  borderRadius: 8,
-};
