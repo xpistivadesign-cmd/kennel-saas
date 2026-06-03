@@ -1,172 +1,115 @@
-import { createClient } from "@/lib/supabase/server";
+import { getAnalyticsData } from "@/app/actions/analytics";
 
 export default async function AnalyticsPage() {
-  const supabase = await createClient();
-
-  const { data: tests } = await supabase
-    .from("progesterone_tests")
-    .select(`
-      id,
-      value,
-      test_date,
-      heat_id
-    `)
-    .order("test_date", { ascending: true });
-
-  const { data: matings } = await supabase
-    .from("matings")
-    .select(`
-      id,
-      heat_id,
-      first_mating_date
-    `);
-
-  const chartData =
-    tests?.map((t) => ({
-      date: new Date(t.test_date).toLocaleDateString("hu-HU"),
-      value: Number(t.value),
-      heat_id: t.heat_id,
-    })) ?? [];
-
-  const maxValue = Math.max(
-    ...chartData.map((d) => d.value),
-    10
-  );
-
-  const width = 900;
-  const height = 300;
-
-  const points = chartData
-    .map((item, index) => {
-      const x =
-        chartData.length <= 1
-          ? width / 2
-          : (index / (chartData.length - 1)) * width;
-
-      const y =
-        height -
-        (item.value / maxValue) * (height - 20);
-
-      return `${x},${y}`;
-    })
-    .join(" ");
+  const testData = await getAnalyticsData();
 
   return (
-    <div className="max-w-7xl mx-auto p-6 space-y-8">
+    <div className="max-w-5xl mx-auto p-6 space-y-8">
       <div>
-        <h1 className="text-3xl font-bold">
-          Analitika 📈
+        <h1 className="text-3xl font-bold text-gray-900">
+          Kennel Analitika 📊
         </h1>
-        <p className="text-gray-500">
-          Progeszteron görbe és pároztatási események.
+
+        <p className="text-gray-500 mt-1">
+          A progeszteron szintek alakulása és
+          biológiai csúcspontok követése.
         </p>
       </div>
 
-      <div className="bg-white border rounded-2xl p-6 shadow-sm">
-        <h2 className="font-semibold mb-4">
-          Progeszteron trend
-        </h2>
-
-        {chartData.length === 0 ? (
-          <p className="text-gray-400">
-            Nincs még rögzített mérés.
-          </p>
-        ) : (
-          <div className="overflow-x-auto">
-            <svg
-              width={width}
-              height={height}
-              className="min-w-[900px]"
-            >
-              <line
-                x1="0"
-                y1={height}
-                x2={width}
-                y2={height}
-                stroke="#d1d5db"
-              />
-
-              <polyline
-                fill="none"
-                stroke="#2563eb"
-                strokeWidth="3"
-                points={points}
-              />
-
-              {chartData.map((item, index) => {
-                const x =
-                  chartData.length <= 1
-                    ? width / 2
-                    : (index /
-                        (chartData.length - 1)) *
-                      width;
-
-                const y =
-                  height -
-                  (item.value / maxValue) *
-                    (height - 20);
-
-                return (
-                  <g key={index}>
-                    <circle
-                      cx={x}
-                      cy={y}
-                      r="5"
-                      fill="#2563eb"
-                    />
-
-                    <text
-                      x={x}
-                      y={height + 20}
-                      fontSize="10"
-                      textAnchor="middle"
-                    >
-                      {item.date}
-                    </text>
-
-                    <text
-                      x={x}
-                      y={y - 10}
-                      fontSize="10"
-                      textAnchor="middle"
-                    >
-                      {item.value}
-                    </text>
-                  </g>
-                );
-              })}
-            </svg>
-          </div>
-        )}
-      </div>
-
-      <div className="bg-white border rounded-2xl p-6 shadow-sm">
-        <h2 className="font-semibold mb-4">
-          Pároztatások
-        </h2>
-
-        <div className="space-y-3">
-          {matings?.length ? (
-            matings.map((m) => (
-              <div
-                key={m.id}
-                className="border rounded-lg p-3"
-              >
-                <div className="font-medium">
-                  Pároztatás
-                </div>
-                <div className="text-sm text-gray-500">
-                  {m.first_mating_date}
-                </div>
-              </div>
-            ))
-          ) : (
-            <p className="text-gray-400">
-              Nincs pároztatás rögzítve.
-            </p>
-          )}
+      {testData.length === 0 ? (
+        <div className="bg-white border border-dashed rounded-xl p-8 text-center text-gray-400">
+          Nincs még rögzített progeszteron teszt.
         </div>
-      </div>
+      ) : (
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+          <h2 className="text-xl font-bold mb-6">
+            Progeszteron Trendek
+          </h2>
+
+          <div className="space-y-5">
+            {testData.map((test: any) => {
+              const value = Number(test.value ?? 0);
+
+              const percentage = Math.min(
+                Math.round((value / 20) * 100),
+                100
+              );
+
+              let barColor =
+                "bg-blue-500";
+
+              let statusText =
+                "Alap szint";
+
+              if (value >= 2 && value < 5) {
+                barColor =
+                  "bg-yellow-500";
+                statusText =
+                  "LH csúcs közelít ⏱️";
+              } else if (
+                value >= 5 &&
+                value <= 10
+              ) {
+                barColor =
+                  "bg-emerald-500";
+                statusText =
+                  "OVULÁCIÓ 🔥";
+              } else if (value > 10) {
+                barColor =
+                  "bg-purple-600";
+                statusText =
+                  "Post-ovuláció";
+              }
+
+              const dogName =
+                test.heats?.dogs?.name ??
+                "Ismeretlen kutya";
+
+              const cycleDate =
+                test.heats?.start_date ??
+                "-";
+
+              const testDate =
+                test.test_date
+                  ?.split("T")[0] ?? "-";
+
+              return (
+                <div
+                  key={test.id}
+                  className="space-y-2"
+                >
+                  <div className="flex justify-between text-xs">
+                    <span className="font-medium text-gray-600">
+                      {dogName} • Ciklus:
+                      {" "}
+                      {cycleDate} •
+                      {" "}
+                      Teszt:
+                      {" "}
+                      {testDate}
+                    </span>
+
+                    <span className="font-semibold">
+                      {statusText}
+                    </span>
+                  </div>
+
+                  <div className="w-full h-8 rounded-lg overflow-hidden bg-gray-100 border">
+                    <div
+                      style={{
+                        width: `${percentage}%`,
+                      }}
+                      className={`${barColor} h-full flex items-center px-3 text-white text-sm font-bold transition-all duration-500`}
+                    >
+                      {value} ng/mL
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
