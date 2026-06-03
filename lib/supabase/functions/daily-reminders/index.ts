@@ -1,5 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 type PregnancyRow = {
   user_id: string;
@@ -9,105 +9,64 @@ type PregnancyRow = {
   expected_whelping_date: string;
 };
 
+const supabase = createClient(
+  Deno.env.get("SUPABASE_URL") ?? "",
+  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+);
+
 Deno.serve(async () => {
   try {
-    // 🔐 ENV CHECK (NO NON-NULL ASSERTIONS)
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-
-    if (!supabaseUrl || !serviceRoleKey) {
-      return new Response(
-        JSON.stringify({
-          error: "Missing SUPABASE_URL or SERVICE_ROLE_KEY",
-        }),
-        { status: 500 }
-      );
-    }
-
-    // ⚙️ Admin client (bypasses RLS)
-    const supabase = createClient(supabaseUrl, serviceRoleKey);
-
-    // 📦 Fetch ALL pregnancies
     const { data, error } = await supabase
       .from("pregnancy_timeline_view")
-      .select(`
-        user_id,
-        female_dog_name,
-        ultrasound_date,
-        xray_date,
-        expected_whelping_date
-      `);
+      .select("*");
 
     if (error) {
-      console.error("DB error:", error.message);
-      return new Response(
-        JSON.stringify({ error: error.message }),
-        { status: 500 }
-      );
+      console.error("DB Error:", error);
+      return new Response(JSON.stringify({ error: error.message }), {
+        status: 500,
+      });
     }
-
-    const rows: PregnancyRow[] = data ?? [];
 
     const today = new Date().toISOString().split("T")[0];
 
-    // 🧠 GROUPING FIX (DEFINED PROPERLY)
     const grouped: Record<string, PregnancyRow[]> = {};
+    let totalAlerts = 0;
+
+    // ✅ FIX: type assertion külön sorban (Vercel-safe)
+    const rows = (data ?? []) as PregnancyRow[];
 
     for (const row of rows) {
+      const isUrgent =
+        row.ultrasound_date === today ||
+        row.xray_date === today ||
+        row.expected_whelping_date === today;
+
+      if (!isUrgent) continue;
+
       if (!grouped[row.user_id]) {
         grouped[row.user_id] = [];
       }
+
       grouped[row.user_id].push(row);
+      totalAlerts++;
     }
 
-    // 🔔 RESULTS CONTAINER (FIXED SCOPE)
-    const results: {
-      user_id: string;
-      events: PregnancyRow[];
-    }[] = [];
-
-    // 👇 SAFE LOOP (NO UNDEFINED VARIABLES)
-    for (const id of Object.keys(grouped)) {
-      const userEvents = grouped[id];
-
-      const todayEvents = userEvents.filter((event) => {
-        return (
-          event.ultrasound_date === today ||
-          event.xray_date === today ||
-          event.expected_whelping_date === today
-        );
-      });
-
-      if (todayEvents.length > 0) {
-        results.push({
-          user_id: id,
-          events: todayEvents,
-        });
-
-        console.log(
-          `🔔 User ${id} has ${todayEvents.length} event(s) today`
-        );
-      }
-    }
-
-    // 📤 RESPONSE
     return new Response(
       JSON.stringify({
         ok: true,
-        processed_users: Object.keys(grouped).length,
-        triggered_users: results.length,
-        results,
+        processed_date: today,
+        triggered_users_count: Object.keys(grouped).length,
+        total_alerts: totalAlerts,
+        grouped,
       }),
-      {
-        headers: { "Content-Type": "application/json" },
-      }
+      { headers: { "Content-Type": "application/json" } }
     );
-  } catch (err: unknown) {
-    console.error("Fatal error:", err);
+  } catch (err) {
+    console.error("Fatal Error:", err);
 
     return new Response(
       JSON.stringify({
-        error: "Unexpected failure",
+        error: "fatal error",
         detail: err instanceof Error ? err.message : String(err),
       }),
       { status: 500 }
