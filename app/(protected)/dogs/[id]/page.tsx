@@ -1,14 +1,19 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useParams, useRouter } from "next/navigation";
-import Image from "next/image";
 
-interface Photo {
+type Photo = {
   id: string;
   image_url: string;
-}
+};
+
+type Dog = {
+  id: string;
+  name: string;
+  sex?: string | null;
+};
 
 export default function DogProfilePage() {
   const params = useParams();
@@ -16,271 +21,138 @@ export default function DogProfilePage() {
 
   const dogId = Array.isArray(params.id) ? params.id[0] : params.id;
 
-  const [dog, setDog] = useState<any>(null);
-  const [latestPhotos, setLatestPhotos] = useState<Photo[]>([]);
+  const [dog, setDog] = useState<Dog | null>(null);
+  const [photos, setPhotos] = useState<Photo[]>([]);
   const [loading, setLoading] = useState(true);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    async function loadDogProfile() {
-      if (!dogId) return;
+  // -------------------------
+  // LOAD PROFILE (SECURE)
+  // -------------------------
+  async function load() {
+    if (!dogId) return;
 
-      try {
-        // 1. Auth user
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
+    setLoading(true);
 
-        if (!user) {
-          setErrorMsg("You must be logged in to view this profile.");
-          setLoading(false);
-          return;
-        }
+    try {
+      const { data: userRes } = await supabase.auth.getUser();
+      const user = userRes?.user;
 
-        // 2. Dog fetch (secure)
-        const { data: dogData, error: dogError } = await supabase
-          .from("dogs")
-          .select("*")
-          .eq("id", dogId)
-          .eq("user_id", user.id)
-          .single();
-
-        if (dogError || !dogData) {
-          setErrorMsg("Dog profile not found or access denied.");
-          setLoading(false);
-          return;
-        }
-
-        setDog(dogData);
-
-        // 3. Latest photos (preview)
-        const { data: photosData } = await supabase
-          .from("dog_photos")
-          .select("id, image_url")
-          .eq("dog_id", dogId)
-          .order("created_at", { ascending: false })
-          .limit(3);
-
-        if (photosData) {
-          setLatestPhotos(photosData);
-        }
-      } catch (err) {
-        console.error("Error loading profile:", err);
-        setErrorMsg("Something went wrong.");
-      } finally {
+      if (!user) {
+        setError("You must be logged in.");
         setLoading(false);
+        return;
       }
+
+      // SECURITY: owner check in query
+      const { data: dogData, error: dogError } = await supabase
+        .from("dogs")
+        .select("*")
+        .eq("id", dogId)
+        .eq("user_id", user.id)
+        .single();
+
+      if (dogError || !dogData) {
+        setError("Dog not found or access denied.");
+        setLoading(false);
+        return;
+      }
+
+      setDog(dogData);
+
+      const { data: photoData } = await supabase
+        .from("dog_photos")
+        .select("id, image_url")
+        .eq("dog_id", dogId)
+        .order("created_at", { ascending: false })
+        .limit(3);
+
+      setPhotos(photoData || []);
+    } catch (e) {
+      setError("Unexpected error.");
+    } finally {
+      setLoading(false);
     }
-
-    loadDogProfile();
-  }, [dogId]);
-
-  if (loading) {
-    return (
-      <div
-        style={{
-          padding: 40,
-          fontFamily: "sans-serif",
-          textAlign: "center",
-          color: "#666",
-        }}
-      >
-        Loading secure profile...
-      </div>
-    );
   }
 
-  if (errorMsg) {
-    return (
-      <div
-        style={{
-          maxWidth: 500,
-          margin: "60px auto",
-          padding: 20,
-          textAlign: "center",
-          fontFamily: "sans-serif",
-        }}
-      >
-        <h2 style={{ color: "#ff4d4f" }}>⚠️ Access Error</h2>
-        <p style={{ color: "#666", marginTop: 10 }}>{errorMsg}</p>
+  useEffect(() => {
+    load();
+  }, [dogId]);
 
-        <button
-          onClick={() => router.push("/")}
-          style={{
-            marginTop: 20,
-            padding: "10px 20px",
-            background: "#0070f3",
-            color: "white",
-            border: "none",
-            borderRadius: 6,
-            cursor: "pointer",
-          }}
-        >
-          Back to Dashboard
+  // -------------------------
+  // UI STATES
+  // -------------------------
+  if (loading) {
+    return <div style={center}>Loading profile...</div>;
+  }
+
+  if (error || !dog) {
+    return (
+      <div style={center}>
+        <h2 style={{ color: "red" }}>Access denied</h2>
+        <p>{error}</p>
+
+        <button onClick={() => router.push("/")} style={btn}>
+          Back
         </button>
       </div>
     );
   }
 
+  // -------------------------
+  // UI
+  // -------------------------
   return (
-    <div
-      style={{
-        maxWidth: 700,
-        margin: "40px auto",
-        padding: 20,
-        fontFamily: "sans-serif",
-      }}
-    >
-      {/* NAV */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          marginBottom: 30,
-        }}
-      >
-        <button
-          onClick={() => router.push("/")}
-          style={{
-            background: "none",
-            border: "none",
-            color: "#0070f3",
-            cursor: "pointer",
-            fontWeight: "bold",
-          }}
-        >
+    <div style={wrap}>
+      {/* HEADER */}
+      <div style={header}>
+        <button onClick={() => router.push("/")} style={link}>
           ← Dashboard
         </button>
 
         <button
           onClick={() => router.push(`/dogs/${dogId}/edit`)}
-          style={{
-            padding: "8px 16px",
-            background: "#f0f0f0",
-            border: "1px solid #ccc",
-            borderRadius: 6,
-            cursor: "pointer",
-            fontWeight: "bold",
-          }}
+          style={btnSecondary}
         >
-          ⚙️ Edit Details
+          Edit
         </button>
       </div>
 
       {/* DOG CARD */}
-      <div
-        style={{
-          background: "#fff",
-          border: "1px solid #e1e4e8",
-          borderRadius: 12,
-          padding: 30,
-          boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
-          marginBottom: 30,
-        }}
-      >
-        <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
-          <span style={{ fontSize: 40 }}>🐶</span>
+      <div style={card}>
+        <h1 style={{ margin: 0 }}>🐶 {dog.name}</h1>
 
-          <div>
-            <h1 style={{ margin: 0, fontSize: 28 }}>
-              {dog?.name ?? "Unknown Dog"}
-            </h1>
-
-            <p style={{ margin: "4px 0 0 0", color: "#666" }}>
-              Gender:{" "}
-              <strong>
-                {dog?.sex
-                  ? dog.sex === "female"
-                    ? "Female (Szuka)"
-                    : "Male (Kan)"
-                  : "Unknown"}
-              </strong>
-            </p>
-          </div>
-        </div>
+        <p style={{ color: "#666" }}>
+          Gender:{" "}
+          <b>
+            {dog.sex === "female"
+              ? "Female"
+              : dog.sex === "male"
+              ? "Male"
+              : "Unknown"}
+          </b>
+        </p>
       </div>
 
       {/* GALLERY PREVIEW */}
-      <div
-        style={{
-          background: "#fff",
-          border: "1px solid #e1e4e8",
-          borderRadius: 12,
-          padding: 30,
-          boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            marginBottom: 20,
-            alignItems: "center",
-          }}
-        >
-          <h3 style={{ margin: 0 }}>📸 Recent Photos</h3>
+      <div style={card}>
+        <div style={row}>
+          <h3>📸 Recent photos</h3>
 
           <button
             onClick={() => router.push(`/dogs/${dogId}/gallery`)}
-            style={{
-              padding: "8px 14px",
-              background: "#0070f3",
-              color: "white",
-              border: "none",
-              borderRadius: 6,
-              cursor: "pointer",
-              fontWeight: "bold",
-              fontSize: 13,
-            }}
+            style={btn}
           >
-            Open Photo Gallery →
+            Open gallery →
           </button>
         </div>
 
-        {/* EMPTY STATE */}
-        {latestPhotos.length === 0 ? (
-          <div
-            style={{
-              padding: "30px 0",
-              textAlign: "center",
-              color: "#999",
-              border: "1px dashed #eee",
-              borderRadius: 8,
-            }}
-          >
-            No photos uploaded yet for {dog?.name}. Add some in the gallery.
-          </div>
+        {photos.length === 0 ? (
+          <p style={{ color: "#999" }}>No photos yet</p>
         ) : (
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(3, 1fr)",
-              gap: 12,
-            }}
-          >
-            {latestPhotos.map((photo) => (
-              <div
-                key={photo.id}
-                style={{
-                  height: 120,
-                  borderRadius: 8,
-                  overflow: "hidden",
-                  border: "1px solid #eee",
-                  position: "relative",
-                }}
-              >
-                <Image
-                  src={photo.image_url}
-                  alt="Dog preview"
-                  width={300}
-                  height={120}
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    objectFit: "cover",
-                  }}
-                />
-              </div>
+          <div style={grid}>
+            {photos.map((p) => (
+              <img key={p.id} src={p.image_url} style={img} />
             ))}
           </div>
         )}
@@ -288,3 +160,76 @@ export default function DogProfilePage() {
     </div>
   );
 }
+
+// -------------------------
+// STYLES
+// -------------------------
+const wrap: React.CSSProperties = {
+  maxWidth: 800,
+  margin: "40px auto",
+  padding: 20,
+  fontFamily: "sans-serif",
+};
+
+const header: React.CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  marginBottom: 20,
+};
+
+const card: React.CSSProperties = {
+  border: "1px solid #eee",
+  borderRadius: 12,
+  padding: 20,
+  marginBottom: 20,
+};
+
+const row: React.CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+};
+
+const grid: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(3, 1fr)",
+  gap: 10,
+  marginTop: 10,
+};
+
+const img: React.CSSProperties = {
+  width: "100%",
+  height: 120,
+  objectFit: "cover",
+  borderRadius: 8,
+};
+
+const center: React.CSSProperties = {
+  padding: 40,
+  textAlign: "center",
+};
+
+const btn: React.CSSProperties = {
+  padding: "8px 14px",
+  background: "#0070f3",
+  color: "white",
+  border: "none",
+  borderRadius: 8,
+  cursor: "pointer",
+};
+
+const btnSecondary: React.CSSProperties = {
+  padding: "8px 14px",
+  background: "#eee",
+  border: "none",
+  borderRadius: 8,
+  cursor: "pointer",
+};
+
+const link: React.CSSProperties = {
+  background: "none",
+  border: "none",
+  color: "#0070f3",
+  fontWeight: "bold",
+  cursor: "pointer",
+};

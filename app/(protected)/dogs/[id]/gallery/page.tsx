@@ -9,43 +9,26 @@ type Photo = {
   image_url: string;
 };
 
-export default function DogGalleryPage() {
+export default function Gallery() {
   const params = useParams();
   const router = useRouter();
 
   const dogId = Array.isArray(params.id) ? params.id[0] : params.id;
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const [dogName, setDogName] = useState("Dog");
+  const fileRef = useRef<HTMLInputElement | null>(null);
+
   const [photos, setPhotos] = useState<Photo[]>([]);
+  const [preview, setPreview] = useState<File | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const [dragActive, setDragActive] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [previewFile, setPreviewFile] = useState<File | null>(null);
-
-  const [activeIndex, setActiveIndex] = useState<number | null>(null);
-
-  // -----------------------
-  // LOAD DATA
-  // -----------------------
   async function load() {
-    if (!dogId) return;
+    const { data } = await supabase
+      .from("dog_photos")
+      .select("id, image_url")
+      .eq("dog_id", dogId)
+      .order("created_at", { ascending: false });
 
-    setLoading(true);
-
-    const [{ data: dog }, { data: photos }] = await Promise.all([
-      supabase.from("dogs").select("name").eq("id", dogId).single(),
-      supabase
-        .from("dog_photos")
-        .select("id, image_url")
-        .eq("dog_id", dogId)
-        .order("created_at", { ascending: false }),
-    ]);
-
-    if (dog?.name) setDogName(dog.name);
-    if (photos) setPhotos(photos);
-
+    setPhotos(data || []);
     setLoading(false);
   }
 
@@ -53,225 +36,138 @@ export default function DogGalleryPage() {
     load();
   }, [dogId]);
 
-  // -----------------------
-  // UPLOAD
-  // -----------------------
   async function upload(file: File) {
-    if (!dogId) return;
+    const path = `${dogId}/${Date.now()}.${file.name.split(".").pop()}`;
 
-    setUploading(true);
+    await supabase.storage.from("dog-photos").upload(path, file);
 
-    const ext = file.name.split(".").pop();
-    const path = `${dogId}/${Date.now()}.${ext}`;
+    const { data } = supabase.storage
+      .from("dog-photos")
+      .getPublicUrl(path);
 
-    try {
-      const { error: uploadError } = await supabase.storage
-        .from("dog-photos")
-        .upload(path, file);
+    await supabase.from("dog_photos").insert({
+      dog_id: dogId,
+      image_url: data.publicUrl,
+    });
 
-      if (uploadError) throw uploadError;
-
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from("dog-photos").getPublicUrl(path);
-
-      const { error: dbError } = await supabase
-        .from("dog_photos")
-        .insert({
-          dog_id: dogId,
-          image_url: publicUrl,
-        });
-
-      if (dbError) throw dbError;
-
-      setPreviewFile(null);
-      await load();
-    } catch (err: any) {
-      alert(err.message);
-    } finally {
-      setUploading(false);
-    }
+    setPreview(null);
+    load();
   }
 
-  // -----------------------
-  // DELETE
-  // -----------------------
-  async function remove(photo: Photo) {
-    if (!confirm("Delete this photo?")) return;
-
-    const path = photo.image_url.split("dog-photos/")[1];
+  async function remove(id: string, url: string) {
+    const path = url.split("dog-photos/")[1];
 
     if (path) {
       await supabase.storage.from("dog-photos").remove([path]);
     }
 
-    await supabase.from("dog_photos").delete().eq("id", photo.id);
+    await supabase.from("dog_photos").delete().eq("id", id);
 
-    setPhotos((prev) => prev.filter((p) => p.id !== photo.id));
+    setPhotos((p) => p.filter((x) => x.id !== id));
   }
 
-  // -----------------------
-  // KEY NAV (MODAL)
-  // -----------------------
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (activeIndex === null) return;
+  if (loading) return <div style={c}>Loading...</div>;
 
-      if (e.key === "Escape") setActiveIndex(null);
-
-      if (e.key === "ArrowRight") {
-        setActiveIndex((i) =>
-          i === null ? null : (i + 1) % photos.length
-        );
-      }
-
-      if (e.key === "ArrowLeft") {
-        setActiveIndex((i) =>
-          i === null
-            ? null
-            : (i - 1 + photos.length) % photos.length
-        );
-      }
-    }
-
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [activeIndex, photos.length]);
-
-  // -----------------------
-  // UI STATES
-  // -----------------------
-  if (loading) {
-    return (
-      <div style={center}>
-        Loading gallery...
-      </div>
-    );
-  }
-
-  // -----------------------
-  // UI
-  // -----------------------
   return (
     <div style={wrap}>
-      {/* HEADER */}
-      <div style={header}>
-        <button onClick={() => router.push(`/dogs/${dogId}`)} style={link}>
-          ← Back
-        </button>
+      <button onClick={() => router.back()} style={link}>
+        ← Back
+      </button>
 
-        <h2 style={{ margin: 0 }}>{dogName} Gallery</h2>
-      </div>
+      <h2>Gallery</h2>
 
-      {/* DROPZONE */}
-      <div
-        onClick={() => fileInputRef.current?.click()}
-        onDragOver={(e) => {
-          e.preventDefault();
-          setDragActive(true);
-        }}
-        onDragLeave={() => setDragActive(false)}
-        onDrop={(e) => {
-          e.preventDefault();
-          setDragActive(false);
-
-          const file = e.dataTransfer.files?.[0];
-          if (file) setPreviewFile(file);
-        }}
-        style={{
-          ...dropzone,
-          borderColor: dragActive ? "#0070f3" : "#ccc",
-          background: dragActive ? "#f0f7ff" : "#fafafa",
-        }}
-      >
-        Drag & Drop or Click to Upload
+      <div onClick={() => fileRef.current?.click()} style={drop}>
+        Click or drop image
 
         <input
-          ref={fileInputRef}
+          ref={fileRef}
           type="file"
           hidden
-          accept="image/*"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) setPreviewFile(file);
-          }}
+          onChange={(e) =>
+            e.target.files?.[0] && setPreview(e.target.files[0])
+          }
         />
       </div>
 
-      {/* PREVIEW */}
-      {previewFile && (
+      {preview && (
         <div style={card}>
-          <img
-            src={URL.createObjectURL(previewFile)}
-            style={previewImg}
-          />
+          <img src={URL.createObjectURL(preview)} style={img} />
 
-          <div>
-            <button
-              onClick={() => upload(previewFile)}
-              disabled={uploading}
-              style={btnPrimary}
-            >
-              {uploading ? "Uploading..." : "Upload"}
-            </button>
-
-            <button
-              onClick={() => setPreviewFile(null)}
-              style={btnSecondary}
-            >
-              Cancel
-            </button>
-          </div>
+          <button onClick={() => upload(preview)} style={btn}>
+            Upload
+          </button>
         </div>
       )}
 
-      {/* GRID */}
       <div style={grid}>
-        {photos.map((p, i) => (
-          <div key={p.id} style={imgWrap}>
-            <img
-              src={p.image_url}
-              onClick={() => setActiveIndex(i)}
-              style={img}
-            />
+        {photos.map((p) => (
+          <div key={p.id} style={{ position: "relative" }}>
+            <img src={p.image_url} style={img} />
 
-            <button onClick={() => remove(p)} style={deleteBtn}>
+            <button
+              onClick={() => remove(p.id, p.image_url)}
+              style={del}
+            >
               ×
             </button>
           </div>
         ))}
       </div>
-
-      {/* MODAL */}
-      {activeIndex !== null && photos[activeIndex] && (
-        <div
-          onClick={() => setActiveIndex(null)}
-          style={modal}
-        >
-          <img
-            src={photos[activeIndex].image_url}
-            style={modalImg}
-          />
-        </div>
-      )}
     </div>
   );
 }
 
-// -----------------------
-// STYLES (clean + stable)
-// -----------------------
 const wrap: React.CSSProperties = {
-  maxWidth: 1000,
+  maxWidth: 900,
   margin: "40px auto",
   padding: 20,
-  fontFamily: "sans-serif",
 };
 
-const header: React.CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
+const grid: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fill, minmax(200px,1fr))",
+  gap: 10,
+};
+
+const img: React.CSSProperties = {
+  width: "100%",
+  height: 180,
+  objectFit: "cover",
+  borderRadius: 8,
+};
+
+const drop: React.CSSProperties = {
+  padding: 30,
+  border: "2px dashed #ccc",
+  margin: "20px 0",
+  textAlign: "center",
+  cursor: "pointer",
+};
+
+const card: React.CSSProperties = {
+  padding: 20,
+  border: "1px solid #eee",
   marginBottom: 20,
+};
+
+const btn: React.CSSProperties = {
+  marginTop: 10,
+  padding: "8px 14px",
+  background: "#0070f3",
+  color: "white",
+  border: "none",
+  borderRadius: 8,
+};
+
+const del: React.CSSProperties = {
+  position: "absolute",
+  top: 8,
+  right: 8,
+  background: "red",
+  color: "white",
+  border: "none",
+  borderRadius: 6,
+  cursor: "pointer",
 };
 
 const link: React.CSSProperties = {
@@ -282,95 +178,7 @@ const link: React.CSSProperties = {
   fontWeight: "bold",
 };
 
-const dropzone: React.CSSProperties = {
-  marginTop: 20,
-  padding: 40,
-  borderRadius: 12,
-  border: "2px dashed #ccc",
-  textAlign: "center",
-  cursor: "pointer",
-};
-
-const card: React.CSSProperties = {
-  marginTop: 20,
-  padding: 20,
-  border: "1px solid #eee",
-  borderRadius: 12,
-};
-
-const previewImg: React.CSSProperties = {
-  width: "100%",
-  maxHeight: 300,
-  objectFit: "cover",
-  borderRadius: 8,
-};
-
-const grid: React.CSSProperties = {
-  marginTop: 30,
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
-  gap: 16,
-};
-
-const imgWrap: React.CSSProperties = {
-  position: "relative",
-  borderRadius: 10,
-  overflow: "hidden",
-};
-
-const img: React.CSSProperties = {
-  width: "100%",
-  height: 180,
-  objectFit: "cover",
-  cursor: "pointer",
-};
-
-const deleteBtn: React.CSSProperties = {
-  position: "absolute",
-  top: 8,
-  right: 8,
-  background: "rgba(255,0,0,0.8)",
-  color: "white",
-  border: "none",
-  borderRadius: 6,
-  padding: "4px 8px",
-  cursor: "pointer",
-};
-
-const modal: React.CSSProperties = {
-  position: "fixed",
-  inset: 0,
-  background: "rgba(0,0,0,0.95)",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-};
-
-const modalImg: React.CSSProperties = {
-  maxWidth: "90%",
-  maxHeight: "90%",
-  borderRadius: 10,
-};
-
-const center: React.CSSProperties = {
+const c: React.CSSProperties = {
   padding: 40,
   textAlign: "center",
-};
-
-const btnPrimary: React.CSSProperties = {
-  marginRight: 10,
-  padding: "10px 16px",
-  background: "#0070f3",
-  color: "white",
-  border: "none",
-  borderRadius: 8,
-  cursor: "pointer",
-};
-
-const btnSecondary: React.CSSProperties = {
-  padding: "10px 16px",
-  background: "#eee",
-  border: "none",
-  borderRadius: 8,
-  cursor: "pointer",
 };
