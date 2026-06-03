@@ -1,22 +1,39 @@
-import { getCalendarEvents } from "@/app/actions/calendar";
+import { getActivePregnancies } from "@/app/actions/bridge";
 
-type CalendarEvent = {
-  id: string;
-  date: string;
-  title: string;
-  dogName: string;
-  eventType: "ultrasound" | "xray" | "whelping";
-};
-
-const EVENT_ICONS: Record<CalendarEvent["eventType"], string> = {
+const EVENT_ICONS = {
   ultrasound: "🧬",
   xray: "🩻",
   whelping: "🍼",
-};
+} as const;
 
 export default async function CalendarPage() {
-  const calendarEvents =
-    (await getCalendarEvents()) as CalendarEvent[];
+  const pregnancies = await getActivePregnancies();
+
+  const events = pregnancies.flatMap((p: any) => [
+    {
+      id: `${p.mating_id}-ultrasound`,
+      type: "ultrasound",
+      date: p.ultrasound_date,
+      dogName: p.female_dog_name,
+      title: "Ultrahang",
+    },
+    {
+      id: `${p.mating_id}-xray`,
+      type: "xray",
+      date: p.xray_date,
+      dogName: p.female_dog_name,
+      title: "Röntgen",
+    },
+    {
+      id: `${p.mating_id}-whelping`,
+      type: "whelping",
+      date: p.expected_whelping_date,
+      dogName: p.female_dog_name,
+      title: "Várható ellés",
+    },
+  ]);
+
+  events.sort((a, b) => a.date.localeCompare(b.date));
 
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-8">
@@ -31,28 +48,32 @@ export default async function CalendarPage() {
         </p>
       </div>
 
-      <div className="space-y-4">
-        {calendarEvents.length === 0 ? (
-          <div className="bg-white border border-gray-200 rounded-xl p-8 text-center text-gray-400">
-            Jelenleg nincs közelgő esemény.
-          </div>
-        ) : (
-          calendarEvents.map((event) => (
+      {events.length === 0 ? (
+        <div className="bg-white border rounded-xl p-8 text-center text-gray-400">
+          Jelenleg nincs közelgő esemény.
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {events.map((event) => (
             <div
               key={event.id}
               className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm"
             >
               <div className="flex items-center justify-between gap-4">
                 <div>
-                  <div className="flex items-center gap-2 font-semibold text-gray-900">
+                  <div className="font-semibold text-gray-900 flex items-center gap-2">
                     <span>
-                      {EVENT_ICONS[event.eventType] ?? "📅"}
+                      {
+                        EVENT_ICONS[
+                          event.type as keyof typeof EVENT_ICONS
+                        ]
+                      }
                     </span>
 
                     <span>{event.title}</span>
                   </div>
 
-                  <div className="mt-1 text-sm text-gray-500">
+                  <div className="text-sm text-gray-500 mt-1">
                     {event.dogName}
                   </div>
                 </div>
@@ -62,9 +83,9 @@ export default async function CalendarPage() {
                 </div>
               </div>
             </div>
-          ))
-        )}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
