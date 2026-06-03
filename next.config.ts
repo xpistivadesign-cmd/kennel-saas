@@ -1,15 +1,17 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  images: {
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'kktqvuzasdktpytuguef.supabase.co',
-        port: '',
-        pathname: '/storage/v1/object/public/**',
-      },
-    ],
+  reactStrictMode: true,
+
+  // 🔥 EZ A LÉNYEG: Supabase Edge Functions kizárása
+  webpack: (config) => {
+    config.watchOptions = {
+      ignored: [
+        "**/supabase/functions/**",
+        "**/supabase/**"
+      ],
+    };
+    return config;
   },
 };
 
-export default nextConfig;
+module.exports = nextConfig;
