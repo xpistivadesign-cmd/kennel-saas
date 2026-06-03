@@ -3,6 +3,25 @@
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 
+/**
+ * LISTA: litters
+ */
+export async function getLitters() {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("litters")
+    .select("*")
+    .order("birth_date", { ascending: false });
+
+  if (error) throw new Error(error.message);
+
+  return data ?? [];
+}
+
+/**
+ * Mating -> Litter generator data fetch
+ */
 export async function getMatingForLitterGenerator(matingId: string) {
   const supabase = await createClient();
 
@@ -25,6 +44,9 @@ export async function getMatingForLitterGenerator(matingId: string) {
   return data;
 }
 
+/**
+ * CREATE LITTER
+ */
 export async function createLitterFromMating(input: {
   matingId: string;
   motherId?: string;
@@ -69,8 +91,8 @@ export async function createLitterFromMating(input: {
 
   if (error) throw new Error(error.message);
 
-  revalidatePath("/litters");
-  revalidatePath("/puppies");
+  revalidatePath("/protected/litters");
+  revalidatePath("/protected/puppies");
 
   return data;
 }

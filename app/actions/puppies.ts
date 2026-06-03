@@ -3,6 +3,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 
+/**
+ * CREATE PUPPY
+ */
 export async function createPuppy(input: {
   litterId: string;
   name: string;
@@ -38,27 +41,26 @@ export async function createPuppy(input: {
 
   if (error) throw new Error(error.message);
 
-  revalidatePath("/puppies");
+  revalidatePath("/protected/puppies");
 
   return data;
 }
 
-export async function getPuppiesByLitter(litterId: string) {
+/**
+ * DELETE PUPPY (FIXED — BUILD SAFE)
+ */
+export async function deletePuppy(formData: FormData) {
+  const id = formData.get("puppyId") as string;
+
+  if (!id) throw new Error("Missing puppyId");
+
   const supabase = await createClient();
 
-  const { data, error } = await supabase
-    .from("puppies")
-    .select("*")
-    .eq("litter_id", litterId)
-    .order("created_at", { ascending: true });
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  if (error) throw new Error(error.message);
-
-  return data ?? [];
-}
-
-export async function deletePuppy(id: string) {
-  const supabase = await createClient();
+  if (!user) throw new Error("Unauthorized");
 
   const { error } = await supabase
     .from("puppies")
@@ -67,7 +69,7 @@ export async function deletePuppy(id: string) {
 
   if (error) throw new Error(error.message);
 
-  revalidatePath("/puppies");
+  revalidatePath("/protected/puppies");
 
   return { success: true };
 }
