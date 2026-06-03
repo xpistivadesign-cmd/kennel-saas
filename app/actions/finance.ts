@@ -6,9 +6,9 @@ export type FinanceItem = {
   id: string;
   puppyName: string;
   litter: string | null;
-  buyerName: string | null;
-  buyerPhone: string | null;
-  buyerAddress: string | null;
+  buyerName: string;
+  buyerPhone: string;
+  buyerAddress: string;
   price: number;
   deposit: number;
   remaining: number;
@@ -45,7 +45,8 @@ export async function getFinanceOverview(): Promise<FinanceOverview> {
     .order("created_at", { ascending: false });
 
   if (error || !data) {
-    console.error("Finance error:", error?.message);
+    console.error(error?.message);
+
     return {
       items: [],
       totalRevenue: 0,
@@ -60,13 +61,19 @@ export async function getFinanceOverview(): Promise<FinanceOverview> {
     const deposit = Number(p.deposit ?? 0);
     const remaining = price - deposit;
 
+    // 🔥 FIX: litters is ARRAY
+    const litterLetter =
+      Array.isArray(p.litters) && p.litters.length > 0
+        ? p.litters[0].litter_letter
+        : null;
+
     return {
       id: p.id,
       puppyName: p.name,
-      litter: p.litters?.litter_letter ?? null,
-      buyerName: p.buyer_name ?? null,
-      buyerPhone: p.buyer_phone ?? null,
-      buyerAddress: p.buyer_address ?? null,
+      litter: litterLetter,
+      buyerName: p.buyer_name ?? "",
+      buyerPhone: p.buyer_phone ?? "",
+      buyerAddress: p.buyer_address ?? "",
       price,
       deposit,
       remaining,
@@ -114,9 +121,14 @@ export async function generatePuppyContract(puppyId: string) {
   const price = Number(data.price ?? 0);
   const deposit = Number(data.deposit ?? 0);
 
+  const litterLetter =
+    Array.isArray(data.litters) && data.litters.length > 0
+      ? data.litters[0].litter_letter
+      : null;
+
   return {
     puppyName: data.name,
-    litter: data.litters?.litter_letter ?? null,
+    litter: litterLetter,
     buyerName: data.buyer_name ?? "",
     buyerPhone: data.buyer_phone ?? "",
     buyerAddress: data.buyer_address ?? "",
