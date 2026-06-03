@@ -6,11 +6,12 @@ import { useRouter } from "next/navigation";
 
 type Event = {
   id: string;
-  dog_id: string;
   title: string;
   type: string;
-  created_at: string;
   reminder_date: string | null;
+  created_at: string;
+  dog_id: string;
+  dogs: { name: string };
 };
 
 export default function CalendarPage() {
@@ -19,9 +20,13 @@ export default function CalendarPage() {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // -------------------------
-  // LOAD EVENTS
-  // -------------------------
+  const [title, setTitle] = useState("");
+  const [type, setType] = useState("vaccination");
+  const [date, setDate] = useState("");
+  const [dogId, setDogId] = useState("");
+
+  const [dogs, setDogs] = useState<{ id: string; name: string }[]>([]);
+
   async function load() {
     setLoading(true);
 
@@ -29,26 +34,34 @@ export default function CalendarPage() {
     const user = auth?.user;
 
     if (!user) {
-      router.push("/");
+      router.push("/login");
       return;
     }
 
-    // join dogs → ensure ownership security
-    const { data } = await supabase
+    // dogs
+    const { data: dogsData } = await supabase
+      .from("dogs")
+      .select("id, name")
+      .eq("user_id", user.id);
+
+    setDogs(dogsData || []);
+
+    // events
+    const { data: eventsData } = await supabase
       .from("dog_events")
       .select(`
         id,
-        dog_id,
         title,
         type,
-        created_at,
         reminder_date,
-        dogs!inner(user_id)
+        created_at,
+        dog_id,
+        dogs!inner ( name, user_id )
       `)
       .eq("dogs.user_id", user.id)
-      .order("created_at", { ascending: false });
+      .order("reminder_date", { ascending: true });
 
-    setEvents(data || []);
+    setEvents((eventsData as any) || []);
     setLoading(false);
   }
 
@@ -56,116 +69,157 @@ export default function CalendarPage() {
     load();
   }, []);
 
-  // -------------------------
-  // HELPERS
-  // -------------------------
-  function isDueSoon(date: string | null) {
-    if (!date) return false;
+  async function createEvent() {
+    if (!title || !dogId) return alert("Missing fields");
 
-    const now = new Date();
-    const d = new Date(date);
+    const { error } = await supabase.from("dog_events").insert({
+      title,
+      type,
+      reminder_date: date || null,
+      dog_id: dogId,
+    });
 
-    const diff = d.getTime() - now.getTime();
-    const days = diff / (1000 * 60 * 60 * 24);
+    if (error) {
+      alert(error.message);
+      return;
+    }
 
-    return days <= 3 && days >= 0;
+    setTitle("");
+    setDate("");
+    setDogId("");
+
+    await load();
   }
 
-  function isOverdue(date: string | null) {
-    if (!date) return false;
-    return new Date(date).getTime() < Date.now();
-  }
+  const today = new Date();
+
+  const upcoming = events.filter((e) => {
+    if (!e.reminder_date) return false;
+    return new Date(e.reminder_date).getTime() >= today.getTime();
+  });
+
+  const past = events.filter((e) => {
+    if (!e.reminder_date) return false;
+    return new Date(e.reminder_date).getTime() < today.getTime();
+  });
 
   if (loading) {
-    return <div style={wrap}>Loading calendar...</div>;
+    return <div style={{ padding: 40 }}>Loading calendar...</div>;
   }
 
   return (
-    <div style={wrap}>
+    <div style={{ maxWidth: 1000, margin: "40px auto", padding: 20, fontFamily: "sans-serif" }}>
+      
+      <button onClick={() => router.push("/")} style={btn}>
+        ← Back
+      </button>
+
       <h1>📅 Kennel Calendar</h1>
+      <p style={{ color: "#666" }}>Manage all breeding events, vaccinations and reminders</p>
 
-      <p style={{ color: "#666" }}>
-        Vaccinations, health checks, reminders
-      </p>
+      {/* CREATE EVENT */}
+      <div style={card}>
+        <h3>➕ New Event</h3>
 
-      {/* EVENTS */}
-      <div style={grid}>
-        {events.length === 0 ? (
-          <p>No events scheduled</p>
-        ) : (
-          events.map((ev) => (
-            <div key={ev.id} style={card(ev.reminder_date)}>
-              <div style={{ fontWeight: "bold" }}>
-                {ev.title}
-              </div>
+        <input
+          placeholder="Title (e.g. Vaccination)"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          style={input}
+        />
 
-              <div style={{ fontSize: 12, color: "#666" }}>
-                {ev.type}
-              </div>
+        <select value={type} onChange={(e) => setType(e.target.value)} style={input}>
+          <option value="vaccination">Vaccination</option>
+          <option value="breeding">Breeding</option>
+          <option value="vet">Vet Visit</option>
+          <option value="reminder">Reminder</option>
+        </select>
 
-              <div style={{ fontSize: 12, marginTop: 6 }}>
-                {new Date(ev.created_at).toLocaleDateString()}
-              </div>
+        <input
+          type="date"
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+          style={input}
+        />
 
-              {ev.reminder_date && (
-                <div style={{ marginTop: 8 }}>
-                  {isOverdue(ev.reminder_date) && (
-                    <span style={badgeRed}>OVERDUE</span>
-                  )}
+        <select value={dogId} onChange={(e) => setDogId(e.target.value)} style={input}>
+          <option value="">Select dog</option>
+          {dogs.map((d) => (
+            <option key={d.id} value={d.id}>
+              {d.name}
+            </option>
+          ))}
+        </select>
 
-                  {isDueSoon(ev.reminder_date) && !isOverdue(ev.reminder_date) && (
-                    <span style={badgeYellow}>DUE SOON</span>
-                  )}
-                </div>
-              )}
-            </div>
-          ))
-        )}
+        <button onClick={createEvent} style={primaryBtn}>
+          Save Event
+        </button>
       </div>
+
+      {/* UPCOMING */}
+      <h2>🟢 Upcoming</h2>
+      {upcoming.length === 0 ? (
+        <p style={{ color: "#999" }}>No upcoming events</p>
+      ) : (
+        upcoming.map((e) => (
+          <div key={e.id} style={eventCard}>
+            <b>{e.title}</b>
+            <div style={{ fontSize: 12, color: "#666" }}>
+              {e.dogs.name} • {e.type}
+            </div>
+            <div>{e.reminder_date}</div>
+          </div>
+        ))
+      )}
+
+      {/* PAST */}
+      <h2 style={{ marginTop: 30 }}>⚪ Past</h2>
+      {past.map((e) => (
+        <div key={e.id} style={{ ...eventCard, opacity: 0.6 }}>
+          <b>{e.title}</b>
+          <div style={{ fontSize: 12 }}>{e.dogs.name}</div>
+          <div>{e.reminder_date}</div>
+        </div>
+      ))}
     </div>
   );
 }
 
-// -------------------------
-const wrap: React.CSSProperties = {
-  maxWidth: 1000,
-  margin: "40px auto",
-  fontFamily: "sans-serif",
-  padding: 20,
+const card = {
+  padding: 16,
+  border: "1px solid #eee",
+  borderRadius: 12,
+  marginBottom: 20,
 };
 
-const grid: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
-  gap: 12,
-  marginTop: 20,
+const eventCard = {
+  padding: 12,
+  border: "1px solid #eee",
+  borderRadius: 10,
+  marginBottom: 10,
 };
 
-const card = (reminder: string | null): React.CSSProperties => {
-  const now = new Date().getTime();
-  const due = reminder ? new Date(reminder).getTime() : null;
-
-  return {
-    padding: 16,
-    borderRadius: 12,
-    border: "1px solid #eee",
-    background:
-      due && due < now ? "#fff5f5" : "#fff",
-  };
+const input = {
+  display: "block",
+  width: "100%",
+  marginBottom: 10,
+  padding: 10,
+  border: "1px solid #ddd",
+  borderRadius: 8,
 };
 
-const badgeRed: React.CSSProperties = {
-  background: "#fee2e2",
-  color: "#991b1b",
-  padding: "4px 8px",
-  borderRadius: 6,
-  fontSize: 11,
+const btn = {
+  marginBottom: 20,
+  padding: "8px 12px",
+  border: "1px solid #ccc",
+  background: "white",
+  borderRadius: 8,
 };
 
-const badgeYellow: React.CSSProperties = {
-  background: "#fef9c3",
-  color: "#92400e",
-  padding: "4px 8px",
-  borderRadius: 6,
-  fontSize: 11,
+const primaryBtn = {
+  padding: "10px 14px",
+  background: "#0070f3",
+  color: "white",
+  border: "none",
+  borderRadius: 8,
 };
