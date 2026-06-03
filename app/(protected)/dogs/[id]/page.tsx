@@ -4,15 +4,12 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useParams, useRouter } from "next/navigation";
 
-type Photo = {
+type Event = {
   id: string;
-  image_url: string;
-};
-
-type Dog = {
-  id: string;
-  name: string;
-  sex?: string | null;
+  type: string;
+  title: string;
+  description: string | null;
+  created_at: string;
 };
 
 export default function DogProfilePage() {
@@ -21,58 +18,45 @@ export default function DogProfilePage() {
 
   const dogId = Array.isArray(params.id) ? params.id[0] : params.id;
 
-  const [dog, setDog] = useState<Dog | null>(null);
-  const [photos, setPhotos] = useState<Photo[]>([]);
+  const [dog, setDog] = useState<any>(null);
+  const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+
+  const [newEvent, setNewEvent] = useState({
+    type: "note",
+    title: "",
+    description: "",
+  });
 
   // -------------------------
-  // LOAD PROFILE (SECURE)
+  // LOAD DOG + EVENTS
   // -------------------------
   async function load() {
-    if (!dogId) return;
-
     setLoading(true);
 
-    try {
-      const { data: userRes } = await supabase.auth.getUser();
-      const user = userRes?.user;
+    const { data: auth } = await supabase.auth.getUser();
+    const user = auth?.user;
 
-      if (!user) {
-        setError("You must be logged in.");
-        setLoading(false);
-        return;
-      }
+    if (!user || !dogId) return;
 
-      // SECURITY: owner check in query
-      const { data: dogData, error: dogError } = await supabase
-        .from("dogs")
-        .select("*")
-        .eq("id", dogId)
-        .eq("user_id", user.id)
-        .single();
+    const { data: dogData } = await supabase
+      .from("dogs")
+      .select("*")
+      .eq("id", dogId)
+      .eq("user_id", user.id)
+      .single();
 
-      if (dogError || !dogData) {
-        setError("Dog not found or access denied.");
-        setLoading(false);
-        return;
-      }
+    setDog(dogData);
 
-      setDog(dogData);
+    const { data: eventsData } = await supabase
+      .from("dog_events")
+      .select("*")
+      .eq("dog_id", dogId)
+      .order("created_at", { ascending: false });
 
-      const { data: photoData } = await supabase
-        .from("dog_photos")
-        .select("id, image_url")
-        .eq("dog_id", dogId)
-        .order("created_at", { ascending: false })
-        .limit(3);
+    setEvents(eventsData || []);
 
-      setPhotos(photoData || []);
-    } catch (e) {
-      setError("Unexpected error.");
-    } finally {
-      setLoading(false);
-    }
+    setLoading(false);
   }
 
   useEffect(() => {
@@ -80,81 +64,95 @@ export default function DogProfilePage() {
   }, [dogId]);
 
   // -------------------------
-  // UI STATES
+  // ADD EVENT
   // -------------------------
-  if (loading) {
-    return <div style={center}>Loading profile...</div>;
+  async function addEvent() {
+    const { data: auth } = await supabase.auth.getUser();
+    const user = auth?.user;
+
+    if (!user) return;
+
+    await supabase.from("dog_events").insert({
+      dog_id: dogId,
+      user_id: user.id,
+      type: newEvent.type,
+      title: newEvent.title,
+      description: newEvent.description,
+    });
+
+    setNewEvent({ type: "note", title: "", description: "" });
+    load();
   }
 
-  if (error || !dog) {
-    return (
-      <div style={center}>
-        <h2 style={{ color: "red" }}>Access denied</h2>
-        <p>{error}</p>
+  if (loading) return <div style={{ padding: 40 }}>Loading...</div>;
 
-        <button onClick={() => router.push("/")} style={btn}>
-          Back
-        </button>
-      </div>
-    );
-  }
-
-  // -------------------------
-  // UI
-  // -------------------------
   return (
     <div style={wrap}>
-      {/* HEADER */}
-      <div style={header}>
-        <button onClick={() => router.push("/")} style={link}>
-          ← Dashboard
-        </button>
+      <h1>🐶 {dog?.name} – Timeline</h1>
 
-        <button
-          onClick={() => router.push(`/dogs/${dogId}/edit`)}
-          style={btnSecondary}
+      {/* ADD EVENT */}
+      <div style={card}>
+        <h3>Add Event</h3>
+
+        <select
+          value={newEvent.type}
+          onChange={(e) =>
+            setNewEvent({ ...newEvent, type: e.target.value })
+          }
+          style={input}
         >
-          Edit
+          <option value="note">Note</option>
+          <option value="vaccination">Vaccination</option>
+          <option value="health">Health</option>
+          <option value="status_change">Status change</option>
+        </select>
+
+        <input
+          placeholder="Title"
+          value={newEvent.title}
+          onChange={(e) =>
+            setNewEvent({ ...newEvent, title: e.target.value })
+          }
+          style={input}
+        />
+
+        <textarea
+          placeholder="Description"
+          value={newEvent.description}
+          onChange={(e) =>
+            setNewEvent({ ...newEvent, description: e.target.value })
+          }
+          style={input}
+        />
+
+        <button onClick={addEvent} style={btn}>
+          Add Event
         </button>
       </div>
 
-      {/* DOG CARD */}
-      <div style={card}>
-        <h1 style={{ margin: 0 }}>🐶 {dog.name}</h1>
+      {/* TIMELINE */}
+      <h3 style={{ marginTop: 30 }}>📜 History</h3>
 
-        <p style={{ color: "#666" }}>
-          Gender:{" "}
-          <b>
-            {dog.sex === "female"
-              ? "Female"
-              : dog.sex === "male"
-              ? "Male"
-              : "Unknown"}
-          </b>
-        </p>
-      </div>
-
-      {/* GALLERY PREVIEW */}
-      <div style={card}>
-        <div style={row}>
-          <h3>📸 Recent photos</h3>
-
-          <button
-            onClick={() => router.push(`/dogs/${dogId}/gallery`)}
-            style={btn}
-          >
-            Open gallery →
-          </button>
-        </div>
-
-        {photos.length === 0 ? (
-          <p style={{ color: "#999" }}>No photos yet</p>
+      <div>
+        {events.length === 0 ? (
+          <p style={{ color: "#999" }}>No events yet</p>
         ) : (
-          <div style={grid}>
-            {photos.map((p) => (
-              <img key={p.id} src={p.image_url} style={img} />
-            ))}
-          </div>
+          events.map((ev) => (
+            <div key={ev.id} style={eventCard}>
+              <div style={{ fontWeight: "bold" }}>
+                {ev.title}
+              </div>
+
+              <div style={{ fontSize: 12, color: "#666" }}>
+                {ev.type} •{" "}
+                {new Date(ev.created_at).toLocaleString()}
+              </div>
+
+              {ev.description && (
+                <p style={{ marginTop: 6 }}>{ev.description}</p>
+              )}
+            </div>
+          ))
         )}
       </div>
     </div>
@@ -162,74 +160,36 @@ export default function DogProfilePage() {
 }
 
 // -------------------------
-// STYLES
-// -------------------------
 const wrap: React.CSSProperties = {
   maxWidth: 800,
   margin: "40px auto",
-  padding: 20,
   fontFamily: "sans-serif",
 };
 
-const header: React.CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  marginBottom: 20,
-};
-
 const card: React.CSSProperties = {
+  padding: 20,
   border: "1px solid #eee",
   borderRadius: 12,
-  padding: 20,
-  marginBottom: 20,
 };
 
-const row: React.CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-};
-
-const grid: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(3, 1fr)",
-  gap: 10,
-  marginTop: 10,
-};
-
-const img: React.CSSProperties = {
+const input: React.CSSProperties = {
   width: "100%",
-  height: 120,
-  objectFit: "cover",
+  padding: 10,
+  marginTop: 10,
   borderRadius: 8,
-};
-
-const center: React.CSSProperties = {
-  padding: 40,
-  textAlign: "center",
+  border: "1px solid #ddd",
 };
 
 const btn: React.CSSProperties = {
-  padding: "8px 14px",
+  marginTop: 10,
+  padding: "10px 14px",
   background: "#0070f3",
   color: "white",
   border: "none",
   borderRadius: 8,
-  cursor: "pointer",
 };
 
-const btnSecondary: React.CSSProperties = {
-  padding: "8px 14px",
-  background: "#eee",
-  border: "none",
-  borderRadius: 8,
-  cursor: "pointer",
-};
-
-const link: React.CSSProperties = {
-  background: "none",
-  border: "none",
-  color: "#0070f3",
-  fontWeight: "bold",
-  cursor: "pointer",
+const eventCard: React.CSSProperties = {
+  padding: 12,
+  borderBottom: "1px solid #eee",
 };
