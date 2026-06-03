@@ -41,16 +41,13 @@ export default function DashboardPage() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // ----------------------------
-  // LOAD ALL DATA
-  // ----------------------------
-  async function loadDashboard() {
+  async function load() {
     setLoading(true);
     setError(null);
 
     try {
-      const { data: userRes } = await supabase.auth.getUser();
-      const user = userRes?.user;
+      const { data: auth } = await supabase.auth.getUser();
+      const user = auth?.user;
 
       if (!user) {
         router.push("/login");
@@ -84,7 +81,7 @@ export default function DashboardPage() {
       if (leadsError) throw leadsError;
       setLeads((leadsData as any) || []);
 
-      // ---------------- EVENTS (CALENDAR CORE) ----------------
+      // ---------------- EVENTS ----------------
       const { data: eventsData, error: eventsError } = await supabase
         .from("dog_events")
         .select(`
@@ -110,12 +107,10 @@ export default function DashboardPage() {
   }
 
   useEffect(() => {
-    loadDashboard();
+    load();
   }, []);
 
-  // ----------------------------
-  // HELPERS
-  // ----------------------------
+  // ---------------- HELPERS ----------------
   const isDueSoon = (date: string | null) => {
     if (!date) return false;
     const diff = new Date(date).getTime() - Date.now();
@@ -133,28 +128,34 @@ export default function DashboardPage() {
       return;
     }
 
-    const origin = typeof window !== "undefined" ? window.location.origin : "";
-    const url = `${origin}/public/dogs/${dogId}`;
+    const origin =
+      typeof window !== "undefined" ? window.location.origin : "";
 
+    const url = `${origin}/public/dogs/${dogId}`;
     navigator.clipboard.writeText(url);
+
     setCopiedId(dogId);
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  // ----------------------------
+  const todayTasks = events.filter(
+    (e) => isDueSoon(e.reminder_date) || isOverdue(e.reminder_date)
+  );
+
+  // ---------------- UI STATES ----------------
   if (loading) {
-    return <div style={{ padding: 40 }}>Loading kennel OS...</div>;
+    return <div style={{ padding: 40 }}>Loading kennel system...</div>;
   }
 
   if (error) {
-    return <div style={{ padding: 40, color: "red" }}>{error}</div>;
+    return (
+      <div style={{ padding: 40, color: "red", fontFamily: "sans-serif" }}>
+        {error}
+      </div>
+    );
   }
 
-  // ----------------------------
-  // TODAY TASKS (SMART PANEL)
-  // ----------------------------
-  const todayTasks = events.filter((e) => isDueSoon(e.reminder_date) || isOverdue(e.reminder_date));
-
+  // ---------------- MAIN UI ----------------
   return (
     <div style={{ maxWidth: 1100, margin: "40px auto", padding: 20, fontFamily: "sans-serif" }}>
       
@@ -162,9 +163,7 @@ export default function DashboardPage() {
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 30 }}>
         <div>
           <h1>🇺🇸 Kennel Command Center</h1>
-          <p style={{ color: "#666" }}>
-            Your breeding operations dashboard
-          </p>
+          <p style={{ color: "#666" }}>Operations dashboard for breeders</p>
         </div>
 
         <div style={{ display: "flex", gap: 10 }}>
@@ -178,15 +177,17 @@ export default function DashboardPage() {
       </div>
 
       {/* STATS */}
-      <div style={grid3}>
+      <div style={grid}>
         <div style={card}>
           <h3>Dogs</h3>
           <b style={big}>{dogs.length}</b>
         </div>
+
         <div style={card}>
-          <h3>Public</h3>
+          <h3>Public Dogs</h3>
           <b style={big}>{dogs.filter(d => d.is_public).length}</b>
         </div>
+
         <div style={card}>
           <h3>Leads</h3>
           <b style={big}>{leads.length}</b>
@@ -210,6 +211,7 @@ export default function DashboardPage() {
               {isOverdue(t.reminder_date) && (
                 <span style={badgeRed}>OVERDUE</span>
               )}
+
               {isDueSoon(t.reminder_date) && !isOverdue(t.reminder_date) && (
                 <span style={badgeYellow}>DUE SOON</span>
               )}
@@ -232,6 +234,7 @@ export default function DashboardPage() {
               <button onClick={() => copyShareLink(d.id, d.is_public)} style={smallBtn}>
                 {copiedId === d.id ? "Copied" : "Share"}
               </button>
+
               <button onClick={() => router.push(`/dogs/${d.id}`)} style={smallBtn}>
                 Open
               </button>
@@ -256,9 +259,9 @@ export default function DashboardPage() {
   );
 }
 
-// ---------------- UI ----------------
+// ---------------- STYLES ----------------
 
-const grid3 = {
+const grid = {
   display: "grid",
   gridTemplateColumns: "repeat(3,1fr)",
   gap: 12,
@@ -276,11 +279,6 @@ const section = {
   padding: 20,
   border: "1px solid #eee",
   borderRadius: 12,
-} as const;
-
-const big = {
-  fontSize: 26,
-  color: "#0070f3",
 } as const;
 
 const row = {
@@ -303,8 +301,14 @@ const taskCard = (date: string | null) => ({
   border: "1px solid #eee",
   borderRadius: 8,
   marginBottom: 10,
-  background: date && new Date(date).getTime() < Date.now() ? "#fff5f5" : "#fff",
+  background:
+    date && new Date(date).getTime() < Date.now() ? "#fff5f5" : "#fff",
 }) as const;
+
+const big = {
+  fontSize: 26,
+  color: "#0070f3",
+} as const;
 
 const badgeRed = {
   background: "#ff4d4f",
