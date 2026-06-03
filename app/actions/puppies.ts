@@ -14,7 +14,7 @@ export async function createPuppy(input: {
   collarColor?: string;
   birthWeight?: number;
   price?: number;
-}) {
+}): Promise<void> {
   const supabase = await createClient();
 
   const {
@@ -23,33 +23,27 @@ export async function createPuppy(input: {
 
   if (!user) throw new Error("Unauthorized");
 
-  const { data, error } = await supabase
-    .from("puppies")
-    .insert({
-      user_id: user.id,
-      litter_id: input.litterId,
-      name: input.name,
-      sex: input.sex,
-      color: input.color ?? null,
-      collar_color: input.collarColor ?? null,
-      birth_weight: input.birthWeight ?? null,
-      price: input.price ?? null,
-      status: "available",
-    })
-    .select()
-    .single();
+  const { error } = await supabase.from("puppies").insert({
+    user_id: user.id,
+    litter_id: input.litterId,
+    name: input.name,
+    sex: input.sex,
+    color: input.color ?? null,
+    collar_color: input.collarColor ?? null,
+    birth_weight: input.birthWeight ?? null,
+    price: input.price ?? null,
+    status: "available",
+  });
 
   if (error) throw new Error(error.message);
 
   revalidatePath("/protected/puppies");
-
-  return data;
 }
 
 /**
- * DELETE PUPPY (FIXED — BUILD SAFE)
+ * DELETE PUPPY (SERVER ACTION SAFE)
  */
-export async function deletePuppy(formData: FormData) {
+export async function deletePuppy(formData: FormData): Promise<void> {
   const id = formData.get("puppyId") as string;
 
   if (!id) throw new Error("Missing puppyId");
@@ -70,6 +64,4 @@ export async function deletePuppy(formData: FormData) {
   if (error) throw new Error(error.message);
 
   revalidatePath("/protected/puppies");
-
-  return { success: true };
 }
