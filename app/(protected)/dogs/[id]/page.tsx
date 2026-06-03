@@ -1,179 +1,290 @@
 "use client";
 
-import { useEffect, useState, ChangeEvent } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
+import Image from "next/image";
 
-type Dog = {
-  id: string;
-  name: string;
-  sex: "male" | "female";
-  status: "active" | "deceased";
-};
-
-type DogImage = {
+interface Photo {
   id: string;
   image_url: string;
-};
+}
 
-export default function DogProfilePage({ params }: { params: { id: string } }) {
-  const [dog, setDog] = useState<Dog | null>(null);
-  const [images, setImages] = useState<DogImage[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState(false);
-
+export default function DogProfilePage() {
+  const params = useParams();
   const router = useRouter();
-  const dogId = params.id;
+
+  const dogId = Array.isArray(params.id) ? params.id[0] : params.id;
+
+  const [dog, setDog] = useState<any>(null);
+  const [latestPhotos, setLatestPhotos] = useState<Photo[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    loadDog();
-    loadImages();
+    async function loadDogProfile() {
+      if (!dogId) return;
+
+      try {
+        // 1. Auth user
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
+        if (!user) {
+          setErrorMsg("You must be logged in to view this profile.");
+          setLoading(false);
+          return;
+        }
+
+        // 2. Dog fetch (secure)
+        const { data: dogData, error: dogError } = await supabase
+          .from("dogs")
+          .select("*")
+          .eq("id", dogId)
+          .eq("user_id", user.id)
+          .single();
+
+        if (dogError || !dogData) {
+          setErrorMsg("Dog profile not found or access denied.");
+          setLoading(false);
+          return;
+        }
+
+        setDog(dogData);
+
+        // 3. Latest photos (preview)
+        const { data: photosData } = await supabase
+          .from("dog_photos")
+          .select("id, image_url")
+          .eq("dog_id", dogId)
+          .order("created_at", { ascending: false })
+          .limit(3);
+
+        if (photosData) {
+          setLatestPhotos(photosData);
+        }
+      } catch (err) {
+        console.error("Error loading profile:", err);
+        setErrorMsg("Something went wrong.");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadDogProfile();
   }, [dogId]);
-
-  async function loadDog() {
-    const { data, error } = await supabase
-      .from("dogs")
-      .select("*")
-      .eq("id", dogId)
-      .maybeSingle();
-
-    if (error || !data) {
-      alert("Kutya nem található 🐶");
-      router.push("/");
-      return;
-    }
-
-    setDog(data);
-  }
-
-  async function loadImages() {
-    const { data } = await supabase
-      .from("dog_images")
-      .select("*")
-      .eq("dog_id", dogId)
-      .order("created_at", { ascending: false });
-
-    setImages(data || []);
-    setLoading(false);
-  }
-
-  async function handleUpload(e: ChangeEvent<HTMLInputElement>) {
-    try {
-      const file = e.target.files?.[0];
-      if (!file) return;
-
-      setUploading(true);
-
-      const fileName = `${dogId}/${Date.now()}-${file.name}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from("dog-images")
-        .upload(fileName, file);
-
-      if (uploadError) throw uploadError;
-
-      const { data } = supabase.storage
-        .from("dog-images")
-        .getPublicUrl(fileName);
-
-      const { error: dbError } = await supabase
-        .from("dog_images")
-        .insert({
-          dog_id: dogId,
-          image_url: data.publicUrl,
-        });
-
-      if (dbError) throw dbError;
-
-      await loadImages();
-      e.target.value = "";
-    } catch (error: any) {
-      alert("Hiba: " + error.message);
-    } finally {
-      setUploading(false);
-    }
-  }
 
   if (loading) {
     return (
-      <div style={{ padding: 20, textAlign: "center" }}>
-        <h3>Betöltés...</h3>
+      <div
+        style={{
+          padding: 40,
+          fontFamily: "sans-serif",
+          textAlign: "center",
+          color: "#666",
+        }}
+      >
+        Loading secure profile...
       </div>
     );
   }
 
-  if (!dog) return null;
-
-  return (
-    <div style={{ padding: 20, maxWidth: 700, margin: "0 auto", fontFamily: "sans-serif" }}>
-      
-      <button onClick={() => router.push("/")} style={{ marginBottom: 20 }}>
-        ⬅️ Vissza
-      </button>
-
-      <h1>🐕 {dog.name}</h1>
-
-      <p>
-        <b>Nem:</b> {dog.sex === "male" ? "Kan" : "Szuka"}
-      </p>
-
-      <p>
-        {dog.status === "active" ? (
-          <span style={{ color: "green", fontWeight: "bold" }}>🟢 Él</span>
-        ) : (
-          <span style={{ color: "gray", fontWeight: "bold" }}>⚫ Elhunyt</span>
-        )}
-      </p>
-
-      <button
-        onClick={() => router.push(`/dogs/${dog.id}/edit`)}
-        style={{
-          padding: "10px 14px",
-          background: "#0070f3",
-          color: "white",
-          border: "none",
-          cursor: "pointer",
-          marginTop: 10,
-        }}
-      >
-        ✏️ Szerkesztés
-      </button>
-
-      <hr style={{ margin: "20px 0" }} />
-
-      <h2>📸 Galéria</h2>
-
-      <input
-        type="file"
-        accept="image/*"
-        disabled={uploading}
-        onChange={handleUpload}
-      />
-
-      {uploading && <p>Feltöltés...</p>}
-
+  if (errorMsg) {
+    return (
       <div
         style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(3, 1fr)",
-          gap: 10,
-          marginTop: 20,
+          maxWidth: 500,
+          margin: "60px auto",
+          padding: 20,
+          textAlign: "center",
+          fontFamily: "sans-serif",
         }}
       >
-        {images.map((img) => (
-          <img
-            key={img.id}
-            src={img.image_url}
-            style={{
-              width: "100%",
-              height: 120,
-              objectFit: "cover",
-              borderRadius: 8,
-            }}
-          />
-        ))}
+        <h2 style={{ color: "#ff4d4f" }}>⚠️ Access Error</h2>
+        <p style={{ color: "#666", marginTop: 10 }}>{errorMsg}</p>
+
+        <button
+          onClick={() => router.push("/")}
+          style={{
+            marginTop: 20,
+            padding: "10px 20px",
+            background: "#0070f3",
+            color: "white",
+            border: "none",
+            borderRadius: 6,
+            cursor: "pointer",
+          }}
+        >
+          Back to Dashboard
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      style={{
+        maxWidth: 700,
+        margin: "40px auto",
+        padding: 20,
+        fontFamily: "sans-serif",
+      }}
+    >
+      {/* NAV */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          marginBottom: 30,
+        }}
+      >
+        <button
+          onClick={() => router.push("/")}
+          style={{
+            background: "none",
+            border: "none",
+            color: "#0070f3",
+            cursor: "pointer",
+            fontWeight: "bold",
+          }}
+        >
+          ← Dashboard
+        </button>
+
+        <button
+          onClick={() => router.push(`/dogs/${dogId}/edit`)}
+          style={{
+            padding: "8px 16px",
+            background: "#f0f0f0",
+            border: "1px solid #ccc",
+            borderRadius: 6,
+            cursor: "pointer",
+            fontWeight: "bold",
+          }}
+        >
+          ⚙️ Edit Details
+        </button>
       </div>
 
+      {/* DOG CARD */}
+      <div
+        style={{
+          background: "#fff",
+          border: "1px solid #e1e4e8",
+          borderRadius: 12,
+          padding: 30,
+          boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
+          marginBottom: 30,
+        }}
+      >
+        <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+          <span style={{ fontSize: 40 }}>🐶</span>
+
+          <div>
+            <h1 style={{ margin: 0, fontSize: 28 }}>
+              {dog?.name ?? "Unknown Dog"}
+            </h1>
+
+            <p style={{ margin: "4px 0 0 0", color: "#666" }}>
+              Gender:{" "}
+              <strong>
+                {dog?.sex
+                  ? dog.sex === "female"
+                    ? "Female (Szuka)"
+                    : "Male (Kan)"
+                  : "Unknown"}
+              </strong>
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* GALLERY PREVIEW */}
+      <div
+        style={{
+          background: "#fff",
+          border: "1px solid #e1e4e8",
+          borderRadius: 12,
+          padding: 30,
+          boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            marginBottom: 20,
+            alignItems: "center",
+          }}
+        >
+          <h3 style={{ margin: 0 }}>📸 Recent Photos</h3>
+
+          <button
+            onClick={() => router.push(`/dogs/${dogId}/gallery`)}
+            style={{
+              padding: "8px 14px",
+              background: "#0070f3",
+              color: "white",
+              border: "none",
+              borderRadius: 6,
+              cursor: "pointer",
+              fontWeight: "bold",
+              fontSize: 13,
+            }}
+          >
+            Open Photo Gallery →
+          </button>
+        </div>
+
+        {/* EMPTY STATE */}
+        {latestPhotos.length === 0 ? (
+          <div
+            style={{
+              padding: "30px 0",
+              textAlign: "center",
+              color: "#999",
+              border: "1px dashed #eee",
+              borderRadius: 8,
+            }}
+          >
+            No photos uploaded yet for {dog?.name}. Add some in the gallery.
+          </div>
+        ) : (
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(3, 1fr)",
+              gap: 12,
+            }}
+          >
+            {latestPhotos.map((photo) => (
+              <div
+                key={photo.id}
+                style={{
+                  height: 120,
+                  borderRadius: 8,
+                  overflow: "hidden",
+                  border: "1px solid #eee",
+                  position: "relative",
+                }}
+              >
+                <Image
+                  src={photo.image_url}
+                  alt="Dog preview"
+                  width={300}
+                  height={120}
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover",
+                  }}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
