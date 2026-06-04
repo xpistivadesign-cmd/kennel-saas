@@ -8,50 +8,22 @@ interface ContractPageProps {
   }>;
 }
 
-interface BuyerData {
-  name: string | null;
-  phone: string | null;
-  address: string | null;
-}
-
-interface ProfileData {
-  full_name?: string | null;
-  name?: string | null;
-  kennel_name?: string | null;
-  kennelName?: string | null;
-  address?: string | null;
-}
-
 export default async function PuppyContractPage({
   params,
 }: ContractPageProps) {
   const { puppyId } = await params;
-
   const supabase = await createClient();
 
-  // Kiskutya
+  // 1. PUPPY
   const { data: puppy, error } = await supabase
     .from("puppies")
-    .select(
-      `
-      id,
-      name,
-      sex,
-      color,
-      sale_price,
-      buyer_id,
-      litter_id,
-      user_id
-    `
-    )
+    .select("id, name, sex, color, sale_price, buyer_id, litter_id, user_id")
     .eq("id", puppyId)
     .single();
 
-  if (error || !puppy) {
-    return notFound();
-  }
+  if (error || !puppy) return notFound();
 
-  // Vevő
+  // 2. BUYER
   const { data: buyer } = puppy.buyer_id
     ? await supabase
         .from("buyers")
@@ -60,52 +32,52 @@ export default async function PuppyContractPage({
         .single()
     : { data: null };
 
-  // Tenyésztő profil
+  // 3. BREEDER
   const { data: breeder } = await supabase
     .from("profiles")
     .select("*")
     .eq("id", puppy.user_id)
     .single();
 
-  const typedBuyer = buyer as BuyerData | null;
-  const typedBreeder = breeder as ProfileData | null;
-
-  const formattedBuyer = typedBuyer
+  // 4. NORMALIZÁLÁS (EZ OLDJA MEG A BUILD HIBÁT)
+  const formattedBuyer = buyer
     ? {
-        full_name: typedBuyer.name ?? null,
-        phone: typedBuyer.phone ?? null,
-        address: typedBuyer.address ?? null,
+        full_name: buyer.name ?? undefined,
+        phone: buyer.phone ?? undefined,
+        address: buyer.address ?? undefined,
       }
     : null;
 
-  const formattedBreeder = typedBreeder
+  const formattedBreeder = breeder
     ? {
         full_name:
-          typedBreeder.full_name ??
-          typedBreeder.name ??
-          null,
-
+          (breeder as any).full_name ??
+          (breeder as any).name ??
+          undefined,
         kennel_name:
-          typedBreeder.kennel_name ??
-          typedBreeder.kennelName ??
-          null,
-
-        address:
-          typedBreeder.address ??
-          null,
+          (breeder as any).kennel_name ??
+          (breeder as any).kennelName ??
+          undefined,
+        address: (breeder as any).address ?? undefined,
       }
     : null;
 
-  // Felesleges DB lekérdezés helyett
   const litter = puppy.litter_id
     ? {
         id: puppy.litter_id,
+        created_at: undefined,
       }
     : null;
 
   return (
     <ContractClient
-      puppy={puppy}
+      puppy={{
+        id: puppy.id,
+        name: puppy.name ?? "",
+        sex: puppy.sex ?? "",
+        color: puppy.color ?? "",
+        sale_price: puppy.sale_price,
+      }}
       buyer={formattedBuyer}
       breeder={formattedBreeder}
       litter={litter}
