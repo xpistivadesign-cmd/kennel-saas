@@ -1,5 +1,3 @@
-// 🧬 TypeScript Stub a PedigreeTree komponensnek
-
 export interface Dog {
   id?: string;
   name: string;
