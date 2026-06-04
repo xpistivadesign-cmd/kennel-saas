@@ -1,7 +1,11 @@
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 
-export function createServerSupabase() {
+/**
+ * 🔥 Backward compatible alias:
+ * régi kódok ezt várják: createClient
+ */
+export function createClient() {
   const cookieStore = cookies();
 
   return createServerClient(
@@ -13,11 +17,22 @@ export function createServerSupabase() {
           return cookieStore.getAll();
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            cookieStore.set(name, value, options);
-          });
+          try {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options);
+            });
+          } catch {
+            // server component safety fallback
+          }
         },
       },
     }
   );
+}
+
+/**
+ * ✅ új standard név
+ */
+export function createServerSupabase() {
+  return createClient();
 }
