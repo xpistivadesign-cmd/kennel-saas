@@ -1,154 +1,124 @@
 "use client";
 
-import { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 
-type Heat = {
+interface ProgesteroneTest {
   id: string;
-  dog_id: string;
+  test_date: string;
+  value: number; // mindig NG/ML az adatbázisban
+}
+
+interface HeatRecord {
+  id: string;
   start_date: string;
   end_date: string | null;
-  progesterone_tests: {
-    id: string;
-    test_date: string;
-    value: number;
-  }[];
-};
+  dog_id: string;
+  progesterone_tests?: ProgesteroneTest[];
+}
 
-type Props = {
-  heats: Heat[];
-};
+export default function AnalyticsClient({ heats }: { heats: HeatRecord[] }) {
+  const [unit, setUnit] = useState<"ngml" | "nmol">("ngml");
 
-export default function AnalyticsClient({ heats }: Props) {
-  // 📊 flatten all tests
-  const allTests = useMemo(() => {
-    return heats.flatMap((h) => h.progesterone_tests ?? []);
+  const CONV = 3.18;
+
+  const format = (v: number) => {
+    if (unit === "nmol") return `${(v * CONV).toFixed(2)} nmol/L`;
+    return `${v.toFixed(1)} ng/ml`;
+  };
+
+  const processed = useMemo(() => {
+    return (heats || []).map((h) => {
+      const tests = (h.progesterone_tests || [])
+        .slice()
+        .sort(
+          (a, b) =>
+            new Date(a.test_date).getTime() -
+            new Date(b.test_date).getTime()
+        );
+
+      const values = tests.map((t) => t.value);
+      const peak = values.length ? Math.max(...values) : 0;
+      const last = values.length ? values[values.length - 1] : 0;
+
+      let status = "Nincs adat";
+      let color = "text-gray-500";
+
+      if (last >= 5 && last <= 8) {
+        status = "OPTIMÁLIS ABLAK";
+        color = "text-green-600";
+      } else if (last > 8) {
+        status = "Ovuláció után";
+        color = "text-purple-600";
+      } else if (last >= 2) {
+        status = "Közelgő csúcs";
+        color = "text-amber-600";
+      }
+
+      return { ...h, tests, peak, last, status, color };
+    });
   }, [heats]);
-
-  // 📈 stats
-  const stats = useMemo(() => {
-    if (!allTests.length) {
-      return {
-        avg: 0,
-        max: 0,
-        last: null as number | null,
-      };
-    }
-
-    const values = allTests.map((t) => t.value);
-
-    return {
-      avg: values.reduce((a, b) => a + b, 0) / values.length,
-      max: Math.max(...values),
-      last: values[values.length - 1],
-    };
-  }, [allTests]);
-
-  // 🎯 ovulation window detection
-  const optimalTests = allTests.filter(
-    (t) => t.value >= 5 && t.value <= 8
-  );
 
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-6">
-      <h1 className="text-2xl font-bold">
-        🧬 Breeding Analytics Dashboard
-      </h1>
 
-      {/* KPI CARDS */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white border rounded-lg p-4 shadow">
-          <p className="text-xs text-gray-400 uppercase">Átlag szint</p>
-          <p className="text-2xl font-bold">
-            {stats.avg.toFixed(2)} ng/ml
+      {/* HEADER */}
+      <div className="flex justify-between items-center bg-white p-4 rounded-xl border shadow-sm">
+        <div>
+          <h1 className="text-xl font-bold">🧬 Analytics Dashboard</h1>
+          <p className="text-xs text-gray-500">
+            Progeszteron + ovulációs predikció
           </p>
         </div>
 
-        <div className="bg-white border rounded-lg p-4 shadow">
-          <p className="text-xs text-gray-400 uppercase">Peak érték</p>
-          <p className="text-2xl font-bold text-pink-600">
-            {stats.max.toFixed(2)} ng/ml
-          </p>
-        </div>
-
-        <div className="bg-white border rounded-lg p-4 shadow">
-          <p className="text-xs text-gray-400 uppercase">Utolsó mérés</p>
-          <p className="text-2xl font-bold">
-            {stats.last ? `${stats.last} ng/ml` : "—"}
-          </p>
+        <div className="flex gap-2 bg-gray-100 p-1 rounded-lg">
+          <button
+            onClick={() => setUnit("ngml")}
+            className={`px-3 py-1 text-xs rounded ${
+              unit === "ngml" ? "bg-white shadow" : ""
+            }`}
+          >
+            ng/ml
+          </button>
+          <button
+            onClick={() => setUnit("nmol")}
+            className={`px-3 py-1 text-xs rounded ${
+              unit === "nmol" ? "bg-white shadow" : ""
+            }`}
+          >
+            nmol/L
+          </button>
         </div>
       </div>
 
-      {/* OPTIMAL WINDOW */}
-      <div className="bg-white border rounded-lg p-5 shadow">
-        <h2 className="font-bold text-sm uppercase text-gray-500 mb-3">
-          🎯 Optimális fedeztetési ablak (5–8 ng/ml)
-        </h2>
+      {/* CARDS */}
+      <div className="grid md:grid-cols-2 gap-4">
+        {processed.map((h) => (
+          <div
+            key={h.id}
+            className="bg-white border rounded-xl p-5 space-y-3"
+          >
+            <div className="flex justify-between text-xs text-gray-500">
+              <span>{h.dog_id.slice(0, 8)}</span>
+              <span>{h.status}</span>
+            </div>
 
-        {optimalTests.length === 0 ? (
-          <p className="text-sm text-gray-400 italic">
-            Jelenleg nincs optimális ciklus adat.
-          </p>
-        ) : (
-          <div className="space-y-2">
-            {optimalTests.map((t) => (
-              <div
-                key={t.id}
-                className="flex justify-between text-sm border-b pb-1"
-              >
-                <span className="text-gray-600">
-                  {new Date(t.test_date).toLocaleDateString("hu-HU")}
-                </span>
-                <span className="font-bold text-green-600">
-                  {t.value} ng/ml ✔
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* HEAT OVERVIEW */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {heats.map((heat) => {
-          const tests = heat.progesterone_tests ?? [];
-
-          const peak = tests.length
-            ? Math.max(...tests.map((t) => t.value))
-            : 0;
-
-          return (
-            <div
-              key={heat.id}
-              className="bg-white border rounded-lg p-5 shadow"
-            >
-              <div className="flex justify-between mb-2">
-                <span className="text-xs text-gray-400">
-                  Kutya: {heat.dog_id}
-                </span>
-
-                <span className="text-xs px-2 py-0.5 bg-gray-100 rounded">
-                  {heat.end_date ? "Lezárult" : "Aktív"}
-                </span>
-              </div>
-
-              <p className="text-sm text-gray-700">
-                📅{" "}
-                {new Date(heat.start_date).toLocaleDateString("hu-HU")}
+            <div className="text-sm space-y-1">
+              <p>
+                🔥 Peak: <b>{format(h.peak)}</b>
               </p>
-
-              <p className="text-sm mt-1">
-                🔥 Peak:{" "}
-                <span className="font-bold text-pink-600">
-                  {peak} ng/ml
-                </span>
+              <p>
+                📊 Last: <b>{format(h.last)}</b>
               </p>
-
-              <p className="text-xs text-gray-400 mt-1">
-                Mérési pontok: {tests.length}
+              <p className="text-xs text-gray-400">
+                Tests: {h.tests.length}
               </p>
             </div>
-          );
-        })}
+
+            <div className={`text-xs font-bold ${h.color}`}>
+              {h.status}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

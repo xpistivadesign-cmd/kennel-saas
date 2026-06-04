@@ -1,5 +1,5 @@
 import { createClient } from "@/utils/supabase/server";
-import AnalyticsClient from "./AnalyticsClient";
+import AnalyticsClient from "../analytics/AnalyticsClient";
 
 export default async function HeatsPage() {
   const supabase = await createClient();
@@ -22,10 +22,10 @@ export default async function HeatsPage() {
   if (error) {
     return (
       <div className="p-6 text-red-500">
-        Hiba történt az adatok betöltésekor
+        Error loading data
       </div>
     );
   }
 
-  return <AnalyticsClient heats={heats ?? []} />;
+  return <AnalyticsClient heats={heats || []} />;
 }

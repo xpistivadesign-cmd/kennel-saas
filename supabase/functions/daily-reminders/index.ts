@@ -1,71 +1,27 @@
-import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { serve } from "https://deno.land/std/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js";
 
-type PregnancyRow = {
-  user_id: string;
-  female_dog_name: string;
-  ultrasound_date: string;
-  xray_date: string;
-  expected_whelping_date: string;
-};
+serve(async () => {
+  const supabase = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+  );
 
-const supabase = createClient(
-  Deno.env.get("SUPABASE_URL")!,
-  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-);
+  const { data: tests } = await supabase
+    .from("progesterone_tests")
+    .select("value, heat_id");
 
-Deno.serve(async () => {
-  try {
-    const { data, error } = await supabase
-      .from("pregnancy_timeline_view")
-      .select("*");
+  const alerts =
+    tests?.filter(t => t.value >= 5 && t.value <= 8) ?? [];
 
-    if (error) {
-      return new Response(JSON.stringify({ error: error.message }), {
-        status: 500,
-      });
+  return new Response(
+    JSON.stringify({
+      status: "OK",
+      optimal_zone_hits: alerts.length,
+      alerts,
+    }),
+    {
+      headers: { "Content-Type": "application/json" }
     }
-
-    const today = new Date().toISOString().split("T")[0];
-
-    const grouped: Record<string, PregnancyRow[]> = {};
-    let totalAlerts = 0;
-
-    const rows = (data ?? []) as PregnancyRow[];
-
-    for (const row of rows) {
-      const isUrgent =
-        row.ultrasound_date === today ||
-        row.xray_date === today ||
-        row.expected_whelping_date === today;
-
-      if (!isUrgent) continue;
-
-      if (!grouped[row.user_id]) {
-        grouped[row.user_id] = [];
-      }
-
-      grouped[row.user_id].push(row);
-      totalAlerts++;
-    }
-
-    return new Response(
-      JSON.stringify({
-        ok: true,
-        processed_date: today,
-        triggered_users: Object.keys(grouped).length,
-        total_alerts: totalAlerts,
-        grouped,
-      }),
-      { headers: { "Content-Type": "application/json" } }
-    );
-  } catch (err) {
-    return new Response(
-      JSON.stringify({
-        error: "fatal error",
-        detail: err instanceof Error ? err.message : String(err),
-      }),
-      { status: 500 }
-    );
-  }
+  );
 });
