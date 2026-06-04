@@ -1,4 +1,4 @@
-import { createClient } from "./client";
+import { supabase } from "./client";
 
 export interface Dog {
   id?: string;
@@ -12,43 +12,15 @@ export interface Dog {
   dam_id?: string;
 }
 
-// 💾 SAVE (INSERT / UPDATE)
-export async function saveDog(dogData: Dog) {
-  const supabase = createClient();
-
-  if (dogData.id) {
-    const { data, error } = await supabase
-      .from("dogs")
-      .update(dogData)
-      .eq("id", dogData.id)
-      .select()
-      .single();
-
-    if (error) {
-      return { success: false, data: null, error: error.message };
-    }
-
-    return { success: true, data, error: null };
+export async function saveDog(dog: Dog) {
+  if (dog.id) {
+    return supabase.from("dogs").update(dog).eq("id", dog.id);
   }
 
-  const { data, error } = await supabase
-    .from("dogs")
-    .insert([dogData])
-    .select()
-    .single();
-
-  if (error) {
-    return { success: false, data: null, error: error.message };
-  }
-
-  return { success: true, data, error: null };
+  return supabase.from("dogs").insert([dog]);
 }
 
-// 🗑 DELETE
 export async function deleteDog(id: string) {
-  const supabase = createClient();
-
   const { error } = await supabase.from("dogs").delete().eq("id", id);
-
   return !error;
 }
