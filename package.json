@@ -11,16 +11,18 @@
     "next": "16.2.7",
     "react": "18.2.0",
     "react-dom": "18.2.0",
-
     "@supabase/supabase-js": "^2.45.0",
     "@supabase/ssr": "^0.5.1",
-
     "stripe": "^14.0.0"
   },
   "devDependencies": {
     "tailwindcss": "^3.4.0",
     "postcss": "^8.4.38",
     "autoprefixer": "^10.4.19",
-    "@tailwindcss/postcss": "^4.0.0"
+    "@tailwindcss/postcss": "^4.0.0",
+    "@types/node": "^20.11.0",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "typescript": "^5.3.3"
   }
 }
