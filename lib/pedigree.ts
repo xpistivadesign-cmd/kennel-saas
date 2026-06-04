@@ -1,12 +1,30 @@
-export function buildLineageTree(dog: any, depth = 0) {
+type Dog = {
+  id: string;
+  name: string;
+  parents?: Dog[];
+};
+
+type LineageNode = {
+  id: string;
+  name: string;
+  depth: number;
+  parents?: LineageNode[] | null;
+};
+
+export function buildLineageTree(
+  dog: Dog | null,
+  depth: number = 0
+): LineageNode | null {
   if (!dog || depth > 3) return null;
 
   return {
     id: dog.id,
     name: dog.name,
-    children: [
-      buildLineageTree(dog.father, depth + 1),
-      buildLineageTree(dog.mother, depth + 1),
-    ].filter(Boolean),
+    depth,
+    parents: dog.parents
+      ? dog.parents
+          .map((parent) => buildLineageTree(parent, depth + 1))
+          .filter(Boolean) as LineageNode[]
+      : null,
   };
 }
