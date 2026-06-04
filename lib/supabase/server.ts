@@ -1,11 +1,7 @@
-import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
 
-/**
- * 🔥 Backward compatible alias:
- * régi kódok ezt várják: createClient
- */
-export function createClient() {
+export function createServerSupabase() {
   const cookieStore = cookies();
 
   return createServerClient(
@@ -14,15 +10,16 @@ export function createClient() {
     {
       cookies: {
         getAll() {
+          // Next 16: cookieStore is NOT async
           return cookieStore.getAll();
         },
         setAll(cookiesToSet) {
           try {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              cookieStore.set(name, value, options);
-            });
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            );
           } catch {
-            // server component safety fallback
+            // server components may be read-only
           }
         },
       },
@@ -30,9 +27,5 @@ export function createClient() {
   );
 }
 
-/**
- * ✅ új standard név
- */
-export function createServerSupabase() {
-  return createClient();
-}
+// 🔥 COMPAT LAYER (EZ OLD MEG TÖBB FÁJLT)
+export const createClient = createServerSupabase;
