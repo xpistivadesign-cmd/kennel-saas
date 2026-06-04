@@ -4,26 +4,20 @@ export interface Dog {
   id?: string;
   name: string;
   breed?: string;
-  created_at?: string;
+  age?: number;
 }
 
 const supabase = createClient();
 
-/**
- * Client-side CRUD helpers
- */
-
-export async function getDogsClient(): Promise<Dog[]> {
+export async function saveDog(dog: Dog) {
   const { data, error } = await supabase
     .from("dogs")
-    .select("*");
+    .insert(dog)
+    .select()
+    .single();
 
-  if (error) {
-    console.error("getDogsClient error:", error.message);
-    return [];
-  }
-
-  return (data as Dog[]) ?? [];
+  if (error) throw error;
+  return data;
 }
 
 export async function deleteDog(id: string) {
@@ -32,8 +26,6 @@ export async function deleteDog(id: string) {
     .delete()
     .eq("id", id);
 
-  if (error) {
-    console.error("deleteDog error:", error.message);
-    throw error;
-  }
+  if (error) throw error;
+  return true;
 }
