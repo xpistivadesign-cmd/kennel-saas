@@ -18,7 +18,7 @@ export function createClient() {
               cookieStore.set(name, value, options)
             );
           } catch {
-            // Server Component context limitation
+            // server context limitation (OK)
           }
         },
       },
