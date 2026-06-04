@@ -2,96 +2,112 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import ContractClient from "./ContractClient";
 
-interface PageProps {
-  params: {
+interface ContractPageProps {
+  params: Promise<{
     puppyId: string;
-  };
+  }>;
 }
 
-export default async function ContractPage({
+interface BuyerData {
+  name: string | null;
+  phone: string | null;
+  address: string | null;
+}
+
+interface ProfileData {
+  full_name?: string | null;
+  name?: string | null;
+  kennel_name?: string | null;
+  kennelName?: string | null;
+  address?: string | null;
+}
+
+export default async function PuppyContractPage({
   params,
-}: PageProps) {
-  const supabase = createClient();
+}: ContractPageProps) {
+  const { puppyId } = await params;
 
-  // Bejelentkezett felhasználó
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const supabase = await createClient();
 
-  if (!user) {
-    return notFound();
-  }
-
-  // Kiskutya lekérése
-  const { data: puppy, error: puppyError } = await supabase
+  // Kiskutya
+  const { data: puppy, error } = await supabase
     .from("puppies")
-    .select(`
+    .select(
+      `
       id,
       name,
       sex,
       color,
       sale_price,
       buyer_id,
-      litter_id
-    `)
-    .eq("id", params.puppyId)
+      litter_id,
+      user_id
+    `
+    )
+    .eq("id", puppyId)
     .single();
 
-  if (puppyError || !puppy) {
+  if (error || !puppy) {
     return notFound();
   }
 
-  // Vevő adatai
-  let buyer = null;
+  // Vevő
+  const { data: buyer } = puppy.buyer_id
+    ? await supabase
+        .from("buyers")
+        .select("name, phone, address")
+        .eq("id", puppy.buyer_id)
+        .single()
+    : { data: null };
 
-  if (puppy.buyer_id) {
-    const { data } = await supabase
-      .from("buyers")
-      .select(`
-        full_name,
-        phone,
-        address
-      `)
-      .eq("id", puppy.buyer_id)
-      .single();
-
-    buyer = data;
-  }
-
-  // Tenyésztő adatai (FONTOS: user szűrés!)
+  // Tenyésztő profil
   const { data: breeder } = await supabase
     .from("profiles")
-    .select(`
-      kennel_name,
-      full_name,
-      address
-    `)
-    .eq("id", user.id)
+    .select("*")
+    .eq("id", puppy.user_id)
     .single();
 
-  // Litters tábla
-  // Nem kérünk litter_letter mezőt,
-  // mert a sémád alapján nem létezik.
-  let litter = null;
+  const typedBuyer = buyer as BuyerData | null;
+  const typedBreeder = breeder as ProfileData | null;
 
-  if (puppy.litter_id) {
-    const { data } = await supabase
-      .from("litters")
-      .select(`
-        id,
-        created_at
-      `)
-      .eq("id", puppy.litter_id)
-      .single();
+  const formattedBuyer = typedBuyer
+    ? {
+        full_name: typedBuyer.name ?? null,
+        phone: typedBuyer.phone ?? null,
+        address: typedBuyer.address ?? null,
+      }
+    : null;
 
-    litter = data;
-  }
+  const formattedBreeder = typedBreeder
+    ? {
+        full_name:
+          typedBreeder.full_name ??
+          typedBreeder.name ??
+          null,
+
+        kennel_name:
+          typedBreeder.kennel_name ??
+          typedBreeder.kennelName ??
+          null,
+
+        address:
+          typedBreeder.address ??
+          null,
+      }
+    : null;
+
+  // Felesleges DB lekérdezés helyett
+  const litter = puppy.litter_id
+    ? {
+        id: puppy.litter_id,
+      }
+    : null;
 
   return (
     <ContractClient
       puppy={puppy}
-      buyer={buyer}
-      breeder={breeder}
+      buyer={formattedBuyer}
+      breeder={formattedBreeder}
       litter={litter}
     />
   );
