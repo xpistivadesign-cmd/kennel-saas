@@ -1,40 +1,14 @@
-import { createClient } from "@/utils/supabase/server";
-import DogProfileClient from "./ui/DogProfileClient";
+import { getPedigreeTree } from "@/lib/supabase/pedigree.server";
+import PedigreeTree from "../components/PedigreeTree";
 
-export default async function DogProfilePage({
+export default async function DogPage({
   params,
 }: {
   params: { id: string };
 }) {
-  const supabase = await createClient();
+  const tree = await getPedigreeTree(params.id);
 
-  const { data: dog } = await supabase
-    .from("dogs")
-    .select("*")
-    .eq("id", params.id)
-    .single();
+  if (!tree) return <div>Nincs adat</div>;
 
-  const { data: heats } = await supabase
-    .from("heats")
-    .select("*")
-    .eq("dog_id", params.id);
-
-  const { data: payments } = await supabase
-    .from("payments")
-    .select("*")
-    .eq("dog_id", params.id);
-
-  const { data: health } = await supabase
-    .from("health_tests")
-    .select("*")
-    .eq("dog_id", params.id);
-
-  return (
-    <DogProfileClient
-      dog={dog}
-      heats={heats || []}
-      payments={payments || []}
-      health={health || []}
-    />
-  );
+  return <PedigreeTree root={tree} />;
 }
