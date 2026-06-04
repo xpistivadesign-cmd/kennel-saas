@@ -5,51 +5,84 @@ export default async function ContractPage({
 }: {
   params: { puppyId: string };
 }) {
-  const contract = await generatePuppyContract(
-    params.puppyId
-  );
+  const contract = await generatePuppyContract(params.puppyId);
 
   if (!contract) {
     return (
-      <div className="p-6 text-gray-500">
-        Nincs szerződés adat.
+      <div className="p-6 text-red-500">
+        Nem található szerződés adat.
       </div>
     );
   }
 
   return (
-    <div className="max-w-3xl mx-auto p-6 bg-white border rounded-xl space-y-4">
-      <h1 className="text-2xl font-bold">
-        Kiskutya Adásvételi Szerződés
-      </h1>
+    <div className="bg-white min-h-screen p-10 print:p-0 print:m-0">
+      {/* PRINT BUTTON */}
+      <div className="no-print flex justify-end mb-6">
+        <button
+          onClick={() => window.print()}
+          className="bg-black text-white px-4 py-2 rounded"
+        >
+          Nyomtatás
+        </button>
+      </div>
 
-      <p>Kiskutya: {contract.puppyName}</p>
-      <p>Alom: {contract.litter}</p>
+      {/* CONTRACT */}
+      <div className="max-w-3xl mx-auto border p-10 print:border-none print:p-0">
+        <h1 className="text-2xl font-bold text-center mb-8">
+          KISKUTYA ADÁSVÉTELI SZERZŐDÉS
+        </h1>
 
-      <hr />
+        <div className="space-y-4 text-sm leading-6">
+          <p><b>Kutya neve:</b> {contract.puppyName}</p>
+          <p><b>Alom:</b> {contract.litter}</p>
 
-      <p>Vevő: {contract.buyerName}</p>
-      <p>Telefon: {contract.buyerPhone}</p>
+          <hr />
 
-      <hr />
+          <p><b>Vevő neve:</b> {contract.buyerName}</p>
+          <p><b>Telefonszám:</b> {contract.buyerPhone}</p>
+          <p><b>Cím:</b> {contract.buyerAddress}</p>
 
-      <p>Ár: {contract.price} €</p>
-      <p>Foglaló: {contract.deposit} €</p>
-      <p>
-        Hátralék:{" "}
-        <b>{contract.remaining} €</b>
-      </p>
+          <hr />
 
-      <p className="text-sm text-gray-500">
-        Dátum: {contract.date}
-      </p>
+          <p><b>Vételár:</b> {contract.price} €</p>
+          <p><b>Foglaló:</b> {contract.deposit} €</p>
+          <p>
+            <b>Hátralék:</b> {contract.remaining} €
+          </p>
 
-      <button
-        onClick={() => window.print()}
-        className="mt-4 bg-emerald-600 text-white px-4 py-2 rounded"
-      >
-        Nyomtatás
-      </button>
+          <hr />
+
+          <p className="text-right text-gray-500">
+            Dátum: {contract.date}
+          </p>
+        </div>
+
+        {/* SIGNATURE AREA */}
+        <div className="mt-16 grid grid-cols-2 gap-10 text-sm">
+          <div>
+            _______________________<br />
+            Eladó aláírása
+          </div>
+
+          <div>
+            _______________________<br />
+            Vevő aláírása
+          </div>
+        </div>
+      </div>
+
+      {/* PRINT STYLES */}
+      <style jsx global>{`
+        @media print {
+          .no-print {
+            display: none;
+          }
+          body {
+            background: white;
+          }
+        }
+      `}</style>
     </div>
   );
 }

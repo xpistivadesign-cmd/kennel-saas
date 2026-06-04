@@ -1,5 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 type PregnancyRow = {
   user_id: string;
@@ -10,8 +10,8 @@ type PregnancyRow = {
 };
 
 const supabase = createClient(
-  Deno.env.get("SUPABASE_URL") ?? "",
-  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+  Deno.env.get("SUPABASE_URL")!,
+  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
 );
 
 Deno.serve(async () => {
@@ -21,7 +21,6 @@ Deno.serve(async () => {
       .select("*");
 
     if (error) {
-      console.error("DB Error:", error);
       return new Response(JSON.stringify({ error: error.message }), {
         status: 500,
       });
@@ -32,7 +31,6 @@ Deno.serve(async () => {
     const grouped: Record<string, PregnancyRow[]> = {};
     let totalAlerts = 0;
 
-    // ✅ FIX: type assertion külön sorban (Vercel-safe)
     const rows = (data ?? []) as PregnancyRow[];
 
     for (const row of rows) {
@@ -55,15 +53,13 @@ Deno.serve(async () => {
       JSON.stringify({
         ok: true,
         processed_date: today,
-        triggered_users_count: Object.keys(grouped).length,
+        triggered_users: Object.keys(grouped).length,
         total_alerts: totalAlerts,
         grouped,
       }),
       { headers: { "Content-Type": "application/json" } }
     );
   } catch (err) {
-    console.error("Fatal Error:", err);
-
     return new Response(
       JSON.stringify({
         error: "fatal error",
