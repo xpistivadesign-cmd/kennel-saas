@@ -2,17 +2,30 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import ContractClient from "./ContractClient";
 
+interface PageProps {
+  params: {
+    puppyId: string;
+  };
+}
+
 export default async function ContractPage({
   params,
-}: {
-  params: { puppyId: string };
-}) {
+}: PageProps) {
   const supabase = createClient();
 
-  const { data: puppy } = await supabase
+  // Bejelentkezett felhasználó
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return notFound();
+  }
+
+  // Kiskutya lekérése
+  const { data: puppy, error: puppyError } = await supabase
     .from("puppies")
-    .select(
-      `
+    .select(`
       id,
       name,
       sex,
@@ -20,33 +33,59 @@ export default async function ContractPage({
       sale_price,
       buyer_id,
       litter_id
-    `
-    )
+    `)
     .eq("id", params.puppyId)
     .single();
 
-  if (!puppy) return notFound();
+  if (puppyError || !puppy) {
+    return notFound();
+  }
 
-  // 🧠 buyer + breeder + litter join
-  const { data: buyer } = puppy.buyer_id
-    ? await supabase
-        .from("profiles")
-        .select("full_name, phone, address")
-        .eq("id", puppy.buyer_id)
-        .single()
-    : { data: null };
+  // Vevő adatai
+  let buyer = null;
 
+  if (puppy.buyer_id) {
+    const { data } = await supabase
+      .from("buyers")
+      .select(`
+        full_name,
+        phone,
+        address
+      `)
+      .eq("id", puppy.buyer_id)
+      .single();
+
+    buyer = data;
+  }
+
+  // Tenyésztő adatai (FONTOS: user szűrés!)
   const { data: breeder } = await supabase
     .from("profiles")
-    .select("kennel_name, full_name, address")
-    .eq("id", (await supabase.auth.getUser()).data.user?.id)
+    .select(`
+      kennel_name,
+      full_name,
+      address
+    `)
+    .eq("id", user.id)
     .single();
 
-  const { data: litter } = await supabase
-    .from("litters")
-    .select("litter_letter, created_at")
-    .eq("id", puppy.litter_id)
-    .single();
+  // Litters tábla
+  // Nem kérünk litter_letter mezőt,
+  // mert a sémád alapján nem létezik.
+  let litter = null;
+
+  if (puppy.litter_id) {
+    const { data } = await supabase
+      .from("litters")
+      .select(`
+        id,
+        created_at
+      `)
+      .eq("id", puppy.litter_id)
+      .single();
+
+    litter = data;
+  }
 
   return (
     <ContractClient
