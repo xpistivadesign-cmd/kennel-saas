@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
+import ContractClient from "./ContractClient";
 
 export default async function ContractPage({
   params,
@@ -8,7 +9,7 @@ export default async function ContractPage({
 }) {
   const supabase = createClient();
 
-  const { data: puppy, error } = await supabase
+  const { data: puppy } = await supabase
     .from("puppies")
     .select(
       `
@@ -17,55 +18,42 @@ export default async function ContractPage({
       sex,
       color,
       sale_price,
-      created_at
+      buyer_id,
+      litter_id
     `
     )
     .eq("id", params.puppyId)
     .single();
 
-  if (error || !puppy) return notFound();
+  if (!puppy) return notFound();
 
-  const formattedDate = new Date().toLocaleDateString("hu-HU", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+  // 🧠 buyer + breeder + litter join
+  const { data: buyer } = puppy.buyer_id
+    ? await supabase
+        .from("profiles")
+        .select("full_name, phone, address")
+        .eq("id", puppy.buyer_id)
+        .single()
+    : { data: null };
+
+  const { data: breeder } = await supabase
+    .from("profiles")
+    .select("kennel_name, full_name, address")
+    .eq("id", (await supabase.auth.getUser()).data.user?.id)
+    .single();
+
+  const { data: litter } = await supabase
+    .from("litters")
+    .select("litter_letter, created_at")
+    .eq("id", puppy.litter_id)
+    .single();
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 sm:p-8 print:bg-white print:p-0">
-      <div className="max-w-4xl mx-auto bg-white shadow-md rounded p-8 border print:shadow-none print:border-none print:p-0">
-        <h1 className="text-2xl font-bold text-center mb-8">
-          Kiskutya Adásvételi Szerződés
-        </h1>
-
-        <table className="w-full border border-gray-300">
-          <tbody>
-            <tr>
-              <td className="border p-2 font-bold">Hívónév</td>
-              <td className="border p-2">{puppy.name}</td>
-            </tr>
-            <tr>
-              <td className="border p-2 font-bold">Neme</td>
-              <td className="border p-2">
-                {puppy.sex === "female" ? "Szuka" : "Kan"}
-              </td>
-            </tr>
-            <tr>
-              <td className="border p-2 font-bold">Vételár</td>
-              <td className="border p-2">
-                {puppy.sale_price ?? "Egyedi megállapodás"}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-
-        <p className="mt-8 text-right">Kelt: {formattedDate}</p>
-
-        <div className="mt-12 grid grid-cols-2 gap-8 text-center">
-          <div className="border-t pt-2">Eladó</div>
-          <div className="border-t pt-2">Vevő</div>
-        </div>
-      </div>
-    </div>
+    <ContractClient
+      puppy={puppy}
+      buyer={buyer}
+      breeder={breeder}
+      litter={litter}
+    />
   );
 }

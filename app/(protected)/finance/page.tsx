@@ -1,94 +1,67 @@
-import { getFinanceOverview } from "@/app/actions/finance";
-import Link from "next/link";
+import { createClient } from "@/utils/supabase/server";
 
 export default async function FinancePage() {
-  const data = await getFinanceOverview();
+  const supabase = createClient();
+
+  const { data: puppies } = await supabase
+    .from("puppies")
+    .select("id, name, sale_price, status, buyer_id");
+
+  const totalRevenue =
+    puppies?.reduce((sum, p) => sum + (p.sale_price || 0), 0) || 0;
+
+  const reserved = puppies?.filter((p) => p.status === "RESERVED").length || 0;
+
+  const sold = puppies?.filter((p) => p.status === "SOLD").length || 0;
 
   return (
-    <div className="max-w-6xl mx-auto p-6 space-y-8">
-      
-      {/* HEADER */}
-      <div>
-        <h1 className="text-3xl font-bold">Pénzügyek 💰</h1>
-        <p className="text-gray-500">
-          Bevétel, kiadás és kölyök eladások követése
-        </p>
+    <div className="p-8 max-w-6xl mx-auto">
+      <h1 className="text-2xl font-bold mb-6">Pénzügyek</h1>
+
+      {/* 📊 STATS */}
+      <div className="grid grid-cols-3 gap-4 mb-8">
+        <div className="p-4 bg-white border rounded">
+          <p className="text-sm text-gray-500">Összes bevétel</p>
+          <p className="text-xl font-bold">{totalRevenue} €</p>
+        </div>
+
+        <div className="p-4 bg-white border rounded">
+          <p className="text-sm text-gray-500">Foglalva</p>
+          <p className="text-xl font-bold">{reserved}</p>
+        </div>
+
+        <div className="p-4 bg-white border rounded">
+          <p className="text-sm text-gray-500">Eladva</p>
+          <p className="text-xl font-bold">{sold}</p>
+        </div>
       </div>
 
-      {/* STATS */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        
-        <div className="bg-white p-4 rounded-xl border">
-          <div className="text-sm text-gray-500">Bevétel</div>
-          <div className="text-2xl font-bold">
-            {data.totalRevenue} €
-          </div>
-        </div>
-
-        <div className="bg-white p-4 rounded-xl border">
-          <div className="text-sm text-gray-500">Foglalók</div>
-          <div className="text-2xl font-bold">
-            {data.totalDeposits} €
-          </div>
-        </div>
-
-        <div className="bg-white p-4 rounded-xl border">
-          <div className="text-sm text-gray-500">Hátralék</div>
-          <div className="text-2xl font-bold text-red-500">
-            {data.totalRemaining} €
-          </div>
-        </div>
-
-      </div>
-
-      {/* TABLE */}
-      <div className="bg-white border rounded-xl overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="text-left p-3">Kölyök</th>
-              <th className="text-left p-3">Alom</th>
-              <th className="text-left p-3">Vevő</th>
-              <th className="text-left p-3">Ár</th>
-              <th className="text-left p-3">Foglaló</th>
-              <th className="text-left p-3">Hátralék</th>
-              <th className="text-right p-3">Szerződés</th>
+      {/* 🐕 TABLE */}
+      <div className="bg-white border rounded">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b text-left">
+              <th className="p-2">Név</th>
+              <th className="p-2">Ár</th>
+              <th className="p-2">Státusz</th>
+              <th className="p-2"></th>
             </tr>
           </thead>
 
           <tbody>
-            {data.items.map((p) => (
-              <tr key={p.id} className="border-t">
-                
-                <td className="p-3 font-medium">
-                  {p.puppyName}
-                </td>
-
-                <td className="p-3">
-                  {p.litter ?? "-"}
-                </td>
-
-                <td className="p-3">
-                  {p.buyerName ?? "-"}
-                </td>
-
-                <td className="p-3">{p.price} €</td>
-
-                <td className="p-3">{p.deposit} €</td>
-
-                <td className="p-3 text-red-600">
-                  {p.remaining} €
-                </td>
-
-                <td className="p-3 text-right">
-                  <Link
+            {puppies?.map((p) => (
+              <tr key={p.id} className="border-b">
+                <td className="p-2">{p.name}</td>
+                <td className="p-2">{p.sale_price} €</td>
+                <td className="p-2">{p.status}</td>
+                <td className="p-2">
+                  <a
+                    className="text-blue-600 underline"
                     href={`/finance/contract/${p.id}`}
-                    className="text-emerald-600 font-medium"
                   >
-                    Megnyitás →
-                  </Link>
+                    Szerződés
+                  </a>
                 </td>
-
               </tr>
             ))}
           </tbody>
