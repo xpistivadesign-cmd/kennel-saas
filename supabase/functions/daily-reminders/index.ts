@@ -7,21 +7,22 @@ serve(async () => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
   );
 
-  const { data: tests } = await supabase
+  const { data } = await supabase
     .from("progesterone_tests")
     .select("value, heat_id");
 
-  const alerts =
-    tests?.filter(t => t.value >= 5 && t.value <= 8) ?? [];
+  const tests = data || [];
+
+  const alerts = tests.filter(
+    t => t.value >= 5 && t.value <= 8
+  );
 
   return new Response(
     JSON.stringify({
-      status: "OK",
-      optimal_zone_hits: alerts.length,
-      alerts,
+      status: "ok",
+      optimal_hits: alerts.length,
+      alerts
     }),
-    {
-      headers: { "Content-Type": "application/json" }
-    }
+    { headers: { "Content-Type": "application/json" } }
   );
 });

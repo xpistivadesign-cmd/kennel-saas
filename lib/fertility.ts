@@ -1,45 +1,56 @@
-export type Test = {
-  test_date: string;
-  value: number;
-};
+export type Unit = "ngml" | "nmol";
 
-export function getPeak(tests: Test[]) {
-  if (!tests.length) return 0;
-  return Math.max(...tests.map(t => t.value));
+/**
+ * 1 ng/ml = 3.18 nmol/L
+ */
+export const CONVERSION_FACTOR = 3.18;
+
+export function convert(value: number, unit: Unit): number {
+  return unit === "nmol" ? value * CONVERSION_FACTOR : value;
 }
 
-export function getLast(tests: Test[]) {
-  if (!tests.length) return 0;
-  return tests[tests.length - 1].value;
+export function format(value: number, unit: Unit): string {
+  const v = convert(value, unit);
+
+  return unit === "nmol"
+    ? `${v.toFixed(2)} nmol/L`
+    : `${v.toFixed(1)} ng/ml`;
 }
 
-// 📈 trend logic (stable, no AI bullshit)
-export function getTrend(tests: Test[]) {
-  if (tests.length < 2) {
-    return { label: "INSUFFICIENT" };
-  }
-
-  const sorted = [...tests].sort(
-    (a, b) =>
-      new Date(a.test_date).getTime() -
-      new Date(b.test_date).getTime()
-  );
-
-  const last = sorted.at(-1)!;
-  const prev = sorted.at(-2)!;
-
-  const diff = last.value - prev.value;
-
-  if (diff > 2) return { label: "SPIKE" };
-  if (diff > 0) return { label: "RISING" };
-  if (diff < 0) return { label: "FALLING" };
-
-  return { label: "STABLE" };
+export function getPeak(values: number[]): number {
+  if (!values.length) return 0;
+  return Math.max(...values);
 }
 
-// 🐣 ellés kalkuláció
-export function getDueDate(startDate: string) {
-  const d = new Date(startDate);
-  d.setDate(d.getDate() + 63);
-  return d;
+export function getLast(values: number[]): number {
+  if (!values.length) return 0;
+  return values[values.length - 1];
+}
+
+export function getTrend(values: number[]): "up" | "down" | "flat" | "unknown" {
+  if (values.length < 2) return "unknown";
+
+  const last = values[values.length - 1];
+  const prev = values[values.length - 2];
+
+  if (last > prev) return "up";
+  if (last < prev) return "down";
+  return "flat";
+}
+
+/**
+ * Egyszerű ovulációs becslés:
+ * peak után ~1–2 nap
+ */
+export function getDueDate(dates: string[], values: number[]): string | null {
+  if (!dates.length || !values.length) return null;
+
+  const peakIndex = values.indexOf(Math.max(...values));
+  if (peakIndex === -1) return null;
+
+  const peakDate = new Date(dates[peakIndex]);
+  const due = new Date(peakDate);
+  due.setDate(due.getDate() + 2);
+
+  return due.toISOString();
 }
