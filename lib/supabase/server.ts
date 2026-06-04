@@ -9,17 +9,20 @@ export function createServerSupabase() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        getAll() {
-          // Next 16: cookieStore is NOT async
-          return cookieStore.getAll();
+        // 🔥 FIX: Next 16 -> cookieStore may be async-like
+        async getAll() {
+          return (await cookieStore).getAll();
         },
-        setAll(cookiesToSet) {
+
+        async setAll(cookiesToSet) {
           try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            );
+            const store = await cookieStore;
+
+            cookiesToSet.forEach(({ name, value, options }) => {
+              store.set(name, value, options);
+            });
           } catch {
-            // server components may be read-only
+            // server components / edge fallback
           }
         },
       },
@@ -27,5 +30,5 @@ export function createServerSupabase() {
   );
 }
 
-// 🔥 COMPAT LAYER (EZ OLD MEG TÖBB FÁJLT)
+// 🔥 BACKWARD COMPAT (NE BREAKELJEN SEMMI MÁS)
 export const createClient = createServerSupabase;
