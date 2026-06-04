@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import type { CookieOptions } from "@supabase/ssr";
 
 export function createServerSupabase() {
   const cookieStore = cookies();
@@ -9,12 +10,18 @@ export function createServerSupabase() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        // 🔥 FIX: Next 16 -> cookieStore may be async-like
         async getAll() {
-          return (await cookieStore).getAll();
+          const store = await cookieStore;
+          return store.getAll();
         },
 
-        async setAll(cookiesToSet) {
+        async setAll(
+          cookiesToSet: {
+            name: string;
+            value: string;
+            options?: CookieOptions;
+          }[]
+        ) {
           try {
             const store = await cookieStore;
 
@@ -22,7 +29,7 @@ export function createServerSupabase() {
               store.set(name, value, options);
             });
           } catch {
-            // server components / edge fallback
+            // server context fallback (edge / readonly)
           }
         },
       },
@@ -30,5 +37,5 @@ export function createServerSupabase() {
   );
 }
 
-// 🔥 BACKWARD COMPAT (NE BREAKELJEN SEMMI MÁS)
+// 🔥 BACKWARD COMPAT (nagyon fontos a projektedhez)
 export const createClient = createServerSupabase;
