@@ -1,8 +1,23 @@
 import DogClient from "./ui/DogClient";
-import { getDogs } from "@/lib/supabase/dogs";
+import { createServerSupabase } from "@/lib/supabase/server";
+
+export type Dog = {
+  id: string;
+  name: string;
+  breed?: string;
+  created_at?: string;
+};
 
 export default async function DogsPage() {
-  const dogs = await getDogs();
+  const supabase = createServerSupabase();
 
-  return <DogClient initialDogs={dogs} />;
+  const { data: dogs, error } = await supabase
+    .from("dogs")
+    .select("*");
+
+  if (error) {
+    console.error("Failed to fetch dogs:", error.message);
+  }
+
+  return <DogClient dogs={(dogs as Dog[]) ?? []} />;
 }
