@@ -1,57 +1,40 @@
 import { createClient } from "@/utils/supabase/server";
-import { notFound } from "next/navigation";
-import Link from "next/link";
+import DogProfileClient from "./ui/DogProfileClient";
 
-export default async function DogPage({
+export default async function DogProfilePage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: { id: string };
 }) {
-  const { id } = await params;
   const supabase = await createClient();
 
   const { data: dog } = await supabase
     .from("dogs")
     .select("*")
-    .eq("id", id)
+    .eq("id", params.id)
     .single();
-
-  if (!dog) return notFound();
 
   const { data: heats } = await supabase
     .from("heats")
     .select("*")
-    .eq("dog_id", id)
-    .order("start_date", { ascending: false });
+    .eq("dog_id", params.id);
+
+  const { data: payments } = await supabase
+    .from("payments")
+    .select("*")
+    .eq("dog_id", params.id);
+
+  const { data: health } = await supabase
+    .from("health_tests")
+    .select("*")
+    .eq("dog_id", params.id);
 
   return (
-    <div className="max-w-4xl mx-auto p-6 space-y-6">
-
-      <h1 className="text-2xl font-bold">🐕 {dog.name}</h1>
-
-      <div className="bg-white border rounded-lg p-4">
-        <p>Registry: {dog.registration_number}</p>
-        <p>Sex: {dog.sex}</p>
-      </div>
-
-      <div className="bg-white border rounded-lg p-4">
-        <h2 className="font-bold mb-2">Breeding history</h2>
-
-        {!heats?.length ? (
-          <p className="text-gray-400">No data</p>
-        ) : (
-          heats.map(h => (
-            <div key={h.id} className="text-sm border-b py-2">
-              {h.start_date} → {h.end_date || "active"}
-            </div>
-          ))
-        )}
-      </div>
-
-      <Link href="/analytics" className="text-blue-600">
-        ← analytics
-      </Link>
-
-    </div>
+    <DogProfileClient
+      dog={dog}
+      heats={heats || []}
+      payments={payments || []}
+      health={health || []}
+    />
   );
 }

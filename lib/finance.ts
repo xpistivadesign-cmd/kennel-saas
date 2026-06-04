@@ -1,17 +1,11 @@
-export type Puppy = {
-  price: number;
-  reserved: boolean;
-};
+export function getPaymentStatus(puppy: any) {
+  if (puppy.buyer_id && puppy.deposit > 0 && puppy.sale_price > puppy.deposit) {
+    return "PARTIAL";
+  }
 
-export function calculateRevenue(puppies: Puppy[]) {
-  const total = puppies.reduce((sum, p) => sum + p.price, 0);
-  const reserved = puppies
-    .filter(p => p.reserved)
-    .reduce((sum, p) => sum + p.price, 0);
+  if (puppy.buyer_id) {
+    return "PAID";
+  }
 
-  return {
-    total,
-    reserved,
-    expected: total - reserved,
-  };
+  return "AVAILABLE";
 }
