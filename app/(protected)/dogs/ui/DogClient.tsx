@@ -1,155 +1,63 @@
 "use client";
 
-import { useState } from "react";
-import { createClient } from "@/utils/supabase/client";
+import { useState, useEffect } from "react";
+import { createClient } from "@/lib/supabase/client";
 
 type Dog = {
   id: string;
   name: string;
-  breed: string | null;
-  chip_number: string | null;
-  created_at?: string;
+  breed: string;
+  microchip?: string;
 };
 
-export default function DogClient({
-  initialDogs,
-}: {
-  initialDogs: Dog[];
-}) {
+export default function DogClient() {
   const supabase = createClient();
 
-  const [dogs, setDogs] = useState<Dog[]>(initialDogs);
-  const [loading, setLoading] = useState(false);
+  const [dogs, setDogs] = useState<Dog[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const [form, setForm] = useState({
-    name: "",
-    breed: "",
-    chip_number: "",
-  });
+  useEffect(() => {
+    const fetchDogs = async () => {
+      const { data, error } = await supabase.from("dogs").select("*");
 
-  // ➕ Új kutya létrehozás
-  const addDog = async () => {
-    if (!form.name) return;
+      if (error) {
+        console.error("Dogs load error:", error.message);
+        return;
+      }
 
-    setLoading(true);
+      setDogs(data || []);
+      setLoading(false);
+    };
 
-    const { data, error } = await supabase
-      .from("dogs")
-      .insert([
-        {
-          name: form.name,
-          breed: form.breed || null,
-          chip_number: form.chip_number || null,
-        },
-      ])
-      .select()
-      .single();
+    fetchDogs();
+  }, []);
 
-    setLoading(false);
-
-    if (error) {
-      alert("Hiba a mentés során");
-      return;
-    }
-
-    if (data) {
-      setDogs([data, ...dogs]);
-      setForm({ name: "", breed: "", chip_number: "" });
-    }
-  };
-
-  // 🗑️ Kutya törlés
-  const deleteDog = async (id: string) => {
-    const confirm = window.confirm("Biztosan törlöd ezt a kutyát?");
-    if (!confirm) return;
-
-    const { error } = await supabase.from("dogs").delete().eq("id", id);
-
-    if (error) {
-      alert("Törlési hiba");
-      return;
-    }
-
-    setDogs(dogs.filter((d) => d.id !== id));
-  };
+  if (loading) {
+    return <div className="p-6 text-gray-500">Betöltés...</div>;
+  }
 
   return (
-    <div className="space-y-6">
-      {/* ➕ FORM */}
-      <div className="bg-white border rounded-xl p-4 space-y-3">
-        <h2 className="font-bold text-sm text-gray-700">
-          ➕ Új kutya hozzáadása
-        </h2>
+    <div className="max-w-5xl mx-auto p-6 space-y-4">
+      <h1 className="text-2xl font-bold">🐕 Kutyák</h1>
 
-        <div className="grid md:grid-cols-3 gap-2">
-          <input
-            className="border p-2 rounded"
-            placeholder="Név"
-            value={form.name}
-            onChange={(e) =>
-              setForm({ ...form, name: e.target.value })
-            }
-          />
-
-          <input
-            className="border p-2 rounded"
-            placeholder="Fajta"
-            value={form.breed}
-            onChange={(e) =>
-              setForm({ ...form, breed: e.target.value })
-            }
-          />
-
-          <input
-            className="border p-2 rounded"
-            placeholder="Chip szám"
-            value={form.chip_number}
-            onChange={(e) =>
-              setForm({ ...form, chip_number: e.target.value })
-            }
-          />
-        </div>
-
-        <button
-          onClick={addDog}
-          disabled={loading}
-          className="bg-black text-white px-4 py-2 rounded hover:opacity-80"
-        >
-          {loading ? "Mentés..." : "Kutya hozzáadása"}
-        </button>
-      </div>
-
-      {/* 🐕 LISTA */}
-      <div className="grid md:grid-cols-2 gap-4">
-        {dogs.length === 0 ? (
-          <p className="text-gray-500">Nincs kutya a rendszerben</p>
-        ) : (
-          dogs.map((dog) => (
+      {dogs.length === 0 ? (
+        <p className="text-gray-500">Nincs még kutya a rendszerben.</p>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {dogs.map((dog) => (
             <div
               key={dog.id}
-              className="border rounded-xl p-4 bg-white space-y-2"
+              className="p-4 bg-white border rounded-xl space-y-1"
             >
-              <div className="flex justify-between">
-                <div className="font-bold">{dog.name}</div>
-                <button
-                  onClick={() => deleteDog(dog.id)}
-                  className="text-red-500 text-xs"
-                >
-                  Törlés
-                </button>
-              </div>
-
-              <div className="text-xs text-gray-500">
-                Fajta: {dog.breed || "-"}
-              </div>
-
-              <div className="text-xs text-gray-500">
-                Chip: {dog.chip_number || "-"}
-              </div>
+              <p className="font-bold">{dog.name}</p>
+              <p className="text-sm text-gray-500">{dog.breed}</p>
+              <p className="text-xs text-gray-400 font-mono">
+                {dog.microchip || "Nincs chip"}
+              </p>
             </div>
-          ))
-        )}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
