@@ -1,49 +1,53 @@
-import { PedigreeNode } from "@/lib/supabase/dogs";
+"use client";
 
-function NodeBox({ dog }: { dog: any }) {
-  if (!dog) return <div className="p-2 border">—</div>;
+import type { PedigreeNode } from "@/lib/supabase/dogs";
 
+type Props = {
+  root: PedigreeNode;
+};
+
+export default function PedigreeTree({ root }: Props) {
   return (
-    <div className="p-2 border rounded bg-white shadow">
-      <div className="font-bold">{dog.name}</div>
-      <div className="text-sm text-gray-500">{dog.breed}</div>
+    <div className="flex gap-8 overflow-x-auto p-4">
+      <TreeNode node={root} />
     </div>
   );
 }
 
-export default function PedigreeTree({
-  data,
-}: {
-  data: PedigreeNode | null;
-}) {
-  if (!data) return <div>Nincs adat</div>;
-
+function TreeNode({ node }: { node: PedigreeNode }) {
   return (
-    <div className="space-y-4">
-
-      {/* GENERATION 1 */}
-      <div className="flex justify-center">
-        <NodeBox dog={data} />
-      </div>
-
-      {/* GENERATION 2 */}
-      <div className="flex justify-around">
-        <NodeBox dog={data.sire} />
-        <NodeBox dog={data.dam} />
-      </div>
-
-      {/* GENERATION 3 */}
-      <div className="flex justify-around">
-        <div className="flex gap-2">
-          <NodeBox dog={data.sire?.sire} />
-          <NodeBox dog={data.sire?.dam} />
-        </div>
-
-        <div className="flex gap-2">
-          <NodeBox dog={data.dam?.sire} />
-          <NodeBox dog={data.dam?.dam} />
+    <div className="flex flex-col items-center min-w-[200px]">
+      {/* 🐶 Node box */}
+      <div className="border rounded-lg p-3 shadow-sm bg-white w-full text-center">
+        <div className="font-bold">{node.name}</div>
+        <div className="text-xs text-gray-500">{node.breed}</div>
+        <div className="text-xs">
+          {node.gender === "male" ? "♂" : node.gender === "female" ? "♀" : ""}
         </div>
       </div>
+
+      {/* 🌿 branches */}
+      {(node.sire || node.dam) && (
+        <div className="flex gap-6 mt-6">
+          <div className="flex flex-col items-center">
+            <div className="text-xs text-gray-400 mb-2">Sire</div>
+            {node.sire ? (
+              <TreeNode node={node.sire} />
+            ) : (
+              <div className="text-gray-300 text-sm">—</div>
+            )}
+          </div>
+
+          <div className="flex flex-col items-center">
+            <div className="text-xs text-gray-400 mb-2">Dam</div>
+            {node.dam ? (
+              <TreeNode node={node.dam} />
+            ) : (
+              <div className="text-gray-300 text-sm">—</div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
