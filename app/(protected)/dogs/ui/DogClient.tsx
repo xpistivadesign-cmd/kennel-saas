@@ -1,7 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Dog, saveDog, deleteDog } from "@/lib/supabase/dogs";
+
+import type { Dog } from "@/lib/supabase/dogs";
+
+import {
+  saveDog,
+  deleteDog,
+} from "@/lib/supabase/dogs-client";
 
 interface DogClientProps {
   initialDogs: Dog[];
@@ -15,17 +21,30 @@ const EMPTY_DOG: Dog = {
   birth_date: "",
 };
 
-export default function DogClient({ initialDogs }: DogClientProps) {
-  const [dogs, setDogs] = useState<Dog[]>(initialDogs);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
+export default function DogClient({
+  initialDogs,
+}: DogClientProps) {
+  const [dogs, setDogs] =
+    useState<Dog[]>(initialDogs);
 
-  const [formData, setFormData] = useState<Dog>(EMPTY_DOG);
+  const [isModalOpen, setIsModalOpen] =
+    useState(false);
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  const [loading, setLoading] =
+    useState(false);
+
+  const [formData, setFormData] =
+    useState<Dog>(EMPTY_DOG);
+
+  async function handleSubmit(
+    e: React.FormEvent<HTMLFormElement>
+  ) {
     e.preventDefault();
 
-    if (!formData.name.trim() || !formData.breed.trim()) {
+    if (
+      !formData.name.trim() ||
+      !formData.breed.trim()
+    ) {
       alert("A név és a fajta kötelező.");
       return;
     }
@@ -37,11 +56,17 @@ export default function DogClient({ initialDogs }: DogClientProps) {
     setLoading(false);
 
     if (!result.success || !result.data) {
-      alert(result.error ?? "Sikertelen mentés.");
+      alert(
+        result.error ??
+          "Sikertelen mentés."
+      );
       return;
     }
 
-    setDogs((prev) => [result.data as Dog, ...prev]);
+    setDogs((prev) => [
+      result.data as Dog,
+      ...prev,
+    ]);
 
     setFormData(EMPTY_DOG);
     setIsModalOpen(false);
@@ -63,7 +88,9 @@ export default function DogClient({ initialDogs }: DogClientProps) {
       return;
     }
 
-    setDogs((prev) => prev.filter((dog) => dog.id !== id));
+    setDogs((prev) =>
+      prev.filter((dog) => dog.id !== id)
+    );
   }
 
   return (
@@ -75,7 +102,9 @@ export default function DogClient({ initialDogs }: DogClientProps) {
 
         <button
           type="button"
-          onClick={() => setIsModalOpen(true)}
+          onClick={() =>
+            setIsModalOpen(true)
+          }
           className="rounded-lg bg-indigo-600 px-4 py-2 font-semibold text-white transition hover:bg-indigo-700"
         >
           + Új kutya
@@ -107,25 +136,32 @@ export default function DogClient({ initialDogs }: DogClientProps) {
                       : "bg-pink-100 text-pink-800"
                   }`}
                 >
-                  {dog.gender === "male" ? "Kan" : "Szuka"}
+                  {dog.gender === "male"
+                    ? "Kan"
+                    : "Szuka"}
                 </span>
               </div>
 
               <div className="space-y-1 text-sm">
                 <p>
-                  <strong>Fajta:</strong> {dog.breed}
+                  <strong>Fajta:</strong>{" "}
+                  {dog.breed}
                 </p>
 
                 {dog.reg_number && (
                   <p>
-                    <strong>Törzskönyv:</strong>{" "}
+                    <strong>
+                      Törzskönyv:
+                    </strong>{" "}
                     {dog.reg_number}
                   </p>
                 )}
 
                 {dog.birth_date && (
                   <p>
-                    <strong>Született:</strong>{" "}
+                    <strong>
+                      Született:
+                    </strong>{" "}
                     {dog.birth_date}
                   </p>
                 )}
@@ -135,7 +171,8 @@ export default function DogClient({ initialDogs }: DogClientProps) {
                 <button
                   type="button"
                   onClick={() =>
-                    dog.id && handleDelete(dog.id)
+                    dog.id &&
+                    handleDelete(dog.id)
                   }
                   className="text-sm font-medium text-red-600 hover:text-red-800"
                 >
@@ -206,8 +243,10 @@ export default function DogClient({ initialDogs }: DogClientProps) {
                   onChange={(e) =>
                     setFormData({
                       ...formData,
-                      gender: e.target
-                        .value as Dog["gender"],
+                      gender:
+                        e.target.value as
+                          | "male"
+                          | "female",
                     })
                   }
                   className="w-full rounded-lg border p-2"
@@ -228,11 +267,14 @@ export default function DogClient({ initialDogs }: DogClientProps) {
 
                 <input
                   type="text"
-                  value={formData.reg_number ?? ""}
+                  value={
+                    formData.reg_number ?? ""
+                  }
                   onChange={(e) =>
                     setFormData({
                       ...formData,
-                      reg_number: e.target.value,
+                      reg_number:
+                        e.target.value,
                     })
                   }
                   className="w-full rounded-lg border p-2"
@@ -246,11 +288,14 @@ export default function DogClient({ initialDogs }: DogClientProps) {
 
                 <input
                   type="date"
-                  value={formData.birth_date ?? ""}
+                  value={
+                    formData.birth_date ?? ""
+                  }
                   onChange={(e) =>
                     setFormData({
                       ...formData,
-                      birth_date: e.target.value,
+                      birth_date:
+                        e.target.value,
                     })
                   }
                   className="w-full rounded-lg border p-2"
