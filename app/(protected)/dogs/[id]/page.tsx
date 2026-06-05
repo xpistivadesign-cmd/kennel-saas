@@ -1,15 +1,12 @@
-export const dynamic = "force-dynamic";
-
-import { createServerSupabase } from "@/lib/supabase/server";
-import { getPedigreeTree } from "@/lib/supabase/dogs.client";
-import PedigreeTree from "@/components/PedigreeTree";
+import DogDetailClient from "@/components/dogs/DogDetailClient";
+import { createClient } from "@/lib/supabase/server";
 
 export default async function DogPage({
   params,
 }: {
   params: { id: string };
 }) {
-  const supabase = createServerSupabase();
+  const supabase = await createClient();
 
   const { data: dog } = await supabase
     .from("dogs")
@@ -17,21 +14,5 @@ export default async function DogPage({
     .eq("id", params.id)
     .single();
 
-  if (!dog) return <div>Dog not found</div>;
-
-  const pedigree = await getPedigreeTree(params.id, 4);
-
-  return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold">{dog.name}</h1>
-
-      <div className="text-gray-500">
-        {dog.breed} • {dog.gender}
-      </div>
-
-      <div className="mt-6">
-        {pedigree && <PedigreeTree root={pedigree} />}
-      </div>
-    </div>
-  );
+  return <DogDetailClient dog={dog} />;
 }
