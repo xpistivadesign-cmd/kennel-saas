@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { calculateCOIv2, COIResult } from "@/lib/supabase/coi.server";
+import { calculateCOIv3, COIResult } from "@/lib/supabase/coi.server";
 
 type Dog = {
   id: string;
@@ -28,11 +28,10 @@ export default function MatingPlannerClient({
     [damId, dogs]
   );
 
-  let coi: COIResult | null = null;
-
-  if (sire && dam) {
-    coi = calculateCOIv2(sire as any, dam as any);
-  }
+  const coi = useMemo(() => {
+    if (!sire || !dam) return null;
+    return calculateCOIv3(sire as any, dam as any);
+  }, [sire, dam]);
 
   return (
     <div className="p-6 space-y-6">
@@ -68,7 +67,9 @@ export default function MatingPlannerClient({
       {/* COI PANEL */}
       {coi && (
         <div className="p-4 rounded-xl border bg-white shadow">
-          <div className="text-sm text-gray-500">Genetic Risk Panel</div>
+          <div className="text-sm text-gray-500">
+            Genetic Risk Panel (PRO COI v3)
+          </div>
 
           <div className="text-2xl font-bold">
             COI: {coi.coi}%
@@ -76,8 +77,8 @@ export default function MatingPlannerClient({
 
           <div className="text-sm mt-1">{coi.label}</div>
 
-          <div className="mt-2 text-xs">
-            Risk level:{" "}
+          <div className="text-xs mt-2">
+            Risk:{" "}
             <span
               className={
                 coi.risk === "LOW"
@@ -93,17 +94,24 @@ export default function MatingPlannerClient({
         </div>
       )}
 
-      {/* DEBUG HEATMAP */}
-      {coi && (
-        <div className="p-4 border rounded">
-          <h3 className="font-semibold mb-2">Ancestor Heatmap</h3>
-          <div className="grid grid-cols-3 gap-2 text-xs">
-            {Object.entries(coi.heatmap).map(([id, count]) => (
-              <div
-                key={id}
-                className="p-2 border rounded bg-gray-50"
-              >
-                {id}: {count}
+      {/* PATHWAYS DEBUG (optional but powerful) */}
+      {coi && coi.pathways.length > 0 && (
+        <div className="p-4 border rounded text-xs">
+          <h3 className="font-semibold mb-2">
+            Critical Inbreeding Pathways
+          </h3>
+
+          <div className="space-y-2">
+            {coi.pathways.slice(0, 10).map((p, i) => (
+              <div key={i} className="p-2 bg-gray-50 rounded">
+                <div>Ancestor: {p.ancestorId}</div>
+                <div>Weight: {p.weight.toFixed(6)}</div>
+                <div>
+                  Sire path: {p.sirePath.join(" → ")}
+                </div>
+                <div>
+                  Dam path: {p.damPath.join(" → ")}
+                </div>
               </div>
             ))}
           </div>
