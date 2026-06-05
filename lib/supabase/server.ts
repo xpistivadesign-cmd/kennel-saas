@@ -10,12 +10,11 @@ export function createServerSupabase() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        async getAll() {
-          const store = await cookieStore;
-          return store.getAll();
+        getAll() {
+          return cookieStore.getAll();
         },
 
-        async setAll(
+        setAll(
           cookiesToSet: {
             name: string;
             value: string;
@@ -23,13 +22,11 @@ export function createServerSupabase() {
           }[]
         ) {
           try {
-            const store = await cookieStore;
-
             cookiesToSet.forEach(({ name, value, options }) => {
-              store.set(name, value, options);
+              cookieStore.set(name, value, options);
             });
           } catch {
-            // server context fallback (edge / readonly)
+            // Edge / read-only fallback
           }
         },
       },
@@ -37,5 +34,5 @@ export function createServerSupabase() {
   );
 }
 
-// 🔥 BACKWARD COMPAT (nagyon fontos a projektedhez)
+// BACKWARD COMPAT
 export const createClient = createServerSupabase;
