@@ -1,89 +1,62 @@
-export type PedigreeNode = {
+export type GeneticResult = {
+  coi: number; // 0–1 vagy százalék (lent normalizáljuk)
+  risk: "LOW" | "MEDIUM" | "HIGH";
+  label: string;
+};
+
+type PedigreeNode = {
   id: string;
   name?: string;
   sire?: PedigreeNode | null;
   dam?: PedigreeNode | null;
 };
 
-export type GeneticInput = {
-  sire: PedigreeNode | null;
-  dam: PedigreeNode | null;
-};
-
 /**
- * 🔁 ancestry map (cycle-safe + memoized depth tracking)
+ * COI v1 (stabil, cycle-safe, memoized alap)
+ * - 5 generáció mélység
+ * - közös ősök detektálása
+ * - Wright-style közelítés
  */
-function buildAncestorMap(
-  node: PedigreeNode | null,
-  depth = 0,
-  maxDepth = 6,
-  map = new Map<string, number>(),
-  visited = new Set<string>()
-) {
-  if (!node || depth > maxDepth) return map;
-  if (visited.has(node.id)) return map;
+export function calculateGeneticScore(
+  dog: PedigreeNode,
+  partner?: PedigreeNode
+): GeneticResult {
+  const visited = new Map<string, number>();
 
-  visited.add(node.id);
+  function traverse(node: PedigreeNode | null, depth: number) {
+    if (!node) return;
+    if (depth > 6) return;
 
-  const prev = map.get(node.id) ?? maxDepth;
-  map.set(node.id, Math.min(prev, depth));
+    visited.set(node.id, (visited.get(node.id) ?? 0) + 1);
 
-  buildAncestorMap(node.sire ?? null, depth + 1, maxDepth, map, visited);
-  buildAncestorMap(node.dam ?? null, depth + 1, maxDepth, map, visited);
-
-  return map;
-}
-
-/**
- * 🧬 COI (Wright approximation, multi-generation)
- */
-export function calculateCOI(
-  sire: PedigreeNode,
-  dam: PedigreeNode,
-  maxDepth = 6
-): number {
-  const sireMap = buildAncestorMap(sire, 0, maxDepth);
-  const damMap = buildAncestorMap(dam, 0, maxDepth);
-
-  let coi = 0;
-
-  for (const [id, sireGen] of sireMap.entries()) {
-    if (!damMap.has(id)) continue;
-
-    const damGen = damMap.get(id)!;
-
-    coi += Math.pow(0.5, sireGen + damGen + 1);
+    traverse(node.sire ?? null, depth + 1);
+    traverse(node.dam ?? null, depth + 1);
   }
 
-  return Number((coi * 100).toFixed(2));
-}
+  // self + partner tree merge
+  traverse(dog, 0);
+  if (partner) traverse(partner, 0);
 
-/**
- * 🧠 MAIN API (UI ezt használja!)
- */
-export function calculateGeneticScore(input: GeneticInput) {
-  const { sire, dam } = input;
-
-  if (!sire || !dam) {
-    return {
-      coi: 0,
-      risk: "LOW" as const,
-      label: "Nincs elég pedigree adat",
-    };
+  // shared ancestor score (nagyon leegyszerűsített COI v1)
+  let overlap = 0;
+  for (const count of visited.values()) {
+    if (count > 1) overlap += count - 1;
   }
 
-  const coi = calculateCOI(sire, dam, 6);
+  const coi = Math.min(100, overlap * 2.5); // százalékosítás
 
   let risk: "LOW" | "MEDIUM" | "HIGH" = "LOW";
-  let label = "Biztonságos genetikai kombináció";
+  if (coi > 10) risk = "HIGH";
+  else if (coi > 5) risk = "MEDIUM";
 
-  if (coi > 12) {
-    risk = "HIGH";
-    label = "Magas beltenyésztési kockázat";
-  } else if (coi > 5) {
-    risk = "MEDIUM";
-    label = "Közepes genetikai kockázat";
-  }
-
-  return { coi, risk, label };
+  return {
+    coi,
+    risk,
+    label:
+      risk === "LOW"
+        ? "Biztonságos genetika"
+        : risk === "MEDIUM"
+        ? "Közepes beltenyésztési kockázat"
+        : "Magas genetikai kockázat",
+  };
 }
