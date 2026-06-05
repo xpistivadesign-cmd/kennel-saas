@@ -1,5 +1,6 @@
 "use server";
 
+import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { wrightCOI } from "@/lib/coi/coi.engine";
 
@@ -17,121 +18,123 @@ export type Litter = {
 
 export type PuppyInput = {
   name: string;
-  gender: "male" | "female";
+  sex: "male" | "female";
   color?: string;
-};
-
-type Dog = {
-  id: string;
-  litter_id: string;
-  name: string;
-  gender: "male" | "female";
-  color?: string;
-  sireId: string;
-  damId: string;
-  coi: number;
 };
 
 /**
- * MOCK DB
+ * GET LITTERS (SUPABASE)
  */
-let LITTERS: Litter[] = [
-  {
-    id: "1",
-    mating_id: "m1",
-    kennel_id: "k1",
-    birth_date: null,
-    puppies_count: null,
-    status: "planned",
-    created_at: new Date().toISOString(),
-  },
-];
-
-let DOGS: Dog[] = [];
-
 export async function getLitters(): Promise<Litter[]> {
-  "use server";
-  return LITTERS;
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("litters")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error) throw new Error(error.message);
+
+  return data ?? [];
 }
 
 /**
- * 🐶 MARK LITTER BORN + CREATE PUPPIES + COI CALC
+ * ➕ CREATE LITTER
+ */
+export async function createLitter(input: {
+  mating_id: string;
+  kennel_id: string;
+}) {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("litters")
+    .insert({
+      mating_id: input.mating_id,
+      kennel_id: input.kennel_id,
+      status: "planned",
+    })
+    .select()
+    .single();
+
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/litters");
+
+  return data;
+}
+
+/**
+ * 🐶 MARK LITTER BORN → CREATE PUPPIES + COI
  */
 export async function markLitterBorn(input: {
   litterId: string;
   puppies: PuppyInput[];
   birthDate?: string;
 }) {
-  "use server";
+  const supabase = await createClient();
 
-  const litter = LITTERS.find((l) => l.id === input.litterId);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  if (!litter) {
+  if (!user) throw new Error("Unauthorized");
+
+  // 1) litter lekérése
+  const { data: litter, error: litterError } = await supabase
+    .from("litters")
+    .select("*")
+    .eq("id", input.litterId)
+    .single();
+
+  if (litterError || !litter) {
     throw new Error("Litter not found");
   }
 
-  // 🔬 COI számítás (egyszerűsített mock)
+  // 2) COI számítás (egyszerűsített logika)
   const coiValue = wrightCOI({
     sireId: litter.mating_id,
     damId: litter.mating_id,
   });
 
-  // 🐶 puppies létrehozása
-  const newDogs: Dog[] = input.puppies.map((p) => ({
-    id: crypto.randomUUID(),
+  // 3) puppies létrehozása
+  const puppiesToInsert = input.puppies.map((p) => ({
+    user_id: user.id,
     litter_id: litter.id,
     name: p.name,
-    gender: p.gender,
-    color: p.color,
-    sireId: litter.mating_id,
-    damId: litter.mating_id,
-    coi: coiValue,
+    sex: p.sex,
+    color: p.color ?? null,
+    collar_color: null,
+    birth_weight: null,
+    price: null,
+    status: "available",
   }));
 
-  DOGS.push(...newDogs);
+  const { data: newPuppies, error: puppiesError } = await supabase
+    .from("puppies")
+    .insert(puppiesToInsert)
+    .select();
 
-  // 🍼 litter update
-  LITTERS = LITTERS.map((l) =>
-    l.id === input.litterId
-      ? {
-          ...l,
-          status: "born",
-          puppies_count: input.puppies.length,
-          birth_date: input.birthDate ?? new Date().toISOString(),
-        }
-      : l
-  );
+  if (puppiesError) throw new Error(puppiesError.message);
+
+  // 4) litter update
+  const { error: updateError } = await supabase
+    .from("litters")
+    .update({
+      status: "born",
+      puppies_count: input.puppies.length,
+      birth_date: input.birthDate ?? new Date().toISOString(),
+    })
+    .eq("id", litter.id);
+
+  if (updateError) throw new Error(updateError.message);
 
   revalidatePath("/litters");
+  revalidatePath("/puppies");
 
   return {
     litterId: litter.id,
-    puppies: newDogs,
+    puppies: newPuppies,
+    coi: coiValue,
   };
-}
-
-/**
- * ➕ SIMPLE CREATE LITTER (nem változott logika)
- */
-export async function createLitter(input: {
-  mating_id: string;
-  kennel_id: string;
-}) {
-  "use server";
-
-  const newLitter: Litter = {
-    id: crypto.randomUUID(),
-    mating_id: input.mating_id,
-    kennel_id: input.kennel_id,
-    birth_date: null,
-    puppies_count: null,
-    status: "planned",
-    created_at: new Date().toISOString(),
-  };
-
-  LITTERS.push(newLitter);
-
-  revalidatePath("/litters");
-
-  return newLitter;
 }
