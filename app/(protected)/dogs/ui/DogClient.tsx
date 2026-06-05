@@ -1,17 +1,14 @@
 "use client";
 
 import { calculateGeneticScore } from "@/lib/genetics";
-import { calculateDebtStatus } from "@/lib/debt-ai";
 
 export default function DogProfileClient({
   dog,
-  payments,
   health,
+  payments = [],
 }: any) {
-  const genetic = calculateGeneticScore({
-    sire: dog?.sire ?? null,
-    dam: dog?.dam ?? null,
-  });
+  // FIX: most már partner nélkül számolunk (safe default)
+  const genetic = calculateGeneticScore(dog);
 
   const totalEarned = payments.reduce(
     (sum: number, p: any) => sum + (p.paid_amount || 0),
@@ -19,37 +16,34 @@ export default function DogProfileClient({
   );
 
   return (
-    <div className="space-y-4">
-      {/* 🧬 GENETIC PANEL */}
-      <div className="p-4 rounded-lg border bg-white shadow-sm">
-        <h2 className="text-lg font-semibold">🧬 Genetikai kockázati panel</h2>
+    <div className="p-4">
+      {/* GENETICS PANEL */}
+      <div className="mb-4 p-3 rounded-lg border bg-white">
+        <div className="text-sm font-semibold text-gray-800">
+          🧬 Genetikai Kockázati Panel
+        </div>
 
-        <div className="mt-2 text-sm">
-          <div>
-            COI: <b>{genetic.coi}%</b>
-          </div>
+        <div className="mt-2">
+          <span className="text-sm font-medium">
+            {genetic.label}
+          </span>
+        </div>
 
-          <div>
-            Státusz:{" "}
-            <b
-              style={{
-                color:
-                  genetic.risk === "HIGH"
-                    ? "red"
-                    : genetic.risk === "MEDIUM"
-                    ? "orange"
-                    : "green",
-              }}
-            >
-              {genetic.label}
-            </b>
-          </div>
+        <div className="mt-1">
+          <span className="text-xs bg-purple-50 text-purple-700 px-2 py-1 rounded">
+            COI: {genetic.coi.toFixed(2)}%
+          </span>
+
+          <span className="ml-2 text-xs">
+            Kockázat: {genetic.risk}
+          </span>
         </div>
       </div>
 
-      {/* 💰 existing logic */}
-      <div>
-        <p>Total earned: {totalEarned}</p>
+      {/* BASIC INFO */}
+      <div className="text-sm">
+        <div>Név: {dog?.name}</div>
+        <div>Bevétel: ${totalEarned}</div>
       </div>
     </div>
   );
