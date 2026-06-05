@@ -9,8 +9,15 @@ export function createServerSupabase() {
     {
       cookies: {
         getAll() {
-          // ⚠️ IMPORTANT: call inside function ONLY
-          return cookies().getAll();
+          // 🔥 Next 16 fix: handle Promise OR sync
+          const store = cookies() as any;
+
+          if (typeof store.then === "function") {
+            // build-time / turbopack safety
+            return [];
+          }
+
+          return store.getAll();
         },
 
         setAll(
@@ -21,13 +28,15 @@ export function createServerSupabase() {
           }[]
         ) {
           try {
-            const store = cookies();
+            const store = cookies() as any;
+
+            if (typeof store.then === "function") return;
 
             cookiesToSet.forEach(({ name, value, options }) => {
               store.set(name, value, options);
             });
           } catch {
-            // edge / readonly build fallback
+            // edge / build fallback
           }
         },
       },
