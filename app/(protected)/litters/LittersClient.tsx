@@ -1,108 +1,118 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import {
-  markLitterBorn,
-  createLitter,
-  type Litter,
-} from "@/app/actions/litters";
+import { useState } from "react";
+import { markLitterBorn } from "@/app/actions/litters";
 
-type Props = {
-  initialLitters: Litter[];
+type PuppyInput = {
+  name: string;
+  gender: "male" | "female";
+  color?: string;
 };
 
-export default function LittersClient({ initialLitters }: Props) {
-  const [litters, setLitters] = useState(initialLitters);
-  const [isPending, startTransition] = useTransition();
+export default function LittersClient({
+  litters,
+}: {
+  litters: any[];
+}) {
+  const [openLitterId, setOpenLitterId] = useState<string | null>(null);
 
-  const [matingId, setMatingId] = useState("");
-  const [kennelId, setKennelId] = useState("");
-
-  function handleCreate() {
-    startTransition(async () => {
-      await createLitter({ mating_id: matingId, kennel_id: kennelId });
-
-      setLitters((prev) => [
-        ...prev,
-        {
-          id: crypto.randomUUID(),
-          mating_id: matingId,
-          kennel_id: kennelId,
-          birth_date: null,
-          puppies_count: null,
-          status: "planned",
-          created_at: new Date().toISOString(),
-        },
-      ]);
-    });
-  }
-
-  function handleMarkBorn(id: string) {
-    startTransition(async () => {
-      await markLitterBorn({ litterId: id, puppiesCount: 1 });
-
-      setLitters((prev) =>
-        prev.map((l) =>
-          l.id === id
-            ? { ...l, status: "born", puppies_count: 1 }
-            : l
-        )
-      );
-    });
-  }
+  const [puppies, setPuppies] = useState<PuppyInput[]>([
+    { name: "", gender: "male", color: "" },
+  ]);
 
   return (
     <div className="space-y-6">
-      <div className="border p-4 space-y-2">
-        <h2 className="font-semibold">Create Litter</h2>
-
-        <input
-          placeholder="Mating ID"
-          value={matingId}
-          onChange={(e) => setMatingId(e.target.value)}
-          className="border p-2 mr-2"
-        />
-
-        <input
-          placeholder="Kennel ID"
-          value={kennelId}
-          onChange={(e) => setKennelId(e.target.value)}
-          className="border p-2 mr-2"
-        />
-
-        <button
-          onClick={handleCreate}
-          disabled={isPending}
-          className="bg-blue-600 text-white px-4 py-2"
-        >
-          Create Litter
-        </button>
-      </div>
-
-      <div className="space-y-3">
-        {litters.map((litter) => (
-          <div
-            key={litter.id}
-            className="border p-3 flex justify-between"
-          >
-            <div>
-              <div>Mating: {litter.mating_id}</div>
-              <div>Kennel: {litter.kennel_id}</div>
-              <div>Status: {litter.status}</div>
-              <div>Puppies: {litter.puppies_count ?? "-"}</div>
-            </div>
-
-            {litter.status === "planned" && (
-              <button
-                onClick={() => handleMarkBorn(litter.id)}
-                className="bg-green-600 text-white px-3 py-1"
-              >
-                Mark Born
-              </button>
-            )}
+      {litters.map((litter) => (
+        <div key={litter.id} className="border p-4 rounded">
+          <div>
+            <strong>Litter:</strong> {litter.id}
           </div>
-        ))}
-      </div>
+
+          <div>
+            Status: <strong>{litter.status}</strong>
+          </div>
+
+          <button
+            onClick={() => setOpenLitterId(litter.id)}
+            className="bg-green-600 text-white px-3 py-1 mt-2"
+          >
+            Mark Born
+          </button>
+
+          {openLitterId === litter.id && (
+            <div className="mt-4 border-t pt-4 space-y-2">
+              <h3 className="font-bold">Add Puppies</h3>
+
+              {puppies.map((p, idx) => (
+                <div key={idx} className="flex gap-2">
+                  <input
+                    placeholder="Name"
+                    value={p.name}
+                    onChange={(e) => {
+                      const copy = [...puppies];
+                      copy[idx].name = e.target.value;
+                      setPuppies(copy);
+                    }}
+                  />
+
+                  <select
+                    value={p.gender}
+                    onChange={(e) => {
+                      const copy = [...puppies];
+                      copy[idx].gender = e.target.value as any;
+                      setPuppies(copy);
+                    }}
+                  >
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                  </select>
+
+                  <input
+                    placeholder="Color"
+                    value={p.color}
+                    onChange={(e) => {
+                      const copy = [...puppies];
+                      copy[idx].color = e.target.value;
+                      setPuppies(copy);
+                    }}
+                  />
+                </div>
+              ))}
+
+              <button
+                onClick={() =>
+                  setPuppies([
+                    ...puppies,
+                    { name: "", gender: "male", color: "" },
+                  ])
+                }
+                className="text-blue-600"
+              >
+                + Add Puppy
+              </button>
+
+              <div>
+                <button
+                  onClick={async () => {
+                    await markLitterBorn({
+                      litterId: litter.id,
+                      puppies,
+                    });
+
+                    setOpenLitterId(null);
+                    setPuppies([
+                      { name: "", gender: "male", color: "" },
+                    ]);
+                  }}
+                  className="bg-black text-white px-4 py-2 mt-2"
+                >
+                  Confirm Birth
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      ))}
     </div>
   );
 }
