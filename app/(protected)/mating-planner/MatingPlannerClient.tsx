@@ -1,148 +1,77 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import PedigreeTree, { PedigreeNode } from "@/components/PedigreeTree";
+import { useState } from "react";
+import { calculateCOI } from "@/lib/supabase/coi.server";
 
-type Dog = {
-  id: string;
-  name: string;
-  sireId?: string | null;
-  damId?: string | null;
+type Props = {
+  pedigree: {
+    id: string;
+    sireId?: string | null;
+    damId?: string | null;
+  }[];
 };
 
-type COIResult = {
-  coi: number;
-  risk: "LOW" | "MEDIUM" | "HIGH";
-  label: string;
-  heatmap: Record<string, number>;
-};
+export default function MatingPlannerClient({ pedigree }: Props) {
+  const [a, setA] = useState("");
+  const [b, setB] = useState("");
+  const [result, setResult] = useState<number | null>(null);
+  const [status, setStatus] = useState<string>("idle");
+  const [loading, setLoading] = useState(false);
 
-// 🔥 STABIL COI (BUILD-BIZTOS fallback)
-function calculateCOI(sire?: Dog, dam?: Dog): COIResult {
-  if (!sire || !dam) {
-    return {
-      coi: 0,
-      risk: "LOW",
-      label: "No pairing selected",
-      heatmap: {},
-    };
+  async function handleCalculate() {
+    setLoading(true);
+    setStatus("calculating");
+
+    try {
+      const res = await calculateCOI({
+        individualA: a,
+        individualB: b,
+        pedigree,
+        maxDepth: 8,
+      });
+
+      setResult(res.coi);
+      setStatus(res.status);
+    } catch (err) {
+      console.error(err);
+      setStatus("error");
+    } finally {
+      setLoading(false);
+    }
   }
 
-  // egyszerű deterministic mock (stabil, nem tör buildet)
-  const overlap = sire.id === dam.id ? 0.25 : 0.05;
-
-  const coi = +(overlap * 100).toFixed(2);
-
-  return {
-    coi,
-    risk:
-      coi > 10 ? "HIGH" : coi > 3 ? "MEDIUM" : "LOW",
-    label:
-      coi > 10
-        ? "High genetic risk"
-        : coi > 3
-        ? "Moderate risk"
-        : "Safe pairing",
-    heatmap: {
-      [sire.id]: 2,
-      [dam.id]: 2,
-    },
-  };
-}
-
-export default function MatingPlannerClient({
-  dogs,
-}: {
-  dogs: Dog[];
-}) {
-  const [sireId, setSireId] = useState<string | null>(null);
-  const [damId, setDamId] = useState<string | null>(null);
-
-  const sire = useMemo(
-    () => dogs.find((d) => d.id === sireId),
-    [sireId, dogs]
-  );
-
-  const dam = useMemo(
-    () => dogs.find((d) => d.id === damId),
-    [damId, dogs]
-  );
-
-  const coi = useMemo(() => calculateCOI(sire, dam), [
-    sire,
-    dam,
-  ]);
-
-  const pedigreeNodes: PedigreeNode[] = useMemo(() => {
-    return dogs.map((d) => ({
-      id: d.id,
-      name: d.name,
-      sireId: d.sireId,
-      damId: d.damId,
-    }));
-  }, [dogs]);
-
   return (
-    <div className="p-4 space-y-6">
-      {/* COI PANEL */}
-      <div className="p-4 border rounded-lg bg-white shadow">
-        <div className="text-sm text-gray-500">
-          Genetic Risk Panel
-        </div>
+    <div className="p-4 space-y-4">
+      <h2 className="text-xl font-semibold">Mating Planner COI Engine</h2>
 
-        <div className="text-xl font-bold">
-          COI: {coi.coi}%
-        </div>
-
-        <div className="text-sm mt-1">
-          {coi.label}
-        </div>
-
-        <div
-          className={`text-xs mt-2 font-semibold ${
-            coi.risk === "HIGH"
-              ? "text-red-600"
-              : coi.risk === "MEDIUM"
-              ? "text-orange-500"
-              : "text-green-600"
-          }`}
-        >
-          Risk level: {coi.risk}
-        </div>
-      </div>
-
-      {/* SELECTORS */}
-      <div className="flex gap-4">
-        <select
-          onChange={(e) => setSireId(e.target.value)}
-        >
-          <option>Select sire</option>
-          {dogs.map((d) => (
-            <option key={d.id} value={d.id}>
-              {d.name}
-            </option>
-          ))}
-        </select>
-
-        <select
-          onChange={(e) => setDamId(e.target.value)}
-        >
-          <option>Select dam</option>
-          {dogs.map((d) => (
-            <option key={d.id} value={d.id}>
-              {d.name}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {/* PEDIGREE */}
-      <PedigreeTree
-        root={pedigreeNodes[0]}
-        nodes={pedigreeNodes}
-        paths={[]} // most nem törjük a buildet
-        highlightMap={coi.heatmap}
+      <input
+        className="border p-2"
+        placeholder="Individual A ID"
+        value={a}
+        onChange={(e) => setA(e.target.value)}
       />
+
+      <input
+        className="border p-2"
+        placeholder="Individual B ID"
+        value={b}
+        onChange={(e) => setB(e.target.value)}
+      />
+
+      <button
+        onClick={handleCalculate}
+        disabled={loading}
+        className="bg-blue-600 text-white px-4 py-2"
+      >
+        {loading ? "Calculating..." : "Calculate COI"}
+      </button>
+
+      <div className="pt-4">
+        <div>Status: {status}</div>
+        <div>
+          COI: {result !== null ? result.toFixed(6) : "—"}
+        </div>
+      </div>
     </div>
   );
 }
