@@ -1,5 +1,3 @@
-// app/(protected)/litters/page.tsx
-
 export const dynamic = "force-dynamic";
 
 import LittersClient from "./LittersClient";
