@@ -3,7 +3,11 @@ import { cookies } from "next/headers";
 import type { CookieOptions } from "@supabase/ssr";
 
 export function createServerSupabase() {
-  const cookieStore = cookies();
+  // ⚠️ Next 16: cookies() MAY be async-like in build context
+  const cookieStore = cookies() as unknown as {
+    getAll: () => { name: string; value: string }[];
+    set: (name: string, value: string, options?: CookieOptions) => void;
+  };
 
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -26,7 +30,7 @@ export function createServerSupabase() {
               cookieStore.set(name, value, options);
             });
           } catch {
-            // edge / readonly fallback
+            // edge runtime fallback
           }
         },
       },
@@ -34,5 +38,5 @@ export function createServerSupabase() {
   );
 }
 
-// ⚠️ backward compat
+// backward compat
 export const createClient = createServerSupabase;
