@@ -3,20 +3,26 @@
 import React, { useMemo } from "react";
 
 /**
- * 🧬 Pedigree node alap típus
+ * 🐶 Dog + pedigree struktúra
  */
-export type PedigreeNode = {
+export type Dog = {
   id: string;
   name?: string;
-  sire?: PedigreeNode | null;
-  dam?: PedigreeNode | null;
+  sire?: Dog | null;
+  dam?: Dog | null;
+};
+
+type Props = {
+  dogs: Dog[];
+  selectedMaleId?: string | null;
+  selectedFemaleId?: string | null;
 };
 
 /**
- * 🔬 Helper: összes ős összegyűjtése mélységgel
+ * 🧬 ancestor gyűjtés
  */
 function collectAncestors(
-  node: PedigreeNode | null,
+  node: Dog | null,
   depth = 0,
   maxDepth = 5,
   map = new Map<string, number[]>()
@@ -33,19 +39,13 @@ function collectAncestors(
 }
 
 /**
- * 🧬 Wright’s Coefficient of Inbreeding (COI)
- * F = Σ (1/2)^(n1+n2+1) * (1 + FA)
- * FA = 0 feltételezve (ismeretlen founder inbreeding)
+ * 🧬 Wright COI
  */
-export function calculateCOI(
-  male: PedigreeNode | null,
-  female: PedigreeNode | null,
-  maxDepth = 5
-): number {
+export function calculateCOI(male: Dog | null, female: Dog | null): number {
   if (!male || !female) return 0;
 
-  const maleMap = collectAncestors(male, 0, maxDepth);
-  const femaleMap = collectAncestors(female, 0, maxDepth);
+  const maleMap = collectAncestors(male);
+  const femaleMap = collectAncestors(female);
 
   let coi = 0;
 
@@ -56,42 +56,50 @@ export function calculateCOI(
 
     for (const n1 of maleDepths) {
       for (const n2 of femaleDepths) {
-        const contribution = Math.pow(0.5, n1 + n2 + 1);
-        coi += contribution;
+        coi += Math.pow(0.5, n1 + n2 + 1);
       }
     }
   }
 
-  return +(coi * 100).toFixed(2); // százalék
+  return +(coi * 100).toFixed(2);
 }
 
 /**
- * 🎯 Risk kategória
+ * 🚨 risk szint
  */
-function getRiskLabel(coi: number) {
+function getRisk(coi: number) {
   if (coi < 5) return { label: "Biztonságos", color: "#16a34a" };
-  if (coi < 10) return { label: "Mérsékelt kockázat", color: "#f59e0b" };
+  if (coi < 10) return { label: "Közepes kockázat", color: "#f59e0b" };
   return { label: "Magas beltenyésztettségi kockázat", color: "#dc2626" };
 }
 
 /**
  * 🧠 MAIN COMPONENT
  */
-export default function MatingPlannerClient() {
-  // ⚠️ itt feltételezem, hogy már van kiválasztott párod
-  // cseréld le a saját state-edre
-  const selectedMale: PedigreeNode | null = null;
-  const selectedFemale: PedigreeNode | null = null;
+export default function MatingPlannerClient({
+  dogs,
+  selectedMaleId,
+  selectedFemaleId,
+}: Props) {
+  const male = useMemo(
+    () => dogs.find((d) => d.id === selectedMaleId) || null,
+    [dogs, selectedMaleId]
+  );
+
+  const female = useMemo(
+    () => dogs.find((d) => d.id === selectedFemaleId) || null,
+    [dogs, selectedFemaleId]
+  );
 
   const coi = useMemo(() => {
-    return calculateCOI(selectedMale, selectedFemale, 5);
-  }, [selectedMale, selectedFemale]);
+    return calculateCOI(male, female);
+  }, [male, female]);
 
-  const risk = getRiskLabel(coi);
+  const risk = getRisk(coi);
 
   return (
     <div style={{ padding: 24 }}>
-      {/* 🧬 GENETIKAI PANEL */}
+      {/* 🧬 GENETIC PANEL */}
       <div
         style={{
           padding: 16,
@@ -112,9 +120,9 @@ export default function MatingPlannerClient() {
         </div>
       </div>
 
-      {/* 🧩 IDE JÖN A TÖBBI UI (dog selector, pedigree tree, stb.) */}
+      {/* UI placeholder */}
       <div>
-        <p>Válaszd ki a kant és a szukát a COI számításhoz.</p>
+        <p>Válassz kant és szukát a COI számításhoz.</p>
       </div>
     </div>
   );
