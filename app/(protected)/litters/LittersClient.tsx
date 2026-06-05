@@ -20,15 +20,12 @@ export default function LittersClient({ initialLitters }: Props) {
 
   function handleCreate() {
     startTransition(async () => {
-      await createLitter({
-        mating_id: matingId,
-        kennel_id: kennelId,
-      });
+      await createLitter({ mating_id: matingId, kennel_id: kennelId });
 
       setLitters((prev) => [
         ...prev,
         {
-          id: Math.random().toString(36).slice(2),
+          id: crypto.randomUUID(),
           mating_id: matingId,
           kennel_id: kennelId,
           birth_date: null,
@@ -42,10 +39,7 @@ export default function LittersClient({ initialLitters }: Props) {
 
   function handleMarkBorn(id: string) {
     startTransition(async () => {
-      await markLitterBorn({
-        litterId: id,
-        puppiesCount: 1,
-      });
+      await markLitterBorn({ litterId: id, puppiesCount: 1 });
 
       setLitters((prev) =>
         prev.map((l) =>
@@ -59,7 +53,6 @@ export default function LittersClient({ initialLitters }: Props) {
 
   return (
     <div className="space-y-6">
-      {/* CREATE */}
       <div className="border p-4 space-y-2">
         <h2 className="font-semibold">Create Litter</h2>
 
@@ -86,12 +79,11 @@ export default function LittersClient({ initialLitters }: Props) {
         </button>
       </div>
 
-      {/* LIST */}
       <div className="space-y-3">
         {litters.map((litter) => (
           <div
             key={litter.id}
-            className="border p-3 flex justify-between items-center"
+            className="border p-3 flex justify-between"
           >
             <div>
               <div>Mating: {litter.mating_id}</div>
