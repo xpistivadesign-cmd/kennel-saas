@@ -1,13 +1,11 @@
 "use client";
 
 import { calculateGeneticScore } from "@/lib/genetics";
-import { calculateDebtStatus } from "@/lib/debt-ai";
 
 export default function DogProfileClient({
   dog,
-  heats,
-  payments,
   health,
+  payments = [],
 }: any) {
   const genetic = calculateGeneticScore(dog);
 
@@ -17,68 +15,41 @@ export default function DogProfileClient({
   );
 
   return (
-    <div className="max-w-5xl mx-auto p-6 space-y-6">
+    <div className="p-4 space-y-4">
+      {/* 🧬 GENETIC PANEL */}
+      <div className="p-4 border rounded-lg bg-white shadow-sm">
+        <div className="text-sm font-bold text-gray-800">
+          🧬 Genetikai Kockázati Panel
+        </div>
 
-      {/* HEADER */}
-      <div className="bg-white border rounded-2xl p-5">
-        <h1 className="text-2xl font-bold">{dog.name}</h1>
-        <p className="text-sm text-gray-500">
-          {dog.breed} • {dog.microchip}
-        </p>
+        <div className="mt-2 text-sm font-medium">
+          {genetic.label}
+        </div>
 
-        <div className="mt-3">
-          <span className="text-xs bg-purple-50 text-purple-700 px-2 py-1 rounded">
-            Genetics: {genetic.label} ({genetic.score})
+        <div className="mt-2 flex items-center gap-2">
+          <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded">
+            COI: {genetic.coi.toFixed(2)}%
+          </span>
+
+          <span className="text-xs text-gray-600">
+            Kockázat: {genetic.risk}
           </span>
         </div>
       </div>
 
-      {/* METRICS */}
-      <div className="grid grid-cols-3 gap-4">
-        <div className="p-4 bg-white border rounded-xl">
-          <p className="text-xs text-gray-400">Összes bevétel</p>
-          <p className="text-xl font-bold">{totalEarned} HUF</p>
+      {/* DOG INFO */}
+      <div className="text-sm space-y-1">
+        <div>
+          <span className="font-medium">Név:</span> {dog?.name}
         </div>
 
-        <div className="p-4 bg-white border rounded-xl">
-          <p className="text-xs text-gray-400">Tüzelések</p>
-          <p className="text-xl font-bold">{heats.length}</p>
+        <div>
+          <span className="font-medium">Bevétel:</span> ${totalEarned}
         </div>
 
-        <div className="p-4 bg-white border rounded-xl">
-          <p className="text-xs text-gray-400">Egészség tesztek</p>
-          <p className="text-xl font-bold">{health.length}</p>
+        <div>
+          <span className="font-medium">Egészség:</span> {health?.status ?? "OK"}
         </div>
-      </div>
-
-      {/* HEATS */}
-      <div className="bg-white border rounded-2xl p-5">
-        <h2 className="font-bold mb-3">🩸 Tüzelési előzmények</h2>
-
-        {heats.map((h: any) => (
-          <div key={h.id} className="border-b py-2 text-sm">
-            {h.start_date} → {h.end_date || "aktív"}
-          </div>
-        ))}
-      </div>
-
-      {/* PAYMENTS */}
-      <div className="bg-white border rounded-2xl p-5">
-        <h2 className="font-bold mb-3">💳 Pénzügyek</h2>
-
-        {payments.map((p: any) => {
-          const status = calculateDebtStatus(p);
-
-          return (
-            <div
-              key={p.id}
-              className="flex justify-between border-b py-2 text-sm"
-            >
-              <span>{p.amount} HUF</span>
-              <span className="text-xs">{status.label}</span>
-            </div>
-          );
-        })}
       </div>
     </div>
   );
