@@ -8,7 +8,5 @@ export default async function MatingPlannerPage() {
 
   const { data: dogs } = await supabase.from("dogs").select("*");
 
-  return (
-    <MatingPlannerClient dogs={dogs ?? []} />
-  );
+  return <MatingPlannerClient dogs={dogs ?? []} />;
 }
