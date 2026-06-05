@@ -1,83 +1,87 @@
-"use client";
+function isCriticalEdge(from: string, to: string) {
+    return paths.some(
+      (p) =>
+        p.sirePath.includes(from) &&
+        p.damPath.includes(to)
+    );
+  }
 
-type PedigreeNode = {
-  id: string;
-  name?: string;
-  sire?: PedigreeNode | null;
-  dam?: PedigreeNode | null;
-};
+  function renderNode(node: PedigreeNode, x = 0, y = 0) {
+    if (!node) return null;
 
-type Props = {
-  root: PedigreeNode;
-};
+    const color = getNodeColor(node.id);
 
-function buildFrequencyMap(node: PedigreeNode | null, map: Map<string, number>) {
-  if (!node) return;
+    return (
+      <g key={node.id} transform={`translate(${x}, ${y})`}>
+        {/* NODE */}
+        <rect
+          x={-40}
+          y={-20}
+          width={80}
+          height={40}
+          rx={8}
+          fill={color}
+          stroke="#111"
+          strokeWidth={1}
+        />
 
-  map.set(node.id, (map.get(node.id) ?? 0) + 1);
+        <text
+          x={0}
+          y={5}
+          textAnchor="middle"
+          fontSize={10}
+          fill="#111"
+        >
+          {node.name || node.id}
+        </text>
 
-  buildFrequencyMap(node.sire ?? null, map);
-  buildFrequencyMap(node.dam ?? null, map);
-}
+        {/* EDGES */}
+        {node.sire && (
+          <line
+            x1={0}
+            y1={0}
+            x2={-120}
+            y2={-80}
+            stroke={
+              isCriticalEdge(node.id, node.sire.id)
+                ? "red"
+                : "#999"
+            }
+            strokeWidth={
+              isCriticalEdge(node.id, node.sire.id) ? 3 : 1
+            }
+          />
+        )}
 
-function getHeatColor(count: number) {
-  if (count >= 3) return "#7c3aed"; // deep purple
-  if (count === 2) return "#ef4444"; // red
-  return "#e5e7eb"; // gray
-}
+        {node.dam && (
+          <line
+            x1={0}
+            y1={0}
+            x2={120}
+            y2={-80}
+            stroke={
+              isCriticalEdge(node.id, node.dam.id)
+                ? "red"
+                : "#999"
+            }
+            strokeWidth={
+              isCriticalEdge(node.id, node.dam.id) ? 3 : 1
+            }
+          />
+        )}
 
-function NodeBox({ node, freqMap }: any) {
-  const count = freqMap.get(node.id) ?? 0;
-  const color = getHeatColor(count);
+        {/* CHILDREN */}
+        {node.sire && renderNode(node.sire, x - 120, y - 80)}
+        {node.dam && renderNode(node.dam, x + 120, y - 80)}
+      </g>
+    );
+  }
 
   return (
-    <div
-      style={{
-        border: "1px solid #ddd",
-        padding: 8,
-        margin: 4,
-        background: color,
-        borderRadius: 6,
-        color: count >= 2 ? "white" : "black",
-      }}
-    >
-      {node.name ?? node.id}
-      {count > 1 && (
-        <span style={{ marginLeft: 6, fontSize: 10 }}>
-          ({count}×)
-        </span>
-      )}
-    </div>
-  );
-}
-
-function renderTree(node: PedigreeNode | null, freqMap: Map<string, number>) {
-  if (!node) return null;
-
-  return (
-    <div style={{ marginLeft: 20 }}>
-      <NodeBox node={node} freqMap={freqMap} />
-
-      <div style={{ display: "flex" }}>
-        {renderTree(node.sire ?? null, freqMap)}
-        {renderTree(node.dam ?? null, freqMap)}
-      </div>
-    </div>
-  );
-}
-
-export default function PedigreeTree({ root }: Props) {
-  const freqMap = new Map<string, number>();
-
-  buildFrequencyMap(root, freqMap);
-
-  return (
-    <div className="p-4">
-      <div className="font-bold mb-2">
-        🌳 Pedigree Heatmap
-      </div>
-
-      {renderTree(root, freqMap)}
+    <div className="w-full overflow-x-auto bg-white">
+      <svg width={1200} height={800}>
+        {renderNode(root, 600, 700)}
+      </svg>
     </div>
   );
 }
