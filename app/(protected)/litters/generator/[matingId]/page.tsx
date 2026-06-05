@@ -1,73 +1,36 @@
+// app/(protected)/litters/generator/[matingId]/page.tsx
+export const dynamic = "force-dynamic";
+
 import { redirect } from "next/navigation";
 import { createLitter } from "@/app/actions/litters";
 
-export default function LitterGeneratorPage({
-  params,
-}: {
-  params: { matingId: string };
-}) {
-  async function handleSubmit(formData: FormData) {
-    "use server";
+interface Props {
+  params: Promise<{ matingId: string }> | { matingId: string };
+  searchParams: Promise<{ kennelId?: string }> | { kennelId?: string };
+}
 
-    const birthDate = formData.get("birthDate") as string;
-    const litterLetter = formData.get("litterLetter") as string;
-    const notes = formData.get("notes") as string;
+export default async function LitterGeneratorPage({ params, searchParams }: Props) {
+  // Next.js 16/17 kompatibilis aszinkron params feloldás
+  const resolvedParams = await params;
+  const resolvedSearchParams = await searchParams;
+  
+  const matingId = resolvedParams.matingId;
+  const kennelId = resolvedSearchParams.kennelId || "default_kennel";
 
-    if (!birthDate || !litterLetter) return;
-
-    // Egyszerűsített létrehozás: nincs mismatch action dependency
-    await createLitter({
-      mating_id: params.matingId,
-      kennel_id: "auto-generated", // ha később van kennel context, ide jön
-    });
-
-    redirect("/litters");
+  if (!matingId) {
+    redirect("/mating-planner");
   }
 
-  return (
-    <div className="p-6 max-w-xl mx-auto space-y-6">
-      <div className="bg-white p-6 rounded-2xl border shadow-sm">
-        <h1 className="text-2xl font-bold">Alom Generálás 🧬</h1>
+  try {
+    // Meghívjuk a tiszta, új Server Action-t, ami a litters.ts-ben van
+    await createLitter({
+      mating_id: matingId,
+      kennel_id: kennelId
+    });
+  } catch (error) {
+    console.error("Litter creation failed:", error);
+  }
 
-        <p className="text-sm text-gray-500 mt-1">
-          Mating ID: {params.matingId}
-        </p>
-
-        <form action={handleSubmit} className="space-y-4 mt-6">
-          <div>
-            <label className="text-sm font-medium">Születési dátum</label>
-            <input
-              type="date"
-              name="birthDate"
-              required
-              className="w-full border p-2 rounded mt-1"
-            />
-          </div>
-
-          <div>
-            <label className="text-sm font-medium">Alom betű</label>
-            <input
-              name="litterLetter"
-              maxLength={1}
-              required
-              className="w-full border p-2 rounded mt-1 uppercase"
-              placeholder="A"
-            />
-          </div>
-
-          <div>
-            <label className="text-sm font-medium">Megjegyzés</label>
-            <textarea
-              name="notes"
-              className="w-full border p-2 rounded mt-1"
-            />
-          </div>
-
-          <button className="w-full bg-emerald-600 text-white py-2 rounded">
-            Litter létrehozása
-          </button>
-        </form>
-      </div>
-    </div>
-  );
+  // Sikeres létrehozás után azonnal visszadobjuk a felhasználót a tiszta alomlistára
+  redirect("/litters");
 }
