@@ -1,79 +1,83 @@
 "use client";
 
-import type { PedigreeNode } from "@/lib/supabase/dogs";
+type PedigreeNode = {
+  id: string;
+  name?: string;
+  sire?: PedigreeNode | null;
+  dam?: PedigreeNode | null;
+};
 
 type Props = {
   root: PedigreeNode;
 };
 
-export default function PedigreeTree({ root }: Props) {
+function buildFrequencyMap(node: PedigreeNode | null, map: Map<string, number>) {
+  if (!node) return;
+
+  map.set(node.id, (map.get(node.id) ?? 0) + 1);
+
+  buildFrequencyMap(node.sire ?? null, map);
+  buildFrequencyMap(node.dam ?? null, map);
+}
+
+function getHeatColor(count: number) {
+  if (count >= 3) return "#7c3aed"; // deep purple
+  if (count === 2) return "#ef4444"; // red
+  return "#e5e7eb"; // gray
+}
+
+function NodeBox({ node, freqMap }: any) {
+  const count = freqMap.get(node.id) ?? 0;
+  const color = getHeatColor(count);
+
   return (
-    <div className="overflow-x-auto p-6">
-      <div className="flex gap-10 items-start">
-        <GenerationColumn nodes={[root]} />
+    <div
+      style={{
+        border: "1px solid #ddd",
+        padding: 8,
+        margin: 4,
+        background: color,
+        borderRadius: 6,
+        color: count >= 2 ? "white" : "black",
+      }}
+    >
+      {node.name ?? node.id}
+      {count > 1 && (
+        <span style={{ marginLeft: 6, fontSize: 10 }}>
+          ({count}×)
+        </span>
+      )}
+    </div>
+  );
+}
+
+function renderTree(node: PedigreeNode | null, freqMap: Map<string, number>) {
+  if (!node) return null;
+
+  return (
+    <div style={{ marginLeft: 20 }}>
+      <NodeBox node={node} freqMap={freqMap} />
+
+      <div style={{ display: "flex" }}>
+        {renderTree(node.sire ?? null, freqMap)}
+        {renderTree(node.dam ?? null, freqMap)}
       </div>
     </div>
   );
 }
 
-function GenerationColumn({
-  nodes,
-}: {
-  nodes: PedigreeNode[];
-}) {
-  if (!nodes.length) return null;
+export default function PedigreeTree({ root }: Props) {
+  const freqMap = new Map<string, number>();
 
-  const nextGeneration: PedigreeNode[] = [];
-
-  nodes.forEach((node) => {
-    if (node.sire) nextGeneration.push(node.sire);
-    if (node.dam) nextGeneration.push(node.dam);
-  });
+  buildFrequencyMap(root, freqMap);
 
   return (
-    <>
-      <div className="flex flex-col gap-6">
-        {nodes.map((node) => (
-          <DogCard key={`${node.id}-${node.generation}`} dog={node} />
-        ))}
+    <div className="p-4">
+      <div className="font-bold mb-2">
+        🌳 Pedigree Heatmap
       </div>
 
-      {nextGeneration.length > 0 && (
-        <GenerationColumn nodes={nextGeneration} />
-      )}
-    </>
-  );
-}
-
-function DogCard({ dog }: { dog: PedigreeNode }) {
-  return (
-    <div className="w-64 rounded-xl border bg-white p-4 shadow-sm">
-      <div className="font-semibold text-lg">{dog.name}</div>
-
-      <div className="text-sm text-gray-500">
-        {dog.breed ?? "Unknown breed"}
-      </div>
-
-      <div className="text-sm mt-1">
-        {dog.gender === "male" && "♂ Male"}
-        {dog.gender === "female" && "♀ Female"}
-      </div>
-
-      {dog.reg_number && (
-        <div className="text-xs text-gray-400 mt-2">
-          Reg: {dog.reg_number}
-        </div>
-      )}
-
-      {dog.birth_date && (
-        <div className="text-xs text-gray-400">
-          Born: {dog.birth_date}
-        </div>
-      )}
-
-      <div className="text-xs text-blue-500 mt-2">
-        Generation {dog.generation}
-      </div>
+      {renderTree(root, freqMap)}
     </div>
   );
 }
