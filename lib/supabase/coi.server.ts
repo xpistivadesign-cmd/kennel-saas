@@ -1,147 +1,153 @@
-export type PedigreeNode = {
-  id: string;
-  name?: string;
-  sire?: PedigreeNode | null;
-  dam?: PedigreeNode | null;
+import "server-only";
+
+type IndividualId = string;
+
+export type AncestryNode = {
+  id: IndividualId;
+  sireId?: IndividualId | null;
+  damId?: IndividualId | null;
 };
 
-export type COIPath = {
-  ancestorId: string;
-  sirePath: string[];
-  damPath: string[];
-  weight: number;
-};
-
-export type COIResult = {
-  coi: number;
-  label: string;
-  risk: "LOW" | "MEDIUM" | "HIGH";
-
-  heatmap: Record<string, number>;
-  pathways: COIPath[];
-};
+type PedigreeMap = Map<IndividualId, AncestryNode>;
 
 /**
- * DAG-safe memo cache
+ * Memoized ancestry graph node cache
  */
-const memo = new Map<string, PedigreeNode[]>();
+const ancestryCache = new Map<IndividualId, AncestryNode[]>();
 
-function getAncestors(
-  node: PedigreeNode | null | undefined,
-  depth = 0,
+/**
+ * Global computation guard (loop detection)
+ */
+class LoopError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "LoopError";
+  }
+}
+
+/**
+ * Fetch ancestry chain up to maxDepth (6–8 generations typical)
+ * LOOP SAFE: detects circular references immediately
+ */
+function buildAncestryChain(
+  id: IndividualId,
+  pedigree: PedigreeMap,
   maxDepth = 8,
-  visited = new Set<string>()
-): PedigreeNode[] {
-  if (!node || depth > maxDepth) return [];
+  visited = new Set<IndividualId>(),
+  depth = 0
+): AncestryNode[] {
+  if (!id) return [];
 
-  if (visited.has(node.id)) return [];
-  visited.add(node.id);
+  if (visited.has(id)) {
+    throw new LoopError(`Circular pedigree detected at node: ${id}`);
+  }
 
-  const key = `${node.id}:${depth}`;
+  if (depth >= maxDepth) return [];
 
-  if (memo.has(key)) return memo.get(key)!;
+  const cached = ancestryCache.get(id);
+  if (cached) return cached;
 
-  const sire = getAncestors(node.sire, depth + 1, maxDepth, visited);
-  const dam = getAncestors(node.dam, depth + 1, maxDepth, visited);
+  const node = pedigree.get(id);
+  if (!node) return [];
 
-  const result = [node, ...sire, ...dam];
+  visited.add(id);
 
-  memo.set(key, result);
+  const result: AncestryNode[] = [node];
+
+  if (node.sireId) {
+    result.push(
+      ...buildAncestryChain(node.sireId, pedigree, maxDepth, visited, depth + 1)
+    );
+  }
+
+  if (node.damId) {
+    result.push(
+      ...buildAncestryChain(node.damId, pedigree, maxDepth, visited, depth + 1)
+    );
+  }
+
+  visited.delete(id);
+
+  ancestryCache.set(id, result);
 
   return result;
 }
 
 /**
- * Build full ancestry paths (Wright decomposition core)
+ * Wright's Coefficient of Inbreeding (F)
+ * Simplified path-based implementation:
+ *
+ * F = Σ (1/2)^(n1+n2+1) * (1 + FA)
  */
-function buildPaths(
-  node: PedigreeNode | null,
-  target: string,
-  path: string[] = [],
-  depth = 0,
-  maxDepth = 8,
-  visited = new Set<string>()
-): string[][] {
-  if (!node || depth > maxDepth) return [];
+function wrightPathCoefficient(
+  individualA: IndividualId,
+  individualB: IndividualId,
+  pedigree: PedigreeMap,
+  maxDepth = 8
+): number {
+  const ancestorsA = buildAncestryChain(individualA, pedigree, maxDepth);
+  const ancestorsB = buildAncestryChain(individualB, pedigree, maxDepth);
 
-  if (node.id === target) {
-    return [[...path, node.id]];
+  const mapA = new Map<string, number>();
+  const mapB = new Map<string, number>();
+
+  ancestorsA.forEach((a, i) => mapA.set(a.id, i));
+  ancestorsB.forEach((b, i) => mapB.set(b.id, i));
+
+  let F = 0;
+
+  for (const [id, i] of mapA.entries()) {
+    if (!mapB.has(id)) continue;
+
+    const j = mapB.get(id)!;
+
+    // Wright path term approximation
+    const term = Math.pow(0.5, i + j + 1);
+
+    F += term;
   }
 
-  if (visited.has(node.id)) return [];
-  visited.add(node.id);
-
-  const newPath = [...path, node.id];
-
-  return [
-    ...buildPaths(node.sire ?? null, target, newPath, depth + 1, maxDepth, visited),
-    ...buildPaths(node.dam ?? null, target, newPath, depth + 1, maxDepth, visited),
-  ];
+  return Math.min(Math.max(F, 0), 1);
 }
 
 /**
- * True Wright COI approximation via path decomposition
+ * PUBLIC SERVER ACTION
+ * Called directly from client component (Next.js Server Actions)
  */
-export function calculateCOIv3(
-  sire: PedigreeNode,
-  dam: PedigreeNode
-): COIResult {
-  const sireAnc = getAncestors(sire);
-  const damAnc = getAncestors(dam);
+export async function calculateCOI(input: {
+  individualA: string;
+  individualB: string;
+  pedigree: AncestryNode[];
+  maxDepth?: number;
+}): Promise<{
+  coi: number;
+  status: "ok" | "loop_detected";
+}> {
+  "use server";
 
-  const heatmap: Record<string, number> = {};
-  const pathways: COIPath[] = [];
+  const pedigreeMap: PedigreeMap = new Map(
+    input.pedigree.map((n) => [n.id, n])
+  );
 
-  const damSet = new Set(damAnc.map((n) => n.id));
+  try {
+    const coi = wrightPathCoefficient(
+      input.individualA,
+      input.individualB,
+      pedigreeMap,
+      input.maxDepth ?? 8
+    );
 
-  let total = 0;
-
-  for (const a of sireAnc) {
-    if (!damSet.has(a.id)) continue;
-
-    const sirePaths = buildPaths(sire, a.id);
-    const damPaths = buildPaths(dam, a.id);
-
-    for (const sp of sirePaths) {
-      for (const dp of damPaths) {
-        const depthFactor =
-          (sp.length + dp.length) > 0
-            ? 1 / Math.pow(2, sp.length + dp.length)
-            : 0;
-
-        total += depthFactor;
-
-        pathways.push({
-          ancestorId: a.id,
-          sirePath: sp,
-          damPath: dp,
-          weight: depthFactor,
-        });
-      }
+    return {
+      coi,
+      status: "ok",
+    };
+  } catch (e) {
+    if (e instanceof LoopError) {
+      return {
+        coi: 0,
+        status: "loop_detected",
+      };
     }
-
-    heatmap[a.id] = (heatmap[a.id] || 0) + 1;
+    throw e;
   }
-
-  const coi = Math.min(100, Math.max(0, total * 100));
-
-  let label = "Genetically Safe";
-  let risk: COIResult["risk"] = "LOW";
-
-  if (coi > 10) {
-    label = "Moderate Inbreeding Risk";
-    risk = "MEDIUM";
-  }
-  if (coi > 20) {
-    label = "High Genetic Risk";
-    risk = "HIGH";
-  }
-
-  return {
-    coi: Number(coi.toFixed(2)),
-    label,
-    risk,
-    heatmap,
-    pathways,
-  };
 }
