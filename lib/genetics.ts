@@ -5,8 +5,13 @@ export type PedigreeNode = {
   dam?: PedigreeNode | null;
 };
 
+export type GeneticInput = {
+  sire: PedigreeNode | null;
+  dam: PedigreeNode | null;
+};
+
 /**
- * 🔁 Ancestor map builder (memoized + cycle-safe)
+ * 🔁 ancestry map (cycle-safe + memoized depth tracking)
  */
 function buildAncestorMap(
   node: PedigreeNode | null,
@@ -30,7 +35,7 @@ function buildAncestorMap(
 }
 
 /**
- * 🧬 Wright-style COI approximation (multi-generation overlap model)
+ * 🧬 COI (Wright approximation, multi-generation)
  */
 export function calculateCOI(
   sire: PedigreeNode,
@@ -42,32 +47,31 @@ export function calculateCOI(
 
   let coi = 0;
 
-  for (const [ancestorId, sireGen] of sireMap.entries()) {
-    if (!damMap.has(ancestorId)) continue;
+  for (const [id, sireGen] of sireMap.entries()) {
+    if (!damMap.has(id)) continue;
 
-    const damGen = damMap.get(ancestorId)!;
+    const damGen = damMap.get(id)!;
 
-    // Wright approximation contribution
-    const contribution = Math.pow(0.5, sireGen + damGen + 1);
-
-    coi += contribution;
+    coi += Math.pow(0.5, sireGen + damGen + 1);
   }
 
   return Number((coi * 100).toFixed(2));
 }
 
 /**
- * 🧠 ALIAS – FIXES YOUR BUILD ERROR
- * DogProfileClient expects this name
+ * 🧠 MAIN API (UI ezt használja!)
  */
-export function calculateGeneticScore(
-  sire: PedigreeNode,
-  dam: PedigreeNode
-): {
-  coi: number;
-  risk: "LOW" | "MEDIUM" | "HIGH";
-  label: string;
-} {
+export function calculateGeneticScore(input: GeneticInput) {
+  const { sire, dam } = input;
+
+  if (!sire || !dam) {
+    return {
+      coi: 0,
+      risk: "LOW" as const,
+      label: "Nincs elég pedigree adat",
+    };
+  }
+
   const coi = calculateCOI(sire, dam, 6);
 
   let risk: "LOW" | "MEDIUM" | "HIGH" = "LOW";
