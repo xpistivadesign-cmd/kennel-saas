@@ -3,19 +3,14 @@ import { cookies } from "next/headers";
 import type { CookieOptions } from "@supabase/ssr";
 
 export function createServerSupabase() {
-  // ⚠️ Next 16: cookies() MAY be async-like in build context
-  const cookieStore = cookies() as unknown as {
-    getAll: () => { name: string; value: string }[];
-    set: (name: string, value: string, options?: CookieOptions) => void;
-  };
-
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
         getAll() {
-          return cookieStore.getAll();
+          // ⚠️ IMPORTANT: call inside function ONLY
+          return cookies().getAll();
         },
 
         setAll(
@@ -26,11 +21,13 @@ export function createServerSupabase() {
           }[]
         ) {
           try {
+            const store = cookies();
+
             cookiesToSet.forEach(({ name, value, options }) => {
-              cookieStore.set(name, value, options);
+              store.set(name, value, options);
             });
           } catch {
-            // edge runtime fallback
+            // edge / readonly build fallback
           }
         },
       },
