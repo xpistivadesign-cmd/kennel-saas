@@ -1,98 +1,80 @@
+// app/actions/litters.ts
+
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 
+export type LitterStatus = "planned" | "born" | "raised";
+
+export type Litter = {
+  id: string;
+  mating_id: string;
+  kennel_id: string;
+  birth_date: string | null;
+  puppies_count: number | null;
+  status: LitterStatus;
+  created_at: string;
+};
+
 /**
- * LISTA: litters
+ * MOCK DB LAYER (replace with Supabase later)
  */
-export async function getLitters() {
-  const supabase = await createClient();
+let LITTERS: Litter[] = [
+  {
+    id: "1",
+    mating_id: "m1",
+    kennel_id: "k1",
+    birth_date: null,
+    puppies_count: null,
+    status: "planned",
+    created_at: new Date().toISOString(),
+  },
+];
 
-  const { data, error } = await supabase
-    .from("litters")
-    .select("*")
-    .order("birth_date", { ascending: false });
-
-  if (error) throw new Error(error.message);
-
-  return data ?? [];
+export async function getLitters(): Promise<Litter[]> {
+  "use server";
+  return LITTERS;
 }
 
-/**
- * Mating -> Litter generator data fetch
- */
-export async function getMatingForLitterGenerator(matingId: string) {
-  const supabase = await createClient();
-
-  const { data, error } = await supabase
-    .from("matings")
-    .select(`
-      id,
-      mating_date,
-      outside_stud_name,
-      stud_dog_id,
-      heats (
-        dog_id
-      )
-    `)
-    .eq("id", matingId)
-    .single();
-
-  if (error) throw new Error(error.message);
-
-  return data;
-}
-
-/**
- * CREATE LITTER
- */
-export async function createLitterFromMating(input: {
-  matingId: string;
-  motherId?: string;
-  fatherId?: string;
-  outsideFatherName?: string;
-  birthDate: string;
-  litterLetter: string;
-  notes?: string;
+export async function markLitterBorn(input: {
+  litterId: string;
+  puppiesCount: number;
+  birthDate?: string;
 }) {
-  const supabase = await createClient();
+  "use server";
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  LITTERS = LITTERS.map((l) =>
+    l.id === input.litterId
+      ? {
+          ...l,
+          status: "born",
+          puppies_count: input.puppiesCount,
+          birth_date: input.birthDate ?? new Date().toISOString(),
+        }
+      : l
+  );
 
-  if (!user) throw new Error("Unauthorized");
+  revalidatePath("/litters");
+}
 
-  const { data: existing } = await supabase
-    .from("litters")
-    .select("id")
-    .eq("mating_id", input.matingId)
-    .maybeSingle();
+export async function createLitter(input: {
+  mating_id: string;
+  kennel_id: string;
+  planned_birth_date?: string;
+}) {
+  "use server";
 
-  if (existing) {
-    throw new Error("Litter already exists for this mating");
-  }
+  const newLitter: Litter = {
+    id: Math.random().toString(36).slice(2),
+    mating_id: input.mating_id,
+    kennel_id: input.kennel_id,
+    birth_date: null,
+    puppies_count: null,
+    status: "planned",
+    created_at: new Date().toISOString(),
+  };
 
-  const { data, error } = await supabase
-    .from("litters")
-    .insert({
-      user_id: user.id,
-      mating_id: input.matingId,
-      mother_id: input.motherId ?? null,
-      father_id: input.fatherId ?? null,
-      outside_father_name: input.outsideFatherName ?? null,
-      birth_date: input.birthDate,
-      litter_letter: input.litterLetter.toUpperCase(),
-      notes: input.notes ?? null,
-    })
-    .select()
-    .single();
+  LITTERS.push(newLitter);
 
-  if (error) throw new Error(error.message);
-
-  revalidatePath("/protected/litters");
-  revalidatePath("/protected/puppies");
-
-  return data;
+  revalidatePath("/litters");
 }
