@@ -37,11 +37,12 @@ export async function createPuppy(input: {
 
   if (error) throw new Error(error.message);
 
+  revalidatePath("/puppies");
   revalidatePath("/protected/puppies");
 }
 
 /**
- * DELETE PUPPY (SERVER ACTION SAFE)
+ * DELETE PUPPY
  */
 export async function deletePuppy(formData: FormData): Promise<void> {
   const id = formData.get("puppyId") as string;
@@ -63,5 +64,6 @@ export async function deletePuppy(formData: FormData): Promise<void> {
 
   if (error) throw new Error(error.message);
 
+  revalidatePath("/puppies");
   revalidatePath("/protected/puppies");
 }
