@@ -1,91 +1,85 @@
-export type DogNode = {
+export type PedigreeNode = {
   id: string;
   name?: string;
-  sire?: DogNode | null;
-  dam?: DogNode | null;
+  sire?: PedigreeNode | null;
+  dam?: PedigreeNode | null;
 };
 
-//
-// ===============================
-// 🧬 COI ENGINE v2
-// ===============================
-//
-
-export function buildAncestorGraph(
-  node: DogNode | null,
-  maxDepth = 8,
+/**
+ * 🔁 Ancestor map builder (memoized + cycle-safe)
+ */
+function buildAncestorMap(
+  node: PedigreeNode | null,
+  depth = 0,
+  maxDepth = 6,
+  map = new Map<string, number>(),
   visited = new Set<string>()
-): Map<number, string[]> {
-  const result = new Map<number, string[]>();
+) {
+  if (!node || depth > maxDepth) return map;
+  if (visited.has(node.id)) return map;
 
-  function walk(n: DogNode | null, depth: number) {
-    if (!n || depth > maxDepth) return;
-    if (visited.has(n.id)) return;
+  visited.add(node.id);
 
-    visited.add(n.id);
+  const prev = map.get(node.id) ?? maxDepth;
+  map.set(node.id, Math.min(prev, depth));
 
-    if (!result.has(depth)) result.set(depth, []);
-    result.get(depth)!.push(n.id);
-
-    walk(n.sire || null, depth + 1);
-    walk(n.dam || null, depth + 1);
-  }
-
-  walk(node, 0);
-
-  return result;
-}
-
-export function calculateCOIv2(
-  male: DogNode | null,
-  female: DogNode | null,
-  maxDepth = 8
-): number {
-  if (!male || !female) return 0;
-
-  const maleGraph = buildAncestorGraph(male, maxDepth);
-  const femaleGraph = buildAncestorGraph(female, maxDepth);
-
-  let coi = 0;
-
-  for (const [md, mids] of maleGraph.entries()) {
-    for (const [fd, fids] of femaleGraph.entries()) {
-      for (const id of mids) {
-        if (!fids.includes(id)) continue;
-        coi += Math.pow(0.5, md + fd + 1);
-      }
-    }
-  }
-
-  return +(coi * 100).toFixed(2);
-}
-
-//
-// ===============================
-// 🌳 HEATMAP ENGINE
-// ===============================
-//
-
-export function buildFrequencyMap(node: DogNode | null) {
-  const map = new Map<string, number>();
-
-  function walk(n: DogNode | null) {
-    if (!n) return;
-
-    map.set(n.id, (map.get(n.id) || 0) + 1);
-
-    walk(n.sire || null);
-    walk(n.dam || null);
-  }
-
-  walk(node);
+  buildAncestorMap(node.sire ?? null, depth + 1, maxDepth, map, visited);
+  buildAncestorMap(node.dam ?? null, depth + 1, maxDepth, map, visited);
 
   return map;
 }
 
-export function getHeatColor(count: number) {
-  if (count >= 4) return "#7c3aed"; // critical
-  if (count === 3) return "#dc2626"; // red
-  if (count === 2) return "#f59e0b"; // orange
-  return "#e5e7eb"; // neutral
+/**
+ * 🧬 Wright-style COI approximation (multi-generation overlap model)
+ */
+export function calculateCOI(
+  sire: PedigreeNode,
+  dam: PedigreeNode,
+  maxDepth = 6
+): number {
+  const sireMap = buildAncestorMap(sire, 0, maxDepth);
+  const damMap = buildAncestorMap(dam, 0, maxDepth);
+
+  let coi = 0;
+
+  for (const [ancestorId, sireGen] of sireMap.entries()) {
+    if (!damMap.has(ancestorId)) continue;
+
+    const damGen = damMap.get(ancestorId)!;
+
+    // Wright approximation contribution
+    const contribution = Math.pow(0.5, sireGen + damGen + 1);
+
+    coi += contribution;
+  }
+
+  return Number((coi * 100).toFixed(2));
+}
+
+/**
+ * 🧠 ALIAS – FIXES YOUR BUILD ERROR
+ * DogProfileClient expects this name
+ */
+export function calculateGeneticScore(
+  sire: PedigreeNode,
+  dam: PedigreeNode
+): {
+  coi: number;
+  risk: "LOW" | "MEDIUM" | "HIGH";
+  label: string;
+} {
+  const coi = calculateCOI(sire, dam, 6);
+
+  let risk: "LOW" | "MEDIUM" | "HIGH" = "LOW";
+  let label = "Biztonságos genetikai kombináció";
+
+  if (coi > 12) {
+    risk = "HIGH";
+    label = "Magas beltenyésztési kockázat";
+  } else if (coi > 5) {
+    risk = "MEDIUM";
+    label = "Közepes genetikai kockázat";
+  }
+
+  return { coi, risk, label };
 }
