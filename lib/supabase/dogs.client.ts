@@ -1,6 +1,8 @@
 import { createClient } from "./client";
 import type { Dog, PedigreeNode } from "./dogs";
 
+export type { Dog, PedigreeNode } from "./dogs";
+
 const supabase = createClient();
 
 export async function saveDog(dog: Dog) {
