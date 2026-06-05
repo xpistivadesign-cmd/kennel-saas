@@ -12,49 +12,45 @@ export default function MatingPlannerClient({ dogs }: Props) {
   const [sireId, setSireId] = useState<string>("");
   const [damId, setDamId] = useState<string>("");
 
-  const males = useMemo(
+  const sires = useMemo(
     () => dogs.filter((d) => d.gender === "male"),
     [dogs]
   );
 
-  const females = useMemo(
+  const dams = useMemo(
     () => dogs.filter((d) => d.gender === "female"),
     [dogs]
   );
 
-  const virtualTree: PedigreeNode | null = useMemo(() => {
-    if (!sireId && !damId) return null;
+  const virtualTree = useMemo((): PedigreeNode | null => {
+    const sire = dogs.find((d) => d.id === sireId);
+    const dam = dogs.find((d) => d.id === damId);
 
-    const sire = dogs.find((d) => d.id === sireId) ?? null;
-    const dam = dogs.find((d) => d.id === damId) ?? null;
+    if (!sire || !dam) return null;
 
     return {
-      id: "virtual",
+      id: "virtual-litter",
       name: "Planned Litter",
-      breed: sire?.breed || dam?.breed || "Mixed",
+      breed: sire.breed || dam.breed,
       gender: undefined,
-      sire_id: sire?.id,
-      dam_id: dam?.id,
-      sire: sire
-        ? { ...sire, generation: 2 }
-        : null,
-      dam: dam
-        ? { ...dam, generation: 2 }
-        : null,
-      generation: 1,
+      sire,
+      dam,
+      generation: 0,
     };
   }, [sireId, damId, dogs]);
 
   return (
-    <div className="space-y-6">
-      <div className="flex gap-4">
+    <div className="p-6">
+      <h1 className="text-xl font-bold mb-4">Mating Planner</h1>
+
+      <div className="flex gap-4 mb-6">
         <select
           value={sireId}
           onChange={(e) => setSireId(e.target.value)}
           className="border p-2"
         >
-          <option value="">Select male</option>
-          {males.map((d) => (
+          <option value="">Select sire</option>
+          {sires.map((d) => (
             <option key={d.id} value={d.id}>
               {d.name}
             </option>
@@ -66,8 +62,8 @@ export default function MatingPlannerClient({ dogs }: Props) {
           onChange={(e) => setDamId(e.target.value)}
           className="border p-2"
         >
-          <option value="">Select female</option>
-          {females.map((d) => (
+          <option value="">Select dam</option>
+          {dams.map((d) => (
             <option key={d.id} value={d.id}>
               {d.name}
             </option>
@@ -76,9 +72,7 @@ export default function MatingPlannerClient({ dogs }: Props) {
       </div>
 
       {virtualTree && (
-        <div className="border rounded-xl bg-gray-50">
-          <PedigreeTree root={virtualTree} />
-        </div>
+        <PedigreeTree root={virtualTree} />
       )}
     </div>
   );
