@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { createServerSupabase } from "@/lib/supabase/server";
-import { getDogWithPedigree } from "@/lib/supabase/pedigree.server";
+import { getPedigreeTree } from "@/lib/supabase/dogs.client";
 import PedigreeTree from "@/components/PedigreeTree";
 
 export default async function DogPage({
@@ -19,7 +19,7 @@ export default async function DogPage({
 
   if (!dog) return <div>Dog not found</div>;
 
-  const pedigree = await getDogWithPedigree(params.id, 4);
+  const pedigree = await getPedigreeTree(params.id, 4);
 
   return (
     <div className="p-6">
@@ -30,7 +30,7 @@ export default async function DogPage({
       </div>
 
       <div className="mt-6">
-        <PedigreeTree root={pedigree!} />
+        {pedigree && <PedigreeTree root={pedigree} />}
       </div>
     </div>
   );
