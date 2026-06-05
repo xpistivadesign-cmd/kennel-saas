@@ -1,53 +1,58 @@
-import { createServerSupabase } from "./server";
-import type { PedigreeNode } from "./dogs";
+import { createServerSupabase } from "@/lib/supabase/server";
+import type { Dog, PedigreeNode } from "@/lib/supabase/dogs";
 
-/**
- * 🧬 3 generációs családfa builder
- */
-export async function getPedigreeTree(
-  dogId: string,
-  maxDepth = 3
-): Promise<PedigreeNode | null> {
-  const supabase = createServerSupabase();
+const supabase = createServerSupabase();
 
-  const { data: root } = await supabase
+async function getDogById(id: string): Promise<Dog | null> {
+  const { data, error } = await supabase
     .from("dogs")
     .select("*")
-    .eq("id", dogId)
+    .eq("id", id)
     .single();
 
-  if (!root) return null;
-
-  return await buildNode(root, supabase, 0, maxDepth);
+  if (error || !data) return null;
+  return data as Dog;
 }
 
 async function buildNode(
-  dog: any,
-  supabase: any,
-  depth: number,
-  maxDepth: number
-): Promise<PedigreeNode> {
-  if (depth >= maxDepth) {
-    return dog;
+  dogId: string,
+  generation = 1,
+  maxGeneration = 3
+): Promise<PedigreeNode | null> {
+  const dog = await getDogById(dogId);
+  if (!dog) return null;
+
+  const node: PedigreeNode = {
+    ...dog,
+    generation,
+    sire: null,
+    dam: null,
+  };
+
+  if (generation >= maxGeneration) return node;
+
+  if (dog.sire_id) {
+    node.sire = await buildNode(
+      dog.sire_id,
+      generation + 1,
+      maxGeneration
+    );
   }
 
-  const [sire, dam] = await Promise.all([
-    dog.sire_id
-      ? supabase.from("dogs").select("*").eq("id", dog.sire_id).single()
-      : Promise.resolve({ data: null }),
+  if (dog.dam_id) {
+    node.dam = await buildNode(
+      dog.dam_id,
+      generation + 1,
+      maxGeneration
+    );
+  }
 
-    dog.dam_id
-      ? supabase.from("dogs").select("*").eq("id", dog.dam_id).single()
-      : Promise.resolve({ data: null }),
-  ]);
+  return node;
+}
 
-  return {
-    ...dog,
-    sire: sire.data
-      ? await buildNode(sire.data, supabase, depth + 1, maxDepth)
-      : null,
-    dam: dam.data
-      ? await buildNode(dam.data, supabase, depth + 1, maxDepth)
-      : null,
-  };
+export async function getDogWithPedigree(
+  dogId: string,
+  depth = 3
+): Promise<PedigreeNode | null> {
+  return buildNode(dogId, 1, depth);
 }
