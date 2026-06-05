@@ -3,18 +3,20 @@ import { cookies } from "next/headers";
 import type { CookieOptions } from "@supabase/ssr";
 
 export function createServerSupabase() {
-  const cookieStore = cookies();
+  // ⚠️ Next.js 16+: cookies() IS ASYNC (Promise)
+  const cookieStorePromise = cookies();
 
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        getAll() {
-          return cookieStore.getAll();
+        async getAll() {
+          const store = await cookieStorePromise;
+          return store.getAll();
         },
 
-        setAll(
+        async setAll(
           cookiesToSet: {
             name: string;
             value: string;
@@ -22,11 +24,13 @@ export function createServerSupabase() {
           }[]
         ) {
           try {
+            const store = await cookieStorePromise;
+
             cookiesToSet.forEach(({ name, value, options }) => {
-              cookieStore.set(name, value, options);
+              store.set(name, value, options);
             });
           } catch {
-            // Edge / read-only fallback
+            // Edge / read-only fallback (Vercel safe)
           }
         },
       },
@@ -34,5 +38,5 @@ export function createServerSupabase() {
   );
 }
 
-// BACKWARD COMPAT
+// 🔥 BACKWARD COMPAT (NE TÖRD EL)
 export const createClient = createServerSupabase;
