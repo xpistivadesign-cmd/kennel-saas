@@ -3,15 +3,15 @@ import { cookies } from "next/headers";
 import type { CookieOptions } from "@supabase/ssr";
 
 export function createServerSupabase() {
+  const cookieStore = cookies();
+
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
         getAll() {
-          // ⚠️ Next.js 16+: cookies() is synchronous BUT context-bound
-          const store = cookies();
-          return store.getAll();
+          return cookieStore.getAll();
         },
 
         setAll(
@@ -22,13 +22,11 @@ export function createServerSupabase() {
           }[]
         ) {
           try {
-            const store = cookies();
-
             cookiesToSet.forEach(({ name, value, options }) => {
-              store.set(name, value, options);
+              cookieStore.set(name, value, options);
             });
           } catch {
-            // Edge / static build fallback
+            // edge / readonly fallback
           }
         },
       },
@@ -36,5 +34,5 @@ export function createServerSupabase() {
   );
 }
 
-// BACKWARD COMPAT
+// ⚠️ backward compat
 export const createClient = createServerSupabase;
