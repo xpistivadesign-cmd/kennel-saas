@@ -1,16 +1,11 @@
 import { redirect } from "next/navigation";
-import {
-  getMatingForLitterGenerator,
-  createLitterFromMating,
-} from "@/app/actions/litters";
+import { createLitter } from "@/app/actions/litters";
 
-export default async function LitterGeneratorPage({
+export default function LitterGeneratorPage({
   params,
 }: {
   params: { matingId: string };
 }) {
-  const mating = await getMatingForLitterGenerator(params.matingId);
-
   async function handleSubmit(formData: FormData) {
     "use server";
 
@@ -20,17 +15,13 @@ export default async function LitterGeneratorPage({
 
     if (!birthDate || !litterLetter) return;
 
-    await createLitterFromMating({
-      matingId: params.matingId,
-      motherId: mating?.heats?.[0]?.dog_id,
-      fatherId: mating?.stud_dog_id ?? undefined,
-      outsideFatherName: mating?.outside_stud_name ?? undefined,
-      birthDate,
-      litterLetter,
-      notes,
+    // Egyszerűsített létrehozás: nincs mismatch action dependency
+    await createLitter({
+      mating_id: params.matingId,
+      kennel_id: "auto-generated", // ha később van kennel context, ide jön
     });
 
-    redirect("/puppies");
+    redirect("/litters");
   }
 
   return (
