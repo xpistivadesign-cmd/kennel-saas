@@ -1,26 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { calculateCOI } from "@/app/actions/coi.actions";
+import { calculateCOI } from "@/app/actions/coi";
 
-type Props = {
-  pedigree: {
-    id: string;
-    sireId?: string | null;
-    damId?: string | null;
-  }[];
-};
-
-export default function MatingPlannerClient({ pedigree }: Props) {
+export default function MatingPlannerClient({ pedigree }: any) {
   const [a, setA] = useState("");
   const [b, setB] = useState("");
   const [result, setResult] = useState<number | null>(null);
-  const [status, setStatus] = useState("idle");
-  const [loading, setLoading] = useState(false);
 
-  async function handleCalculate() {
-    setLoading(true);
-
+  async function run() {
     const res = await calculateCOI({
       individualA: a,
       individualB: b,
@@ -29,21 +17,16 @@ export default function MatingPlannerClient({ pedigree }: Props) {
     });
 
     setResult(res.coi);
-    setStatus(res.status);
-    setLoading(false);
   }
 
   return (
-    <div className="p-4 space-y-3">
-      <input value={a} onChange={(e) => setA(e.target.value)} placeholder="A" />
-      <input value={b} onChange={(e) => setB(e.target.value)} placeholder="B" />
+    <div>
+      <input onChange={(e) => setA(e.target.value)} />
+      <input onChange={(e) => setB(e.target.value)} />
 
-      <button onClick={handleCalculate} disabled={loading}>
-        Calculate
-      </button>
+      <button onClick={run}>Run</button>
 
-      <div>Status: {status}</div>
-      <div>COI: {result ?? "-"}</div>
+      <div>{result ?? "-"}</div>
     </div>
   );
 }
