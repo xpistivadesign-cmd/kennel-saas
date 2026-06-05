@@ -9,8 +9,9 @@ export function createServerSupabase() {
     {
       cookies: {
         getAll() {
-          // ⚠️ runtime only — NO await, NO promise cache
-          return cookies().getAll();
+          // ⚠️ Next.js 16+: cookies() is synchronous BUT context-bound
+          const store = cookies();
+          return store.getAll();
         },
 
         setAll(
@@ -27,7 +28,7 @@ export function createServerSupabase() {
               store.set(name, value, options);
             });
           } catch {
-            // Edge runtime safe fallback
+            // Edge / static build fallback
           }
         },
       },
