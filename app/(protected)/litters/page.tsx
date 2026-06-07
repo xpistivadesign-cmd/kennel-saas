@@ -9,7 +9,7 @@ export default async function LittersPage() {
   return (
     <div className="p-6">
       <h1 className="text-xl font-bold mb-4">Litter Management</h1>
-      <LittersClient initialLitters={litters} />
+      <LittersClient litters={litters} />
     </div>
   );
 }
