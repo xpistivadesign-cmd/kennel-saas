@@ -12,37 +12,35 @@ export default async function ShowsPage() {
 
   const totalShows = shows.length;
 
-  const firstPlaces = shows.filter((s) => s.placement === 1).length;
+  const firstPlaces = shows.filter(s => s.placement === 1).length;
 
-  const championTitles = shows.filter((s) =>
+  const championTitles = shows.filter(s =>
     (s.titles_won ?? "").includes("CH")
   ).length;
 
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-8">
-      <h1 className="text-2xl font-bold">🏆 Dog Shows & Achievements</h1>
+      <h1 className="text-2xl font-bold">Dog Shows & Achievements</h1>
 
-      {/* KPI CARDS */}
       <div className="grid grid-cols-3 gap-4">
-        <div className="p-4 border rounded-xl">
-          <p className="text-xs text-gray-500">Total Shows</p>
+        <div className="border p-4 rounded-xl">
+          <p className="text-sm text-gray-500">Total Shows</p>
           <p className="text-2xl font-bold">{totalShows}</p>
         </div>
 
-        <div className="p-4 border rounded-xl">
-          <p className="text-xs text-gray-500">Champion Titles</p>
+        <div className="border p-4 rounded-xl">
+          <p className="text-sm text-gray-500">Champion Titles</p>
           <p className="text-2xl font-bold">{championTitles}</p>
         </div>
 
-        <div className="p-4 border rounded-xl">
-          <p className="text-xs text-gray-500">1st Places</p>
+        <div className="border p-4 rounded-xl">
+          <p className="text-sm text-gray-500">First Places</p>
           <p className="text-2xl font-bold">{firstPlaces}</p>
         </div>
       </div>
 
-      {/* CREATE FORM */}
       <form
-        action={async (formData) => {
+        action={async formData => {
           "use server";
 
           await createShowRecord({
@@ -54,79 +52,43 @@ export default async function ShowsPage() {
             class: formData.get("class") as string,
             placement: Number(formData.get("placement")) || undefined,
             titles_won: formData.get("titles_won") as string,
-            notes: formData.get("notes") as string,
+            notes: formData.get("notes") as string
           });
         }}
         className="space-y-3 border p-4 rounded-xl"
       >
         <select name="dog_id" className="border p-2 w-full" required>
           <option value="">Select Dog</option>
-          {dogs?.map((d) => (
+          {dogs?.map(d => (
             <option key={d.id} value={d.id}>
               {d.name}
             </option>
           ))}
         </select>
 
-        <input
-          name="show_name"
-          placeholder="Show name"
-          className="border p-2 w-full"
-          required
-        />
+        <input name="show_name" className="border p-2 w-full" placeholder="Show name" required />
 
-        <input
-          type="date"
-          name="show_date"
-          className="border p-2 w-full"
-          required
-        />
+        <input type="date" name="show_date" className="border p-2 w-full" required />
 
-        <input
-          name="location"
-          placeholder="Location"
-          className="border p-2 w-full"
-        />
+        <input name="location" className="border p-2 w-full" placeholder="Location" />
 
-        <input
-          name="judge_name"
-          placeholder="Judge name"
-          className="border p-2 w-full"
-        />
+        <input name="judge_name" className="border p-2 w-full" placeholder="Judge" />
 
-        <input
-          name="class"
-          placeholder="Class (Open, Puppy...)"
-          className="border p-2 w-full"
-        />
+        <input name="class" className="border p-2 w-full" placeholder="Class" />
 
-        <input
-          name="placement"
-          placeholder="Placement (1,2,3...)"
-          type="number"
-          className="border p-2 w-full"
-        />
+        <input name="placement" type="number" className="border p-2 w-full" placeholder="Placement" />
 
-        <input
-          name="titles_won"
-          placeholder="Titles (CH, GCH, BOB...)"
-          className="border p-2 w-full"
-        />
+        <input name="titles_won" className="border p-2 w-full" placeholder="Titles (CH, GCH...)" />
 
-        <textarea
-          name="notes"
-          placeholder="Notes"
-          className="border p-2 w-full"
-        />
+        <textarea name="notes" className="border p-2 w-full" placeholder="Notes" />
 
         <button className="bg-black text-white px-4 py-2 rounded">
-          Add Show Result
+          Add Show
         </button>
       </form>
 
-      {/* SHOW LIST */}
       <div className="space-y-3">
-        {shows.map((s) => (
+        {shows.map(s => (
           <div key={s.id} className="border p-4 rounded-xl">
             <div className="flex justify-between">
               <div>
@@ -138,7 +100,7 @@ export default async function ShowsPage() {
 
               <div className="text-right">
                 {s.placement && (
-                  <p className="font-bold">Place #{s.placement}</p>
+                  <p className="font-bold">#{s.placement}</p>
                 )}
                 {s.titles_won && (
                   <p className="text-sm">{s.titles_won}</p>
