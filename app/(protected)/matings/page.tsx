@@ -2,6 +2,7 @@ import {
   createMating,
   deleteMating,
   getMatings,
+  type MatingMethod,
 } from "@/app/actions/matings";
 
 export default async function MatingsPage() {
@@ -16,24 +17,16 @@ export default async function MatingsPage() {
         action={async (formData) => {
           "use server";
 
+          const method = formData.get("method") as MatingMethod | "";
+
           await createMating({
             heat_id: formData.get("heat_id") as string,
-
-            mating_type:
-              (formData.get("mating_type") as string) || "natural",
-
-            stud_dog_id: undefined,
-
-            outside_stud_name:
-              (formData.get("male_name") as string) || undefined,
-
-            first_mating_date: new Date(
+            mating_date: new Date(
               formData.get("mating_date") as string
             ).toISOString(),
-
-            chase_mating_date: undefined,
-
-            notes: (formData.get("notes") as string) || undefined,
+            male_name: formData.get("male_name") as string,
+            method: method || undefined,
+            notes: formData.get("notes") as string,
           });
         }}
         className="space-y-3 p-4 border rounded"
@@ -52,21 +45,18 @@ export default async function MatingsPage() {
           required
         />
 
-        <select
-          name="mating_type"
-          className="border p-2 w-full"
-          defaultValue="natural"
-        >
-          <option value="natural">Natural</option>
-          <option value="ai_chilled">AI chilled</option>
-          <option value="ai_frozen">AI frozen</option>
-        </select>
-
         <input
           name="male_name"
-          placeholder="Outside stud name"
+          placeholder="Male name"
           className="border p-2 w-full"
         />
+
+        <select name="method" className="border p-2 w-full">
+          <option value="">Method</option>
+          <option value="natural">Natural</option>
+          <option value="ai">AI</option>
+          <option value="tci">TCI</option>
+        </select>
 
         <textarea
           name="notes"
@@ -88,25 +78,19 @@ export default async function MatingsPage() {
           >
             <div>
               <div className="font-semibold">
-                {new Date(
-                  m.first_mating_date
-                ).toLocaleString()}
+                {new Date(m.mating_date).toLocaleString()}
               </div>
 
-              <div className="text-sm">
-                Type: {m.mating_type}
-              </div>
+              {m.male_name && (
+                <div className="text-sm">Male: {m.male_name}</div>
+              )}
 
-              {m.outside_stud_name && (
-                <div className="text-sm">
-                  Male: {m.outside_stud_name}
-                </div>
+              {m.method && (
+                <div className="text-sm">Method: {m.method}</div>
               )}
 
               {m.notes && (
-                <div className="text-sm italic">
-                  {m.notes}
-                </div>
+                <div className="text-sm italic">{m.notes}</div>
               )}
             </div>
 
