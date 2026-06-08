@@ -1,13 +1,12 @@
 import { createClient } from "@/lib/supabase/server";
-import { getDogShows, createShowRecord } from "@/app/actions/shows";
+import { createShowRecord, getDogShows } from "@/app/actions/shows";
 
 export default async function ShowsPage() {
   const supabase = await createClient();
 
   const { data: dogs } = await supabase
     .from("dogs")
-    .select("id, name")
-    .order("name", { ascending: true });
+    .select("id, name");
 
   const shows = await getDogShows();
 
@@ -15,11 +14,8 @@ export default async function ShowsPage() {
 
   const firstPlaces = shows.filter((s) => s.placement === 1).length;
 
-  const championTitles = shows.filter(
-    (s) =>
-      s.titles_won?.includes("BOB") ||
-      s.titles_won?.includes("BIS") ||
-      s.titles_won?.includes("CH")
+  const championTitles = shows.filter((s) =>
+    (s.titles_won ?? "").includes("CH")
   ).length;
 
   return (
@@ -56,7 +52,7 @@ export default async function ShowsPage() {
             location: formData.get("location") as string,
             judge_name: formData.get("judge_name") as string,
             class: formData.get("class") as string,
-            placement: Number(formData.get("placement") || 0) || undefined,
+            placement: Number(formData.get("placement")) || undefined,
             titles_won: formData.get("titles_won") as string,
             notes: formData.get("notes") as string,
           });
@@ -80,8 +76,8 @@ export default async function ShowsPage() {
         />
 
         <input
-          name="show_date"
           type="date"
+          name="show_date"
           className="border p-2 w-full"
           required
         />
@@ -94,7 +90,7 @@ export default async function ShowsPage() {
 
         <input
           name="judge_name"
-          placeholder="Judge"
+          placeholder="Judge name"
           className="border p-2 w-full"
         />
 
@@ -106,14 +102,14 @@ export default async function ShowsPage() {
 
         <input
           name="placement"
-          type="number"
           placeholder="Placement (1,2,3...)"
+          type="number"
           className="border p-2 w-full"
         />
 
         <input
           name="titles_won"
-          placeholder="Titles (BOB, BOS, CH...)"
+          placeholder="Titles (CH, GCH, BOB...)"
           className="border p-2 w-full"
         />
 
@@ -128,22 +124,21 @@ export default async function ShowsPage() {
         </button>
       </form>
 
-      {/* LIST */}
+      {/* SHOW LIST */}
       <div className="space-y-3">
         {shows.map((s) => (
-          <div key={s.id} className="border rounded-xl p-4">
+          <div key={s.id} className="border p-4 rounded-xl">
             <div className="flex justify-between">
               <div>
                 <p className="font-bold">{s.show_name}</p>
                 <p className="text-sm text-gray-500">
-                  {s.location ?? "Unknown location"} •{" "}
-                  {new Date(s.show_date).toLocaleDateString()}
+                  {s.location} • {s.show_date}
                 </p>
               </div>
 
               <div className="text-right">
                 {s.placement && (
-                  <p className="font-bold">#{s.placement}</p>
+                  <p className="font-bold">Place #{s.placement}</p>
                 )}
                 {s.titles_won && (
                   <p className="text-sm">{s.titles_won}</p>
@@ -151,11 +146,15 @@ export default async function ShowsPage() {
               </div>
             </div>
 
-            <div className="text-sm mt-2">
-              <p>Judge: {s.judge_name ?? "-"}</p>
-              <p>Class: {s.class ?? "-"}</p>
-              {s.notes && <p className="italic mt-1">{s.notes}</p>}
-            </div>
+            {s.judge_name && (
+              <p className="text-xs text-gray-500 mt-2">
+                Judge: {s.judge_name}
+              </p>
+            )}
+
+            {s.notes && (
+              <p className="text-xs italic mt-1">{s.notes}</p>
+            )}
           </div>
         ))}
       </div>
