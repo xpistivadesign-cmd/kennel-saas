@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { createClient } from "@/lib/supabase/server";
 import { getHeatsByDog } from "@/app/actions/heats";
 import { getLitters } from "@/app/actions/litters";
