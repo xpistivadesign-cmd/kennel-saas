@@ -10,13 +10,19 @@ export default function LoginPage() {
 
     const supabase = await createClient();
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
     if (error) {
+      console.log("LOGIN ERROR:", error.message);
       throw new Error(error.message);
+    }
+
+    if (!data.session) {
+      console.log("NO SESSION RETURNED");
+      throw new Error("No session returned");
     }
 
     redirect("/dashboard");
@@ -30,14 +36,17 @@ export default function LoginPage() {
 
     const supabase = await createClient();
 
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
     });
 
     if (error) {
+      console.log("SIGNUP ERROR:", error.message);
       throw new Error(error.message);
     }
+
+    console.log("SIGNUP OK:", data);
 
     redirect("/dashboard");
   }
@@ -45,7 +54,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-black text-white">
       <div className="w-full max-w-md p-8 border border-white/10 rounded-xl space-y-4">
-        <h1 className="text-2xl font-bold">Kennel Login</h1>
+        <h1 className="text-2xl font-bold">Login</h1>
 
         <form action={signIn} className="space-y-3">
           <input
