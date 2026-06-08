@@ -15,14 +15,15 @@ export default function LoginPage() {
       password,
     });
 
+    console.log("LOGIN RESPONSE:", data);
+    console.log("LOGIN ERROR:", error);
+
     if (error) {
-      console.log("LOGIN ERROR:", error.message);
       throw new Error(error.message);
     }
 
     if (!data.session) {
-      console.log("NO SESSION RETURNED");
-      throw new Error("No session returned");
+      throw new Error("No session created - check Supabase settings");
     }
 
     redirect("/dashboard");
@@ -41,12 +42,12 @@ export default function LoginPage() {
       password,
     });
 
+    console.log("SIGNUP RESPONSE:", data);
+    console.log("SIGNUP ERROR:", error);
+
     if (error) {
-      console.log("SIGNUP ERROR:", error.message);
       throw new Error(error.message);
     }
-
-    console.log("SIGNUP OK:", data);
 
     redirect("/dashboard");
   }
@@ -54,7 +55,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-black text-white">
       <div className="w-full max-w-md p-8 border border-white/10 rounded-xl space-y-4">
-        <h1 className="text-2xl font-bold">Login</h1>
+        <h1 className="text-2xl font-bold">Kennel Login</h1>
 
         <form action={signIn} className="space-y-3">
           <input
