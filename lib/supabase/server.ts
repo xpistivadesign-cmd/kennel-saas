@@ -3,15 +3,14 @@ import { cookies } from "next/headers";
 import type { CookieOptions } from "@supabase/ssr";
 
 export function createServerSupabase() {
-  const cookieStore = cookies();
-
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
         getAll() {
-          return cookieStore.getAll();
+          const store = cookies();
+          return store.getAll();
         },
 
         setAll(
@@ -21,8 +20,10 @@ export function createServerSupabase() {
             options?: CookieOptions;
           }[]
         ) {
+          const store = cookies();
+
           cookiesToSet.forEach(({ name, value, options }) => {
-            cookieStore.set(name, value, options);
+            store.set(name, value, options);
           });
         },
       },
