@@ -17,7 +17,9 @@ export default async function MatingsPage() {
         action={async (formData) => {
           "use server";
 
-          const method = formData.get("method") as MatingMethod | "";
+          const methodValue = formData.get("method") as
+            | MatingMethod
+            | "";
 
           await createMating({
             heat_id: formData.get("heat_id") as string,
@@ -25,7 +27,7 @@ export default async function MatingsPage() {
               formData.get("mating_date") as string
             ).toISOString(),
             male_name: formData.get("male_name") as string,
-            method: method || undefined,
+            method: methodValue || undefined,
             notes: formData.get("notes") as string,
           });
         }}
