@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createServerSupabase } from "@/lib/supabase/server";
+
+export const dynamic = "force-dynamic";
 
 export default function LoginPage() {
   async function signIn(formData: FormData) {
@@ -8,22 +10,19 @@ export default function LoginPage() {
     const email = String(formData.get("email") || "");
     const password = String(formData.get("password") || "");
 
-    const supabase = await createClient();
+    if (!email || !password) {
+      return;
+    }
 
-    const { data, error } = await supabase.auth.signInWithPassword({
+    const supabase = createServerSupabase();
+
+    const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
-    console.log("LOGIN RESPONSE:", data);
-    console.log("LOGIN ERROR:", error);
-
     if (error) {
       throw new Error(error.message);
-    }
-
-    if (!data.session) {
-      throw new Error("No session created - check Supabase settings");
     }
 
     redirect("/dashboard");
@@ -35,15 +34,16 @@ export default function LoginPage() {
     const email = String(formData.get("email") || "");
     const password = String(formData.get("password") || "");
 
-    const supabase = await createClient();
+    if (!email || !password) {
+      return;
+    }
 
-    const { data, error } = await supabase.auth.signUp({
+    const supabase = createServerSupabase();
+
+    const { error } = await supabase.auth.signUp({
       email,
       password,
     });
-
-    console.log("SIGNUP RESPONSE:", data);
-    console.log("SIGNUP ERROR:", error);
 
     if (error) {
       throw new Error(error.message);
@@ -54,32 +54,41 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-black text-white">
-      <div className="w-full max-w-md p-8 border border-white/10 rounded-xl space-y-4">
-        <h1 className="text-2xl font-bold">Kennel Login</h1>
+      <div className="w-full max-w-md p-8 rounded-2xl bg-zinc-900 border border-zinc-800">
+        <h1 className="text-2xl font-semibold mb-6 text-center">
+          Kennel SaaS Login
+        </h1>
 
-        <form action={signIn} className="space-y-3">
+        <form className="space-y-4">
           <input
             name="email"
+            type="email"
             placeholder="Email"
-            className="w-full p-2 bg-black border border-white/20"
+            className="w-full p-3 rounded bg-black border border-zinc-700"
           />
 
           <input
             name="password"
             type="password"
             placeholder="Password"
-            className="w-full p-2 bg-black border border-white/20"
+            className="w-full p-3 rounded bg-black border border-zinc-700"
           />
 
-          <button className="w-full bg-white text-black py-2">
-            Sign In
-          </button>
-        </form>
+          <div className="flex gap-3">
+            <button
+              formAction={signIn}
+              className="flex-1 bg-white text-black p-3 rounded font-medium"
+            >
+              Sign In
+            </button>
 
-        <form action={signUp}>
-          <button className="w-full border border-white/30 py-2">
-            Sign Up
-          </button>
+            <button
+              formAction={signUp}
+              className="flex-1 bg-zinc-700 text-white p-3 rounded font-medium"
+            >
+              Sign Up
+            </button>
+          </div>
         </form>
       </div>
     </div>
