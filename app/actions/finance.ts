@@ -1,140 +1,56 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { revalidatePath } from "next/cache";
 
-export type FinanceItem = {
+export type TransactionType = "income" | "expense";
+
+export type Transaction = {
   id: string;
-  puppyName: string;
-  litter: string | null;
-  buyerName: string;
-  buyerPhone: string;
-  buyerAddress: string;
-  price: number;
-  deposit: number;
-  remaining: number;
-  date: string;
+  user_id: string;
+  type: TransactionType;
+  amount: number;
+  category: string;
+  notes: string | null;
+  created_at: string;
 };
 
-export type FinanceOverview = {
-  items: FinanceItem[];
-  totalRevenue: number;
-  totalDeposits: number;
-  totalRemaining: number;
-  totalBalance: number;
-};
-
-/**
- * 📊 FINANCE OVERVIEW
- */
-export async function getFinanceOverview(): Promise<FinanceOverview> {
+export async function getTransactions(): Promise<Transaction[]> {
   const supabase = await createClient();
 
   const { data, error } = await supabase
-    .from("puppies")
-    .select(`
-      id,
-      name,
-      buyer_name,
-      buyer_phone,
-      buyer_address,
-      price,
-      deposit,
-      created_at,
-      litters ( litter_letter )
-    `)
+    .from("transactions")
+    .select("*")
     .order("created_at", { ascending: false });
 
-  if (error || !data) {
-    console.error(error?.message);
+  if (error) throw new Error(error.message);
 
-    return {
-      items: [],
-      totalRevenue: 0,
-      totalDeposits: 0,
-      totalRemaining: 0,
-      totalBalance: 0,
-    };
-  }
-
-  const items: FinanceItem[] = data.map((p: any) => {
-    const price = Number(p.price ?? 0);
-    const deposit = Number(p.deposit ?? 0);
-    const remaining = price - deposit;
-
-    // 🔥 FIX: litters is ARRAY
-    const litterLetter =
-      Array.isArray(p.litters) && p.litters.length > 0
-        ? p.litters[0].litter_letter
-        : null;
-
-    return {
-      id: p.id,
-      puppyName: p.name,
-      litter: litterLetter,
-      buyerName: p.buyer_name ?? "",
-      buyerPhone: p.buyer_phone ?? "",
-      buyerAddress: p.buyer_address ?? "",
-      price,
-      deposit,
-      remaining,
-      date: p.created_at,
-    };
-  });
-
-  const totalRevenue = items.reduce((s, i) => s + i.price, 0);
-  const totalDeposits = items.reduce((s, i) => s + i.deposit, 0);
-  const totalRemaining = items.reduce((s, i) => s + i.remaining, 0);
-
-  return {
-    items,
-    totalRevenue,
-    totalDeposits,
-    totalRemaining,
-    totalBalance: totalRevenue,
-  };
+  return (data ?? []) as Transaction[];
 }
 
-/**
- * 📄 CONTRACT GENERATOR
- */
-export async function generatePuppyContract(puppyId: string) {
+export async function createTransaction(input: {
+  type: TransactionType;
+  amount: number;
+  category: string;
+  notes?: string;
+}) {
   const supabase = await createClient();
 
-  const { data, error } = await supabase
-    .from("puppies")
-    .select(`
-      id,
-      name,
-      buyer_name,
-      buyer_phone,
-      buyer_address,
-      price,
-      deposit,
-      created_at,
-      litters ( litter_letter )
-    `)
-    .eq("id", puppyId)
-    .single();
+  const { data: user } = await supabase.auth.getUser();
 
-  if (error || !data) return null;
+  if (!user.user) throw new Error("Unauthorized");
 
-  const price = Number(data.price ?? 0);
-  const deposit = Number(data.deposit ?? 0);
+  const { error } = await supabase.from("transactions").insert({
+    user_id: user.user.id,
+    type: input.type,
+    amount: input.amount,
+    category: input.category,
+    notes: input.notes ?? null,
+  });
 
-  const litterLetter =
-    Array.isArray(data.litters) && data.litters.length > 0
-      ? data.litters[0].litter_letter
-      : null;
+  if (error) throw new Error(error.message);
 
-  return {
-    puppyName: data.name,
-    litter: litterLetter,
-    buyerName: data.buyer_name ?? "",
-    buyerPhone: data.buyer_phone ?? "",
-    buyerAddress: data.buyer_address ?? "",
-    price,
-    deposit,
-    remaining: price - deposit,
-    date: data.created_at,
-  };
+  revalidatePath("/protected/finance");
+
+  return { success: true };
 }
