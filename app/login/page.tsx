@@ -1,59 +1,107 @@
-"use client";
+import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
 
-import { useState, FormEvent } from "react";
-import { supabase } from "../../lib/supabase";
-import { useRouter } from "next/navigation";
+export const dynamic = "force-dynamic";
 
-export default function Login() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const router = useRouter();
-
-  async function handleLogin(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setError(null);
-    setLoading(true);
-
-    try {
-      const { error: authError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (authError) throw authError;
-
-      alert("Sikeres bejelentkezés! 🎉");
-      router.push("/");
-    } catch (err: any) {
-      console.error("Bejelentkezési hiba részletei:", err);
-      setError(err?.message || "Ismeretlen hiba történt a belépés során.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
+export default function LoginPage() {
   return (
-    <div style={{ maxWidth: 400, margin: "100px auto", padding: 20, border: "1px solid #ccc", borderRadius: 8, fontFamily: "sans-serif" }}>
-      <h2>🔑 Bejelentkezés</h2>
-      {error && <p style={{ color: "red", fontWeight: "bold" }}>{error}</p>}
-      
-      <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        <label>E-mail cím:</label>
-        <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required style={{ padding: 8 }} />
+    <div className="min-h-screen flex items-center justify-center bg-black text-white px-4">
+      <div className="w-full max-w-md space-y-6 p-8 rounded-2xl border border-white/10 bg-zinc-950 shadow-2xl">
+        <div className="space-y-1 text-center">
+          <h1 className="text-2xl font-semibold tracking-wide">
+            Kennel Access
+          </h1>
+          <p className="text-sm text-white/60">
+            Sign in or create an account
+          </p>
+        </div>
 
-        <label>Jelszó:</label>
-        <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required style={{ padding: 8 }} />
+        <form
+          action={async (formData) => {
+            "use server";
 
-        <button type="submit" disabled={loading} style={{ padding: 10, background: "#0070f3", color: "white", border: "none", borderRadius: 4, cursor: "pointer", fontWeight: "bold" }}>
-          {loading ? "Belépés..." : "Bejelentkezés"}
-        </button>
-      </form>
-      
-      <p style={{ marginTop: 15, fontSize: "0.9rem" }}>
-        Nincs még fiókod? <span style={{ color: "blue", cursor: "pointer", textDecoration: "underline" }} onClick={() => router.push("/register")}>Regisztrálj itt</span>
-      </p>
+            const email = formData.get("email") as string;
+            const password = formData.get("password") as string;
+
+            const supabase = await createClient();
+
+            const { error } = await supabase.auth.signInWithPassword({
+              email,
+              password,
+            });
+
+            if (error) {
+              throw new Error(error.message);
+            }
+
+            redirect("/protected/dashboard");
+          }}
+          className="space-y-3"
+        >
+          <input
+            name="email"
+            type="email"
+            placeholder="Email"
+            className="w-full p-3 rounded bg-black border border-white/10"
+            required
+          />
+
+          <input
+            name="password"
+            type="password"
+            placeholder="Password"
+            className="w-full p-3 rounded bg-black border border-white/10"
+            required
+          />
+
+          <button className="w-full py-3 rounded bg-white text-black font-medium">
+            Sign In
+          </button>
+        </form>
+
+        <form
+          action={async (formData) => {
+            "use server";
+
+            const email = formData.get("email") as string;
+            const password = formData.get("password") as string;
+
+            const supabase = await createClient();
+
+            const { error } = await supabase.auth.signUp({
+              email,
+              password,
+            });
+
+            if (error) {
+              throw new Error(error.message);
+            }
+
+            redirect("/protected/dashboard");
+          }}
+          className="space-y-3"
+        >
+          <input
+            name="email"
+            type="email"
+            placeholder="Email"
+            className="w-full p-3 rounded bg-black border border-white/10"
+            required
+          />
+
+          <input
+            name="password"
+            type="password"
+            placeholder="Password"
+            className="w-full p-3 rounded bg-black border border-white/10"
+            required
+          />
+
+          <button className="w-full py-3 rounded border border-white/20 text-white">
+            Sign Up
+          </button>
+        </form>
+      </div>
     </div>
   );
 }
