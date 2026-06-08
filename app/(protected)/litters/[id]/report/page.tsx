@@ -22,12 +22,10 @@ export default async function LitterReportPage({
       </div>
 
       {/* REPORT */}
-      <div className="space-y-8 print:space-y-4">
+      <div className="space-y-8">
         {/* HEADER */}
         <div className="border-b pb-4">
-          <h1 className="text-2xl font-bold">
-            🧾 Litter Report
-          </h1>
+          <h1 className="text-2xl font-bold">🧾 Litter Report</h1>
           <p className="text-sm text-gray-500">
             Litter ID: {litter.id}
           </p>
@@ -40,12 +38,10 @@ export default async function LitterReportPage({
           <div className="text-sm">
             <p>Status: {litter.status}</p>
             <p>
-              Birth Date:{" "}
-              {litter.birth_date ?? "Not born yet"}
+              Birth Date: {litter.birth_date ?? "Not born yet"}
             </p>
             <p>
-              Puppies Count:{" "}
-              {litter.puppies_count ?? "N/A"}
+              Puppies Count: {litter.puppies_count ?? "N/A"}
             </p>
           </div>
         </section>
@@ -78,11 +74,9 @@ export default async function LitterReportPage({
           </div>
         </section>
 
-        {/* HEALTH NOTE PLACEHOLDER */}
+        {/* HEALTH NOTE */}
         <section className="border p-3 rounded">
-          <h2 className="font-semibold mb-2">
-            Health & Notes
-          </h2>
+          <h2 className="font-semibold mb-2">Health & Notes</h2>
           <p className="text-sm text-gray-600">
             No health records linked yet.
           </p>
@@ -94,11 +88,11 @@ export default async function LitterReportPage({
         </div>
       </div>
 
-      {/* PRINT STYLES */}
-      <style jsx global>{`
+      {/* GLOBAL PRINT CSS (SERVER SAFE) */}
+      <style>{`
         @media print {
           body {
-            background: white;
+            background: white !important;
           }
 
           nav,
@@ -111,11 +105,11 @@ export default async function LitterReportPage({
             display: none !important;
           }
 
-          .print\:hidden {
+          .print-hidden {
             display: none !important;
           }
 
-          .print\:p-0 {
+          .print-p-0 {
             padding: 0 !important;
           }
         }
