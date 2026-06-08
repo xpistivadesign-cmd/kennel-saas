@@ -5,16 +5,9 @@ export const dynamic = "force-dynamic";
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-black text-white px-4">
-      <div className="w-full max-w-md space-y-6 p-8 rounded-2xl border border-white/10 bg-zinc-950 shadow-2xl">
-        <div className="space-y-1 text-center">
-          <h1 className="text-2xl font-semibold tracking-wide">
-            Kennel Access
-          </h1>
-          <p className="text-sm text-white/60">
-            Sign in or create an account
-          </p>
-        </div>
+    <div className="min-h-screen flex items-center justify-center bg-black text-white">
+      <div className="w-full max-w-md space-y-6 border border-white/10 p-8 rounded-xl">
+        <h1 className="text-xl font-semibold">Kennel Login</h1>
 
         <form
           action={async (formData) => {
@@ -34,7 +27,7 @@ export default function LoginPage() {
               throw new Error(error.message);
             }
 
-            redirect("/protected/dashboard");
+            redirect("/dashboard");
           }}
           className="space-y-3"
         >
@@ -42,7 +35,7 @@ export default function LoginPage() {
             name="email"
             type="email"
             placeholder="Email"
-            className="w-full p-3 rounded bg-black border border-white/10"
+            className="w-full p-3 bg-black border border-white/10"
             required
           />
 
@@ -50,11 +43,11 @@ export default function LoginPage() {
             name="password"
             type="password"
             placeholder="Password"
-            className="w-full p-3 rounded bg-black border border-white/10"
+            className="w-full p-3 bg-black border border-white/10"
             required
           />
 
-          <button className="w-full py-3 rounded bg-white text-black font-medium">
+          <button className="w-full bg-white text-black py-2">
             Sign In
           </button>
         </form>
@@ -77,7 +70,7 @@ export default function LoginPage() {
               throw new Error(error.message);
             }
 
-            redirect("/protected/dashboard");
+            redirect("/dashboard");
           }}
           className="space-y-3"
         >
@@ -85,7 +78,7 @@ export default function LoginPage() {
             name="email"
             type="email"
             placeholder="Email"
-            className="w-full p-3 rounded bg-black border border-white/10"
+            className="w-full p-3 bg-black border border-white/10"
             required
           />
 
@@ -93,11 +86,11 @@ export default function LoginPage() {
             name="password"
             type="password"
             placeholder="Password"
-            className="w-full p-3 rounded bg-black border border-white/10"
+            className="w-full p-3 bg-black border border-white/10"
             required
           />
 
-          <button className="w-full py-3 rounded border border-white/20 text-white">
+          <button className="w-full border border-white/20 py-2">
             Sign Up
           </button>
         </form>
