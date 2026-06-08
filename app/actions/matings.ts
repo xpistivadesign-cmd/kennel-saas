@@ -3,42 +3,24 @@
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 
+export type MatingMethod = "natural" | "ai" | "tci";
+
 export type Mating = {
   id: string;
   user_id: string;
-
   heat_id: string;
-
-  mating_type: string;
-
-  stud_dog_id: string | null;
-
-  outside_stud_name: string | null;
-  outside_stud_reg_number: string | null;
-
-  first_mating_date: string;
-
-  chase_mating_date: string | null;
-
+  mating_date: string;
+  male_name: string | null;
+  method: MatingMethod | null;
   notes: string | null;
-
   created_at: string;
 };
 
 export type CreateMatingInput = {
   heat_id: string;
-
-  mating_type: string;
-
-  stud_dog_id?: string;
-
-  outside_stud_name?: string;
-  outside_stud_reg_number?: string;
-
-  first_mating_date: string;
-
-  chase_mating_date?: string;
-
+  mating_date: string; // ISO string
+  male_name?: string;
+  method?: MatingMethod;
   notes?: string;
 };
 
@@ -47,58 +29,36 @@ export async function createMating(
 ): Promise<Mating> {
   const supabase = await createClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: userData, error: userError } =
+    await supabase.auth.getUser();
 
-  if (!user) {
+  if (userError || !userData?.user) {
     throw new Error("Unauthorized");
   }
 
   const { data, error } = await supabase
     .from("matings")
     .insert({
-      user_id: user.id,
-
+      user_id: userData.user.id,
       heat_id: input.heat_id,
-
-      mating_type: input.mating_type,
-
-      stud_dog_id: input.stud_dog_id ?? null,
-
-      outside_stud_name:
-        input.outside_stud_name ?? null,
-
-      outside_stud_reg_number:
-        input.outside_stud_reg_number ?? null,
-
-      first_mating_date:
-        input.first_mating_date,
-
-      chase_mating_date:
-        input.chase_mating_date ?? null,
-
+      mating_date: input.mating_date,
+      male_name: input.male_name ?? null,
+      method: input.method ?? null,
       notes: input.notes ?? null,
     })
     .select()
     .single();
 
   if (error || !data) {
-    throw new Error(
-      error?.message ?? "Failed to create mating"
-    );
+    throw new Error(error?.message ?? "Failed to create mating");
   }
 
-  revalidatePath("/protected/heats");
   revalidatePath("/protected/matings");
-  revalidatePath("/protected/litters");
 
   return data as Mating;
 }
 
-export async function deleteMating(
-  id: string
-): Promise<void> {
+export async function deleteMating(id: string) {
   const supabase = await createClient();
 
   const { error } = await supabase
@@ -110,9 +70,9 @@ export async function deleteMating(
     throw new Error(error.message);
   }
 
-  revalidatePath("/protected/heats");
   revalidatePath("/protected/matings");
-  revalidatePath("/protected/litters");
+
+  return { success: true };
 }
 
 export async function getMatings(): Promise<Mating[]> {
@@ -121,9 +81,7 @@ export async function getMatings(): Promise<Mating[]> {
   const { data, error } = await supabase
     .from("matings")
     .select("*")
-    .order("first_mating_date", {
-      ascending: false,
-    });
+    .order("mating_date", { ascending: false });
 
   if (error) {
     throw new Error(error.message);
