@@ -44,7 +44,9 @@ export async function getDogShows(dogId?: string): Promise<DogShow[]> {
 
   const { data, error } = await query;
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    throw new Error(error.message);
+  }
 
   return data ?? [];
 }
@@ -79,7 +81,7 @@ export async function createShowRecord(
     .single();
 
   if (error || !data) {
-    throw new Error(error.message);
+    throw new Error(error?.message ?? "Insert failed");
   }
 
   revalidatePath("/protected/shows");
