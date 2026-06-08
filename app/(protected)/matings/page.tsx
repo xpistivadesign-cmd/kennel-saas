@@ -18,12 +18,22 @@ export default async function MatingsPage() {
 
           await createMating({
             heat_id: formData.get("heat_id") as string,
-            mating_date: new Date(
+
+            mating_type:
+              (formData.get("mating_type") as string) || "natural",
+
+            stud_dog_id: undefined,
+
+            outside_stud_name:
+              (formData.get("male_name") as string) || undefined,
+
+            first_mating_date: new Date(
               formData.get("mating_date") as string
             ).toISOString(),
-            male_name: formData.get("male_name") as string,
-            method: formData.get("method") as string,
-            notes: formData.get("notes") as string,
+
+            chase_mating_date: undefined,
+
+            notes: (formData.get("notes") as string) || undefined,
           });
         }}
         className="space-y-3 p-4 border rounded"
@@ -42,18 +52,21 @@ export default async function MatingsPage() {
           required
         />
 
+        <select
+          name="mating_type"
+          className="border p-2 w-full"
+          defaultValue="natural"
+        >
+          <option value="natural">Natural</option>
+          <option value="ai_chilled">AI chilled</option>
+          <option value="ai_frozen">AI frozen</option>
+        </select>
+
         <input
           name="male_name"
-          placeholder="Male name"
+          placeholder="Outside stud name"
           className="border p-2 w-full"
         />
-
-        <select name="method" className="border p-2 w-full">
-          <option value="">Method</option>
-          <option value="natural">Natural</option>
-          <option value="ai">AI</option>
-          <option value="tci">TCI</option>
-        </select>
 
         <textarea
           name="notes"
@@ -75,19 +88,25 @@ export default async function MatingsPage() {
           >
             <div>
               <div className="font-semibold">
-                {new Date(m.mating_date).toLocaleString()}
+                {new Date(
+                  m.first_mating_date
+                ).toLocaleString()}
               </div>
 
-              {m.male_name && (
-                <div className="text-sm">Male: {m.male_name}</div>
-              )}
+              <div className="text-sm">
+                Type: {m.mating_type}
+              </div>
 
-              {m.method && (
-                <div className="text-sm">Method: {m.method}</div>
+              {m.outside_stud_name && (
+                <div className="text-sm">
+                  Male: {m.outside_stud_name}
+                </div>
               )}
 
               {m.notes && (
-                <div className="text-sm italic">{m.notes}</div>
+                <div className="text-sm italic">
+                  {m.notes}
+                </div>
               )}
             </div>
 
