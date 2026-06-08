@@ -31,15 +31,16 @@ export default async function ProtectedLayout({
   return (
     <div className="min-h-screen flex bg-black text-white">
       <aside className="w-64 border-r border-white/10 p-4 flex flex-col justify-between">
-        <div>
-          <div className="text-xl font-bold mb-6">Kennel SaaS</div>
+        <div className="space-y-6">
+          <div className="text-xl font-bold">Kennel System</div>
 
           <nav className="space-y-3 text-sm text-white/70">
-            <Link href="/protected/dashboard">Dashboard</Link>
-            <Link href="/protected/dogs">Dogs</Link>
-            <Link href="/protected/litters">Litters</Link>
-            <Link href="/protected/finance">Finance</Link>
-            <Link href="/protected/shows">Shows</Link>
+            <Link href="/dashboard">Dashboard</Link>
+            <Link href="/dogs">Dogs</Link>
+            <Link href="/heats">Heats</Link>
+            <Link href="/litters">Litters</Link>
+            <Link href="/shows">Shows</Link>
+            <Link href="/finance">Finance</Link>
           </nav>
         </div>
 
