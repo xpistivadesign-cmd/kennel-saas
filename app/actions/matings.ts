@@ -18,12 +18,15 @@ export type Mating = {
 
 export type CreateMatingInput = {
   heat_id: string;
-  mating_date: string; // ISO string
+  mating_date: string;
   male_name?: string;
   method?: MatingMethod;
   notes?: string;
 };
 
+/**
+ * CREATE MATING
+ */
 export async function createMating(
   input: CreateMatingInput
 ): Promise<Mating> {
@@ -58,6 +61,9 @@ export async function createMating(
   return data as Mating;
 }
 
+/**
+ * DELETE MATING
+ */
 export async function deleteMating(id: string) {
   const supabase = await createClient();
 
@@ -75,6 +81,9 @@ export async function deleteMating(id: string) {
   return { success: true };
 }
 
+/**
+ * GET MATINGS
+ */
 export async function getMatings(): Promise<Mating[]> {
   const supabase = await createClient();
 
