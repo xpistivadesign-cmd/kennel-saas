@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { getActivePregnancies } from "@/app/actions/bridge";
 
 const EVENT_ICONS = {
