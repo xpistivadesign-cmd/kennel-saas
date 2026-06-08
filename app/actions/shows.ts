@@ -51,9 +51,7 @@ export async function getDogShows(dogId?: string): Promise<DogShow[]> {
   return data ?? [];
 }
 
-export async function createShowRecord(
-  input: CreateShowInput
-): Promise<DogShow> {
+export async function createShowRecord(input: CreateShowInput): Promise<DogShow> {
   const supabase = await createClient();
 
   const { data: userData, error: userError } =
@@ -75,7 +73,7 @@ export async function createShowRecord(
       class: input.class ?? null,
       placement: input.placement ?? null,
       titles_won: input.titles_won ?? null,
-      notes: input.notes ?? null,
+      notes: input.notes ?? null
     })
     .select()
     .single();
