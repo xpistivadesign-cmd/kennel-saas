@@ -24,9 +24,6 @@ export type CreateMatingInput = {
   notes?: string;
 };
 
-/**
- * CREATE MATING
- */
 export async function createMating(
   input: CreateMatingInput
 ): Promise<Mating> {
@@ -53,7 +50,7 @@ export async function createMating(
     .single();
 
   if (error || !data) {
-    throw new Error(error?.message ?? "Failed to create mating");
+    throw new Error(error?.message ?? "Insert failed");
   }
 
   revalidatePath("/protected/matings");
@@ -61,9 +58,6 @@ export async function createMating(
   return data as Mating;
 }
 
-/**
- * DELETE MATING
- */
 export async function deleteMating(id: string) {
   const supabase = await createClient();
 
@@ -81,9 +75,6 @@ export async function deleteMating(id: string) {
   return { success: true };
 }
 
-/**
- * GET MATINGS
- */
 export async function getMatings(): Promise<Mating[]> {
   const supabase = await createClient();
 
