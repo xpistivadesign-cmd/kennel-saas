@@ -2,7 +2,7 @@ import {
   createMating,
   deleteMating,
   getMatings,
-  type MatingMethod,
+  type MatingType,
 } from "@/app/actions/matings";
 
 export default async function MatingsPage() {
