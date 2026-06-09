@@ -18,9 +18,7 @@ export default async function DogProfilePage({
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) {
-    redirect("/login");
-  }
+  if (!user) redirect("/login");
 
   const { data: dog } = await supabase
     .from("dogs")
@@ -93,9 +91,15 @@ export default async function DogProfilePage({
 
     const supabase = await createClient();
 
-    const file = formData.get("file") as File;
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-    if (!file) return;
+    if (!user) return;
+
+    const file = formData.get("file") as File | null;
+
+    if (!file || file.size === 0) return;
 
     const filePath = `${user.id}/${id}-${Date.now()}.jpg`;
 
@@ -106,7 +110,9 @@ export default async function DogProfilePage({
         upsert: true,
       });
 
-    if (uploadError) return;
+    if (uploadError) {
+      return;
+    }
 
     const { data } = supabase.storage
       .from("dog-photos")
@@ -151,11 +157,7 @@ export default async function DogProfilePage({
         </div>
 
         <form action={uploadImage} className="flex gap-3">
-          <input
-            type="file"
-            name="file"
-            className="text-sm text-zinc-400"
-          />
+          <input type="file" name="file" className="text-sm text-zinc-400" />
           <button className="px-4 py-2 bg-zinc-800 rounded-lg hover:bg-zinc-700">
             Upload Image
           </button>
@@ -167,53 +169,22 @@ export default async function DogProfilePage({
         action={updateDog}
         className="space-y-4 p-6 rounded-xl border border-zinc-800 bg-zinc-900/40"
       >
-        <h2 className="text-xl font-semibold text-white">Edit Profile</h2>
+        <h2 className="text-xl font-semibold">Edit Profile</h2>
 
         <div className="grid grid-cols-2 gap-4">
-          <input
-            name="name"
-            defaultValue={dog.name}
-            className="p-2 bg-zinc-950 border border-zinc-800 rounded"
-          />
+          <input name="name" defaultValue={dog.name} className="p-2 bg-zinc-950 border border-zinc-800 rounded" />
+          <input name="breed" defaultValue={dog.breed} className="p-2 bg-zinc-950 border border-zinc-800 rounded" />
 
-          <input
-            name="breed"
-            defaultValue={dog.breed}
-            className="p-2 bg-zinc-950 border border-zinc-800 rounded"
-          />
-
-          <select
-            name="sex"
-            defaultValue={dog.sex}
-            className="p-2 bg-zinc-950 border border-zinc-800 rounded"
-          >
+          <select name="sex" defaultValue={dog.sex} className="p-2 bg-zinc-950 border border-zinc-800 rounded">
             <option value="Male">Male</option>
             <option value="Female">Female</option>
           </select>
 
-          <input
-            name="microchip_id"
-            defaultValue={dog.microchip_id}
-            className="p-2 bg-zinc-950 border border-zinc-800 rounded"
-          />
+          <input name="microchip_id" defaultValue={dog.microchip_id} className="p-2 bg-zinc-950 border border-zinc-800 rounded" />
+          <input name="passport_number" defaultValue={dog.passport_number} className="p-2 bg-zinc-950 border border-zinc-800 rounded" />
+          <input name="color_markings" defaultValue={dog.color_markings} className="p-2 bg-zinc-950 border border-zinc-800 rounded" />
 
-          <input
-            name="passport_number"
-            defaultValue={dog.passport_number}
-            className="p-2 bg-zinc-950 border border-zinc-800 rounded"
-          />
-
-          <input
-            name="color_markings"
-            defaultValue={dog.color_markings}
-            className="p-2 bg-zinc-950 border border-zinc-800 rounded"
-          />
-
-          <select
-            name="sire_id"
-            defaultValue={dog.sire_id || "none"}
-            className="p-2 bg-zinc-950 border border-zinc-800 rounded"
-          >
+          <select name="sire_id" defaultValue={dog.sire_id || "none"} className="p-2 bg-zinc-950 border border-zinc-800 rounded">
             <option value="none">None</option>
             {males.map((d) => (
               <option key={d.id} value={d.id}>
@@ -222,11 +193,7 @@ export default async function DogProfilePage({
             ))}
           </select>
 
-          <select
-            name="dam_id"
-            defaultValue={dog.dam_id || "none"}
-            className="p-2 bg-zinc-950 border border-zinc-800 rounded"
-          >
+          <select name="dam_id" defaultValue={dog.dam_id || "none"} className="p-2 bg-zinc-950 border border-zinc-800 rounded">
             <option value="none">None</option>
             {females.map((d) => (
               <option key={d.id} value={d.id}>
@@ -236,28 +203,16 @@ export default async function DogProfilePage({
           </select>
         </div>
 
-        <textarea
-          name="notes"
-          defaultValue={dog.notes}
-          className="w-full p-2 bg-zinc-950 border border-zinc-800 rounded"
-        />
+        <textarea name="notes" defaultValue={dog.notes} className="w-full p-2 bg-zinc-950 border border-zinc-800 rounded" />
 
         <div className="flex gap-6">
           <label className="flex items-center gap-2 text-sm text-zinc-400">
-            <input
-              type="checkbox"
-              name="is_public"
-              defaultChecked={dog.is_public}
-            />
+            <input type="checkbox" name="is_public" defaultChecked={dog.is_public} />
             Public
           </label>
 
           <label className="flex items-center gap-2 text-sm text-zinc-400">
-            <input
-              type="checkbox"
-              name="is_for_sale"
-              defaultChecked={dog.is_for_sale}
-            />
+            <input type="checkbox" name="is_for_sale" defaultChecked={dog.is_for_sale} />
             For Sale
           </label>
         </div>
