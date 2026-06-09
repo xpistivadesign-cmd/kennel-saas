@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import ImageUpload from "./upload-client";
+import { redirect } from "next/navigation";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -9,6 +10,14 @@ interface PageProps {
 export default async function DogProfilePage({ params }: PageProps) {
   const { id } = await params;
 
+  if (!id) {
+    return (
+      <div className="p-6 text-red-400">
+        Invalid dog ID
+      </div>
+    );
+  }
+
   const supabase = await createClient();
 
   const {
@@ -16,16 +25,16 @@ export default async function DogProfilePage({ params }: PageProps) {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    return (
-      <div className="p-6 text-red-400">Not authenticated</div>
-    );
+    redirect("/login");
   }
+
+  const userId = user.id;
 
   const { data: dog } = await supabase
     .from("dogs")
     .select("*")
     .eq("id", id)
-    .eq("user_id", user.id)
+    .eq("user_id", userId)
     .maybeSingle();
 
   if (!dog) {
@@ -44,11 +53,19 @@ export default async function DogProfilePage({ params }: PageProps) {
 
     const supabase = await createClient();
 
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) return;
+
+    const userId = user.id;
+
     await supabase
       .from("dogs")
       .update({ image_url: url })
       .eq("id", id)
-      .eq("user_id", user.id);
+      .eq("user_id", userId);
   }
 
   return (
@@ -66,7 +83,7 @@ export default async function DogProfilePage({ params }: PageProps) {
         </Link>
       </div>
 
-      {/* IMAGE */}
+      {/* IMAGE SECTION */}
       <div className="space-y-4">
         <div className="w-full max-w-md aspect-square rounded-xl overflow-hidden border border-zinc-800 bg-zinc-900 flex items-center justify-center">
           {dog.image_url ? (
@@ -81,23 +98,26 @@ export default async function DogProfilePage({ params }: PageProps) {
         </div>
 
         <ImageUpload
-          userId={user.id}
+          userId={userId}
           dogId={id}
           onUploaded={updateImageUrl}
         />
       </div>
 
-      {/* INFO */}
+      {/* INFO GRID */}
       <div className="grid grid-cols-2 gap-4">
         <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/40">
           Microchip: {dog.microchip_id || "-"}
         </div>
+
         <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/40">
           Passport: {dog.passport_number || "-"}
         </div>
+
         <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/40">
           Sex: {dog.sex || "-"}
         </div>
+
         <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/40">
           Status: {dog.status || "-"}
         </div>
