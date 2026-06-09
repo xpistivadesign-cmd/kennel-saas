@@ -3,11 +3,11 @@ import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
-export default async function DogProfilePage({
-  params,
-}: {
-  params: { id?: string };
-}) {
+type PageProps = {
+  params: { id: string };
+};
+
+export default async function DogProfilePage({ params }: PageProps) {
   const supabase = await createClient();
 
   const {
@@ -22,7 +22,7 @@ export default async function DogProfilePage({
 
   if (!dogId || typeof dogId !== "string") {
     return (
-      <div className="p-6 text-red-400 space-y-3">
+      <div className="p-6 space-y-3 text-red-400">
         <div>Invalid dog ID</div>
         <Link href="/dogs" className="underline text-amber-400">
           Back to dogs
@@ -48,9 +48,9 @@ export default async function DogProfilePage({
 
   if (!dog) {
     return (
-      <div className="p-6 space-y-3">
-        <div className="text-red-400">Dog not found</div>
-        <Link href="/dogs" className="text-amber-400 underline">
+      <div className="p-6 space-y-3 text-red-400">
+        <div>Dog not found</div>
+        <Link href="/dogs" className="underline text-amber-400">
           Back to dogs
         </Link>
       </div>
