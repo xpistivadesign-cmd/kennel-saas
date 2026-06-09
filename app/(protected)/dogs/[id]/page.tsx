@@ -7,7 +7,9 @@ import DogClient from "./ui";
 export const dynamic = "force-dynamic";
 
 interface PageProps {
-  params: { id: string };
+  params: {
+    id: string;
+  };
 }
 
 export default async function DogProfilePage({ params }: PageProps) {
@@ -19,15 +21,17 @@ export default async function DogProfilePage({ params }: PageProps) {
 
   if (!user) redirect("/login");
 
-  const dogId = String(params.id);
+  const dogId = params?.id;
 
-  if (!dogId || dogId === "undefined") {
+  if (!dogId || typeof dogId !== "string") {
     return (
       <div className="p-6 text-red-400">
         Invalid dog ID
-        <Link href="/dogs" className="block mt-4 underline text-amber-400">
-          Back
-        </Link>
+        <div className="mt-4">
+          <Link href="/dogs" className="underline text-amber-400">
+            Back
+          </Link>
+        </div>
       </div>
     );
   }
@@ -36,23 +40,17 @@ export default async function DogProfilePage({ params }: PageProps) {
     .from("dogs")
     .select("*")
     .eq("id", dogId)
-    .maybeSingle();
+    .single();
 
-  if (error) {
-    return (
-      <div className="p-6 text-red-400">
-        Database error: {error.message}
-      </div>
-    );
-  }
-
-  if (!dog) {
+  if (error || !dog) {
     return (
       <div className="p-6 text-red-400">
         Dog not found
-        <Link href="/dogs" className="block mt-4 underline text-amber-400">
-          Back
-        </Link>
+        <div className="mt-4">
+          <Link href="/dogs" className="underline text-amber-400">
+            Back
+          </Link>
+        </div>
       </div>
     );
   }
@@ -74,8 +72,8 @@ export default async function DogProfilePage({ params }: PageProps) {
           <p className="text-zinc-400">{dog.breed}</p>
         </div>
 
-        <Link href="/dogs" className="text-sm underline text-zinc-400">
-          Back
+        <Link href="/dogs" className="text-sm text-zinc-400 underline">
+          Back to Dogs
         </Link>
       </div>
 
