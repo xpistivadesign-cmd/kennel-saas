@@ -8,39 +8,34 @@ function resizeImage(file: File): Promise<Blob> {
     const img = document.createElement("img");
     const reader = new FileReader();
 
-    reader.onload = (e) => {
-      img.src = e.target?.result as string;
+    reader.onload = () => {
+      img.src = reader.result as string;
     };
 
     img.onload = () => {
       const canvas = document.createElement("canvas");
-      const maxSize = 1200;
 
-      let width = img.width;
-      let height = img.height;
+      const max = 1200;
 
-      if (width > height) {
-        if (width > maxSize) {
-          height *= maxSize / width;
-          width = maxSize;
-        }
-      } else {
-        if (height > maxSize) {
-          width *= maxSize / height;
-          height = maxSize;
-        }
+      let w = img.width;
+      let h = img.height;
+
+      if (w > h && w > max) {
+        h = (h * max) / w;
+        w = max;
+      } else if (h > max) {
+        w = (w * max) / h;
+        h = max;
       }
 
-      canvas.width = width;
-      canvas.height = height;
+      canvas.width = w;
+      canvas.height = h;
 
       const ctx = canvas.getContext("2d");
-      ctx?.drawImage(img, 0, 0, width, height);
+      ctx?.drawImage(img, 0, 0, w, h);
 
       canvas.toBlob(
-        (blob) => {
-          resolve(blob as Blob);
-        },
+        (blob) => resolve(blob as Blob),
         "image/jpeg",
         0.8
       );
@@ -50,7 +45,13 @@ function resizeImage(file: File): Promise<Blob> {
   });
 }
 
-export default function DogClient({ dogId }: { dogId: string }) {
+export default function DogClient({
+  dogId,
+  currentImage,
+}: {
+  dogId: string;
+  currentImage?: string;
+}) {
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -65,13 +66,13 @@ export default function DogClient({ dogId }: { dogId: string }) {
     setLoading(true);
 
     try {
-      const compressed = await resizeImage(file);
+      const blob = await resizeImage(file);
 
       const fileName = `${dogId}-${Date.now()}.jpg`;
 
       const { error } = await supabase.storage
         .from("dog-photos")
-        .upload(fileName, compressed, {
+        .upload(fileName, blob, {
           contentType: "image/jpeg",
           upsert: true,
         });
@@ -97,18 +98,24 @@ export default function DogClient({ dogId }: { dogId: string }) {
   }
 
   return (
-    <div className="mt-4 space-y-3">
+    <div className="space-y-4">
+      {currentImage && (
+        <img
+          src={currentImage}
+          className="rounded-xl max-h-64 object-cover"
+        />
+      )}
+
       <input
         type="file"
         accept="image/*"
         onChange={(e) => setFile(e.target.files?.[0] || null)}
-        className="text-sm"
       />
 
       <button
         onClick={upload}
         disabled={loading}
-        className="px-4 py-2 rounded-lg bg-amber-500 text-black font-semibold hover:bg-amber-400 disabled:opacity-50"
+        className="px-4 py-2 bg-amber-500 text-black rounded-lg font-semibold disabled:opacity-50"
       >
         {loading ? "Uploading..." : "Upload Image"}
       </button>
