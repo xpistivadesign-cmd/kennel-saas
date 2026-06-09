@@ -1,16 +1,16 @@
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import Image from "next/image";
-import { notFound, redirect } from "next/navigation";
+import { redirect } from "next/navigation";
 import DogClient from "./ui";
 
 export const dynamic = "force-dynamic";
 
-export default async function DogProfilePage({
-  params,
-}: {
+interface PageProps {
   params: { id: string };
-}) {
+}
+
+export default async function DogProfilePage({ params }: PageProps) {
   const supabase = await createClient();
 
   const {
@@ -19,82 +19,94 @@ export default async function DogProfilePage({
 
   if (!user) redirect("/login");
 
-  const dogId = params.id;
+  const dogId = String(params.id);
 
-  const { data: dog } = await supabase
+  if (!dogId || dogId === "undefined") {
+    return (
+      <div className="p-6 text-red-400">
+        Invalid dog ID
+        <Link href="/dogs" className="block mt-4 underline text-amber-400">
+          Back
+        </Link>
+      </div>
+    );
+  }
+
+  const { data: dog, error } = await supabase
     .from("dogs")
     .select("*")
     .eq("id", dogId)
-    .eq("user_id", user.id)
     .maybeSingle();
+
+  if (error) {
+    return (
+      <div className="p-6 text-red-400">
+        Database error: {error.message}
+      </div>
+    );
+  }
 
   if (!dog) {
     return (
       <div className="p-6 text-red-400">
         Dog not found
-        <div className="mt-4">
-          <Link href="/dogs" className="underline text-amber-400">
-            Back
-          </Link>
-        </div>
+        <Link href="/dogs" className="block mt-4 underline text-amber-400">
+          Back
+        </Link>
       </div>
     );
   }
 
-  const { data: dogs } = await supabase
+  const { data: allDogs } = await supabase
     .from("dogs")
-    .select("id, name, sex")
-    .eq("user_id", user.id);
+    .select("id, name, sex");
 
-  const sire =
-    dog.sire_id &&
-    dogs?.find((d) => d.id === dog.sire_id)?.name;
-
-  const dam =
-    dog.dam_id &&
-    dogs?.find((d) => d.id === dog.dam_id)?.name;
+  const sire = allDogs?.find((d) => d.id === dog.sire_id)?.name;
+  const dam = allDogs?.find((d) => d.id === dog.dam_id)?.name;
 
   return (
     <div className="max-w-5xl mx-auto p-6 space-y-8 text-white">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-amber-400">{dog.name}</h1>
+          <h1 className="text-3xl font-bold text-amber-400">
+            {dog.name}
+          </h1>
           <p className="text-zinc-400">{dog.breed}</p>
         </div>
 
-        <Link href="/dogs" className="text-sm text-zinc-400 underline">
-          Back to Dogs
+        <Link href="/dogs" className="text-sm underline text-zinc-400">
+          Back
         </Link>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-        <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/40">
+        <div className="p-4 border border-zinc-800 rounded-xl bg-zinc-900/40">
           Microchip: {dog.microchip_id || "-"}
         </div>
 
-        <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/40">
+        <div className="p-4 border border-zinc-800 rounded-xl bg-zinc-900/40">
           Sex: {dog.sex || "-"}
         </div>
 
-        <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/40">
+        <div className="p-4 border border-zinc-800 rounded-xl bg-zinc-900/40">
           Passport: {dog.passport_number || "-"}
         </div>
 
-        <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/40">
+        <div className="p-4 border border-zinc-800 rounded-xl bg-zinc-900/40">
           Status: {dog.status || "-"}
         </div>
 
-        <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/40">
+        <div className="p-4 border border-zinc-800 rounded-xl bg-zinc-900/40">
           Sire: {sire || "-"}
         </div>
 
-        <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/40">
+        <div className="p-4 border border-zinc-800 rounded-xl bg-zinc-900/40">
           Dam: {dam || "-"}
         </div>
       </div>
 
-      <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/40">
-        <div className="mb-3 text-zinc-400 text-sm">Photo</div>
+      <div className="p-4 border border-zinc-800 rounded-xl bg-zinc-900/40">
+        <div className="mb-3 text-sm text-zinc-400">Photo</div>
 
         {dog.image_url ? (
           <Image
@@ -113,7 +125,7 @@ export default async function DogProfilePage({
         <DogClient dogId={dogId} />
       </div>
 
-      <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/40">
+      <div className="p-4 border border-zinc-800 rounded-xl bg-zinc-900/40">
         Notes: {dog.notes || "-"}
       </div>
     </div>
