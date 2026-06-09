@@ -1,13 +1,12 @@
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
-import { notFound } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
 export default async function DogProfilePage({
   params,
 }: {
-  params: { id: string };
+  params: { id?: string };
 }) {
   const supabase = await createClient();
 
@@ -19,7 +18,18 @@ export default async function DogProfilePage({
     return <div className="p-6 text-red-400">Not authenticated</div>;
   }
 
-  const dogId = params.id;
+  const dogId = params?.id;
+
+  if (!dogId || typeof dogId !== "string") {
+    return (
+      <div className="p-6 text-red-400 space-y-3">
+        <div>Invalid dog ID</div>
+        <Link href="/dogs" className="underline text-amber-400">
+          Back to dogs
+        </Link>
+      </div>
+    );
+  }
 
   const { data: dog, error } = await supabase
     .from("dogs")
@@ -38,7 +48,7 @@ export default async function DogProfilePage({
 
   if (!dog) {
     return (
-      <div className="p-6 space-y-4">
+      <div className="p-6 space-y-3">
         <div className="text-red-400">Dog not found</div>
         <Link href="/dogs" className="text-amber-400 underline">
           Back to dogs
