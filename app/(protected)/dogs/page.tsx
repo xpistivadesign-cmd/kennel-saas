@@ -35,9 +35,6 @@ export default async function DogsPage() {
 
     if (!user) return;
 
-    const sire_id = formData.get("sire_id");
-    const dam_id = formData.get("dam_id");
-
     await supabase.from("dogs").insert({
       user_id: user.id,
       name: formData.get("name"),
@@ -50,8 +47,10 @@ export default async function DogsPage() {
       is_public: formData.get("is_public") === "on",
       is_for_sale: formData.get("is_for_sale") === "on",
       notes: formData.get("notes"),
-      sire_id: sire_id === "none" ? null : sire_id,
-      dam_id: dam_id === "none" ? null : dam_id,
+      sire_id:
+        formData.get("sire_id") === "none" ? null : formData.get("sire_id"),
+      dam_id:
+        formData.get("dam_id") === "none" ? null : formData.get("dam_id"),
     });
 
     revalidatePath("/dogs");
@@ -59,27 +58,35 @@ export default async function DogsPage() {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 p-6">
+      {/* LEFT - LIST */}
       <div className="space-y-4">
-        <h1 className="text-2xl font-bold">Dogs</h1>
+        <h1 className="text-2xl font-bold text-white">Dogs</h1>
 
         <div className="space-y-3">
           {dogs?.map((dog) => (
             <Link
               key={dog.id}
               href={`/dogs/${dog.id}`}
-              className="block border border-zinc-800 rounded-xl p-4 bg-zinc-900/40 hover:bg-zinc-800/60 transition"
+              className="block rounded-xl border border-zinc-800 bg-zinc-900/40 p-4 hover:border-zinc-700 hover:bg-zinc-800/40 transition cursor-pointer"
             >
-              <div className="font-semibold text-white">{dog.name}</div>
-              <div className="text-sm text-zinc-400">
-                {dog.breed} • {dog.sex}
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="font-semibold text-white">{dog.name}</div>
+                  <div className="text-sm text-zinc-400">
+                    {dog.breed} • {dog.sex}
+                  </div>
+                </div>
+
+                <div className="text-xs text-zinc-500">→</div>
               </div>
             </Link>
           ))}
         </div>
       </div>
 
+      {/* RIGHT - FORM */}
       <div className="space-y-6">
-        <h2 className="text-xl font-semibold">Add New Dog</h2>
+        <h2 className="text-xl font-semibold text-white">Add New Dog</h2>
 
         <form action={addDog} className="space-y-4">
           <div>
@@ -143,7 +150,7 @@ export default async function DogsPage() {
           </div>
 
           <div>
-            <label className="text-sm text-zinc-300">Sire (Father)</label>
+            <label className="text-sm text-zinc-300">Sire</label>
             <select
               name="sire_id"
               className="w-full p-2 rounded bg-zinc-900 border border-zinc-800"
@@ -158,7 +165,7 @@ export default async function DogsPage() {
           </div>
 
           <div>
-            <label className="text-sm text-zinc-300">Dam (Mother)</label>
+            <label className="text-sm text-zinc-300">Dam</label>
             <select
               name="dam_id"
               className="w-full p-2 rounded bg-zinc-900 border border-zinc-800"
