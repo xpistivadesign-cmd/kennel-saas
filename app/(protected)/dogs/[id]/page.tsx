@@ -1,18 +1,28 @@
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
-import Image from "next/image";
 import { redirect } from "next/navigation";
 import DogClient from "./ui";
 
 export const dynamic = "force-dynamic";
 
 interface PageProps {
-  params: {
-    id: string;
-  };
+  params: Promise<{ id: string }>;
 }
 
 export default async function DogProfilePage({ params }: PageProps) {
+  const { id } = await params;
+
+  if (!id || typeof id !== "string") {
+    return (
+      <div className="p-6 text-red-400">
+        Invalid dog ID
+        <Link href="/dogs" className="block mt-4 underline text-amber-400">
+          Back
+        </Link>
+      </div>
+    );
+  }
+
   const supabase = await createClient();
 
   const {
@@ -21,36 +31,19 @@ export default async function DogProfilePage({ params }: PageProps) {
 
   if (!user) redirect("/login");
 
-  const dogId = params?.id;
-
-  if (!dogId || typeof dogId !== "string") {
-    return (
-      <div className="p-6 text-red-400">
-        Invalid dog ID
-        <div className="mt-4">
-          <Link href="/dogs" className="underline text-amber-400">
-            Back
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
   const { data: dog, error } = await supabase
     .from("dogs")
     .select("*")
-    .eq("id", dogId)
+    .eq("id", id)
     .single();
 
   if (error || !dog) {
     return (
       <div className="p-6 text-red-400">
         Dog not found
-        <div className="mt-4">
-          <Link href="/dogs" className="underline text-amber-400">
-            Back
-          </Link>
-        </div>
+        <Link href="/dogs" className="block mt-4 underline text-amber-400">
+          Back
+        </Link>
       </div>
     );
   }
@@ -72,7 +65,7 @@ export default async function DogProfilePage({ params }: PageProps) {
           <p className="text-zinc-400">{dog.breed}</p>
         </div>
 
-        <Link href="/dogs" className="text-sm text-zinc-400 underline">
+        <Link href="/dogs" className="text-sm underline text-zinc-400">
           Back to Dogs
         </Link>
       </div>
@@ -103,24 +96,10 @@ export default async function DogProfilePage({ params }: PageProps) {
         </div>
       </div>
 
-      <div className="p-4 border border-zinc-800 rounded-xl bg-zinc-900/40">
-        <div className="mb-3 text-sm text-zinc-400">Photo</div>
+      <div className="p-4 border border-zinc-800 rounded-xl bg-zinc-900/40 space-y-4">
+        <div className="text-sm text-zinc-400">Photo</div>
 
-        {dog.image_url ? (
-          <Image
-            src={dog.image_url}
-            alt="dog"
-            width={600}
-            height={400}
-            className="rounded-xl object-cover"
-          />
-        ) : (
-          <div className="h-64 flex items-center justify-center text-zinc-600 border border-zinc-800 rounded-xl">
-            No image
-          </div>
-        )}
-
-        <DogClient dogId={dogId} />
+        <DogClient dogId={id} currentImage={dog.image_url} />
       </div>
 
       <div className="p-4 border border-zinc-800 rounded-xl bg-zinc-900/40">
