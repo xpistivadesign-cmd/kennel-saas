@@ -1,18 +1,22 @@
-import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { createServerSupabase } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const supabase = await createClient();
+  try {
+    const supabase = createServerSupabase();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-  if (user) {
-    redirect("/dashboard");
+    if (user) {
+      redirect("/dashboard");
+    }
+
+    redirect("/login");
+  } catch {
+    redirect("/login");
   }
-
-  redirect("/login");
 }
