@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import DogProfileClient from "./dog-profile-client";
+import DogProfileClient from "./profile-client";
 
 export const dynamic = "force-dynamic";
 
