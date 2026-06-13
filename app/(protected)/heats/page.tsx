@@ -4,37 +4,37 @@ import { revalidatePath } from "next/cache";
 
 export const dynamic = "force-dynamic";
 
-async function createHeat(formData: FormData) {
+async function addHeat(formData: FormData) {
   "use server";
 
   const supabase = createServerSupabase();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    throw new Error("Unauthorized");
-  }
-
   const dog_id = String(formData.get("dog_id"));
-  const start_date = String(formData.get("start_date"));
-  const progesterone = String(formData.get("progesterone"));
-  const notes = String(formData.get("notes") || "");
+  const date = String(formData.get("date"));
 
   await supabase.from("heats").insert({
-    user_id: user.id,
     dog_id,
-    start_date,
-    progesterone,
-    notes,
-    status: "active",
+    start_date: date,
   });
 
   revalidatePath("/heats");
 }
 
-export default async function HeatsPage() {
+async function addProg(formData: FormData) {
+  "use server";
+
+  const supabase = createServerSupabase();
+
+  await supabase.from("progesterone_tests").insert({
+    heat_id: String(formData.get("heat_id")),
+    date: String(formData.get("date")),
+    value: Number(formData.get("value")),
+  });
+
+  revalidatePath("/heats");
+}
+
+export default async function Page() {
   const supabase = createServerSupabase();
 
   const {
@@ -43,72 +43,51 @@ export default async function HeatsPage() {
 
   if (!user) redirect("/login");
 
-  const userId = user.id;
-
   const { data: dogs } = await supabase
     .from("dogs")
-    .select("id, name, sex")
-    .eq("user_id", userId)
-    .eq("sex", "Female");
+    .select("*")
+    .eq("user_id", user.id);
 
   const { data: heats } = await supabase
     .from("heats")
-    .select("*")
-    .eq("user_id", userId)
-    .order("start_date", { ascending: false });
+    .select("*, progesterone_tests(*)")
+    .eq("user_id", user.id);
 
   return (
-    <div className="grid md:grid-cols-2 gap-6 text-white">
-      <div className="p-6 rounded-2xl bg-zinc-900 border border-zinc-800">
-        <h2 className="text-xl font-bold mb-4">Heat History</h2>
+    <div className="space-y-10 text-white p-8">
 
-        <div className="space-y-2">
-          {heats?.map((h: any) => (
-            <div key={h.id} className="p-3 rounded-lg bg-zinc-800">
-              <div className="font-semibold">{h.dog_id}</div>
-              <div className="text-sm text-zinc-400">
-                {h.start_date} • {h.status}
+      <h1 className="text-3xl font-bold">Heats</h1>
+
+      {(heats || []).map((h: any) => {
+        const last = h.progesterone_tests?.slice(-1)[0];
+
+        return (
+          <div key={h.id} className="border border-zinc-800 p-4 rounded-xl">
+            <div>{h.dog_id}</div>
+
+            {last?.value >= 5 && last?.value <= 10 && (
+              <div className="text-green-400 font-bold">
+                OPTIMAL MATING WINDOW - OVULATION DETECTED
               </div>
-            </div>
+            )}
+          </div>
+        );
+      })}
+
+      <form action={addHeat} className="space-y-2">
+        <select name="dog_id" className="p-2 bg-black w-full">
+          {(dogs || []).map((d: any) => (
+            <option key={d.id} value={d.id}>{d.name}</option>
           ))}
-        </div>
-      </div>
+        </select>
 
-      <div className="p-6 rounded-2xl bg-zinc-900 border border-zinc-800">
-        <h2 className="text-xl font-bold mb-4">Log New Heat</h2>
+        <input type="date" name="date" className="p-2 bg-black w-full" />
 
-        <form action={createHeat} className="space-y-4">
-          <select name="dog_id" className="w-full p-3 bg-zinc-800 rounded-lg">
-            {dogs?.map((d: any) => (
-              <option key={d.id} value={d.id}>
-                {d.name}
-              </option>
-            ))}
-          </select>
+        <button className="bg-amber-500 text-black px-4 py-2">
+          Add Heat
+        </button>
+      </form>
 
-          <input
-            name="start_date"
-            type="date"
-            className="w-full p-3 bg-zinc-800 rounded-lg"
-          />
-
-          <input
-            name="progesterone"
-            placeholder="Progesterone level"
-            className="w-full p-3 bg-zinc-800 rounded-lg"
-          />
-
-          <textarea
-            name="notes"
-            placeholder="Notes"
-            className="w-full p-3 bg-zinc-800 rounded-lg"
-          />
-
-          <button className="w-full bg-emerald-500 text-black font-bold py-3 rounded-xl">
-            Save Heat
-          </button>
-        </form>
-      </div>
     </div>
   );
 }
