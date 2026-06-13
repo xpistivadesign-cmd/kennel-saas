@@ -53,24 +53,27 @@ export default async function DogProfilePage({
 
   if (!user) {
     redirect("/login");
-    const authenticatedUserId = user.id;
   }
+
+  const authenticatedUserId = user.id;
 
   const { data: dog } = await supabase
     .from("dogs")
     .select("*")
     .eq("id", id)
-    .eq("user_id", user.id)
+    .eq("user_id", authenticatedUserId)
     .maybeSingle();
 
   if (!dog) {
     return (
       <div className="p-10 text-white">
-        <div className="mb-4">Dog not found</div>
+        <div className="mb-5 text-red-400">
+          Dog not found
+        </div>
 
         <Link
           href="/dogs"
-          className="text-amber-400"
+          className="text-amber-400 underline"
         >
           Back to Dogs
         </Link>
@@ -78,69 +81,81 @@ export default async function DogProfilePage({
     );
   }
 
-  async function uploadAction(formData: FormData) {
+  async function uploadAction(
+    formData: FormData
+  ) {
     "use server";
 
-    const fileName = String(formData.get("fileName") || "");
+    const fileName = String(
+      formData.get("fileName") || ""
+    );
 
     if (!fileName) {
-      throw new Error("Missing filename");
+      throw new Error("Missing file");
     }
 
-await updateDogImage(
-  id,
-  authenticatedUserId,
-  fileName
-);
+    await updateDogImage(
+      id,
+      authenticatedUserId,
+      fileName
+    );
   }
 
   return (
-    <div className="max-w-5xl mx-auto p-8 text-white">
+    <div className="max-w-6xl mx-auto p-8 text-white">
+
       <div className="flex items-center justify-between mb-10">
+
         <div>
           <h1 className="text-4xl font-bold">
             {dog.name}
           </h1>
 
-          <p className="text-zinc-500">
-            {dog.breed || "Unknown breed"}
-          </p>
+          <div className="text-zinc-500">
+            {dog.breed || "-"}
+          </div>
         </div>
 
         <Link
           href="/dogs"
-          className="rounded-xl border border-zinc-800 px-5 py-3 hover:bg-zinc-900"
+          className="px-5 py-3 rounded-xl border border-zinc-800 hover:bg-zinc-900"
         >
           Back to Dogs
         </Link>
+
       </div>
 
-      <div className="grid lg:grid-cols-[360px_1fr] gap-8">
+      <div className="grid lg:grid-cols-[420px_1fr] gap-8">
+
         <div className="rounded-3xl border border-zinc-800 bg-zinc-900/40 p-6">
-          <div className="aspect-square overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950 mb-5">
+
+          <div className="aspect-square overflow-hidden rounded-2xl border border-zinc-800 mb-6">
+
             {dog.image_url ? (
               <Image
                 src={dog.image_url}
                 alt={dog.name}
-                width={900}
-                height={900}
+                width={1200}
+                height={1200}
                 className="w-full h-full object-cover"
                 unoptimized
               />
             ) : (
-              <div className="h-full flex items-center justify-center text-zinc-600">
+              <div className="w-full h-full flex items-center justify-center bg-zinc-950 text-zinc-600">
                 No image
               </div>
             )}
+
           </div>
 
           <form
             action={uploadAction}
             className="space-y-4"
           >
+
             <input
-              name="fileName"
               id="fileName"
+              name="fileName"
               type="hidden"
             />
 
@@ -152,12 +167,13 @@ await updateDogImage(
             />
 
             <button
-              type="button"
               id="uploadBtn"
-              className="w-full rounded-xl bg-amber-500 px-4 py-3 font-semibold text-black"
+              type="button"
+              className="w-full rounded-xl bg-amber-500 px-5 py-3 text-black font-semibold"
             >
               Upload Image
             </button>
+
           </form>
 
           <script
@@ -165,88 +181,106 @@ await updateDogImage(
               __html: `
 (async()=>{
 
-const input=document.getElementById('imageInput');
-const btn=document.getElementById('uploadBtn');
-const hidden=document.getElementById('fileName');
+const input=document.getElementById("imageInput");
+const button=document.getElementById("uploadBtn");
+const hidden=document.getElementById("fileName");
 
-btn.onclick=async()=>{
+button.onclick=async()=>{
 
 const file=input.files?.[0];
 
 if(!file){
-alert('Select image');
+alert("Select image");
 return;
 }
 
 try{
 
-btn.innerText='Uploading...';
-btn.disabled=true;
+button.disabled=true;
+button.innerText="Uploading...";
 
-const img=new Image();
+const image=new window.Image();
 
-img.src=URL.createObjectURL(file);
+image.src=URL.createObjectURL(file);
 
-await new Promise(r=>img.onload=r);
+await new Promise(r=>image.onload=r);
 
-const canvas=document.createElement('canvas');
+let width=image.width;
+let height=image.height;
 
-let w=img.width;
-let h=img.height;
-
-if(w>h&&w>1200){
-h*=1200/w;
-w=1200;
+if(width>height&&width>1200){
+height=Math.round(height*(1200/width));
+width=1200;
 }
 
-if(h>w&&h>1200){
-w*=1200/h;
-h=1200;
+if(height>width&&height>1200){
+width=Math.round(width*(1200/height));
+height=1200;
 }
 
-canvas.width=w;
-canvas.height=h;
+const canvas=document.createElement("canvas");
 
-canvas.getContext('2d').drawImage(img,0,0,w,h);
+canvas.width=width;
+canvas.height=height;
+
+canvas
+.getContext("2d")
+.drawImage(
+image,
+0,
+0,
+width,
+height
+);
 
 const blob=await new Promise(
-r=>canvas.toBlob(
-r,
-'image/jpeg',
+resolve=>
+canvas.toBlob(
+resolve,
+"image/jpeg",
 0.7
 )
 );
 
-const name='${user.id}/${id}-'+Date.now()+'.jpg';
+const fileName=
+"${authenticatedUserId}/${id}-"+
+Date.now()+
+".jpg";
 
-const fd=new FormData();
+const form=new FormData();
 
-fd.append('file',blob,name);
+form.append(
+"file",
+blob,
+fileName
+);
 
-const res=await fetch(
-'/api/upload-dog-image',
+const upload=await fetch(
+"/api/upload-dog-image",
 {
-method:'POST',
-body:fd
+method:"POST",
+body:form
 }
 );
 
-if(!res.ok){
+if(!upload.ok){
 throw new Error();
 }
 
-hidden.value=name;
+hidden.value=fileName;
 
-btn.closest('form').requestSubmit();
+button.closest("form").requestSubmit();
 
 }catch(e){
 
-alert('Upload failed');
+alert("Upload failed");
 
 }finally{
 
-btn.disabled=false;
-btn.innerText='Upload Image';
+button.disabled=false;
+
+button.innerText=
+"Upload Image";
 
 }
 
@@ -256,40 +290,47 @@ btn.innerText='Upload Image';
 `,
             }}
           />
+
         </div>
 
-        <div className="rounded-3xl border border-zinc-800 bg-zinc-900/40 p-8 space-y-6">
-          <div>
-            <div className="text-zinc-500 mb-1">
-              Microchip
-            </div>
+        <div className="rounded-3xl border border-zinc-800 bg-zinc-900/40 p-8 grid md:grid-cols-2 gap-5">
 
-            <div>
-              {dog.microchip_id || "-"}
-            </div>
-          </div>
+          <Info label="Microchip" value={dog.microchip_id} />
+          <Info label="Passport" value={dog.passport_number} />
+          <Info label="Sex" value={dog.sex} />
+          <Info label="Status" value={dog.status} />
+          <Info label="Color" value={dog.color_markings} />
+          <Info label="Public" value={dog.is_public ? "Yes" : "No"} />
+          <Info label="For Sale" value={dog.is_for_sale ? "Yes" : "No"} />
 
-          <div>
-            <div className="text-zinc-500 mb-1">
-              Passport
-            </div>
-
-            <div>
-              {dog.passport_number || "-"}
-            </div>
-          </div>
-
-          <div>
-            <div className="text-zinc-500 mb-1">
-              Color markings
-            </div>
-
-            <div>
-              {dog.color_markings || "-"}
-            </div>
-          </div>
         </div>
+
       </div>
+
     </div>
   );
+}
+
+function Info({
+  label,
+  value,
+}:{
+label:string;
+value:any;
+}){
+
+return(
+<div className="rounded-2xl border border-zinc-800 bg-black/30 p-5">
+
+<div className="text-zinc-500 mb-2">
+{label}
+</div>
+
+<div>
+{value||"-"}
+</div>
+
+</div>
+);
+
 }
