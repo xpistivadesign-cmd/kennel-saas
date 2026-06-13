@@ -1,6 +1,5 @@
 import { createServerSupabase } from "@/lib/supabase/server";
-import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
+import { redirect, revalidatePath } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
@@ -8,97 +7,77 @@ type PageProps = {
   params: Promise<{ id: string }>;
 };
 
-async function updateDog(formData: FormData) {
-  "use server";
-  const supabase = createServerSupabase();
-  const id = String(formData.get("id"));
-  const user_id = String(formData.get("user_id"));
+export default async function DogProfilePage({ params }: PageProps) {
+  const { id } = await params;
 
-  await supabase
+  const supabase = createServerSupabase();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) redirect("/login");
+
+  const { data: dog } = await supabase
     .from("dogs")
-    .update({
-      name: formData.get("name"),
-      breed: formData.get("breed"),
-      color_markings: formData.get("color_markings"),
-      birth_date: formData.get("birth_date") || null,
-      microchip_id: formData.get("microchip_id"),
-      passport_number: formData.get("passport_number"),
-      pedigree_number: formData.get("pedigree_number"),
-      is_public: formData.get("is_public") === "true",
-      is_for_sale: formData.get("is_for_sale") === "true",
-    })
+    .select("*")
     .eq("id", id)
-    .eq("user_id", user_id);
+    .eq("user_id", user.id)
+    .single();
 
-  revalidatePath(`/dogs/${id}`);
+  if (!dog) {
+    return (
+      <div className="p-10 text-red-400">
+        Dog not found
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-black text-white p-10 space-y-6">
+
+      <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-xl">
+        <h1 className="text-3xl font-bold text-amber-400">
+          {dog.name}
+        </h1>
+        <p className="text-zinc-400">{dog.breed}</p>
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-4">
+
+        <div className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl">
+          <div className="text-zinc-500 text-sm">Sex</div>
+          <div>{dog.sex}</div>
+        </div>
+
+        <div className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl">
+          <div className="text-zinc-500 text-sm">Microchip</div>
+          <div>{dog.microchip_id || "Unknown"}</div>
+        </div>
+
+        <div className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl">
+          <div className="text-zinc-500 text-sm">Passport</div>
+          <div>{dog.passport_number || "Unknown"}</div>
+        </div>
+
+        <div className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl">
+          <div className="text-zinc-500 text-sm">Color</div>
+          <div>{dog.color_markings || "Unknown"}</div>
+        </div>
+
+      </div>
+
+      {dog.image_url ? (
+        <img
+          src={dog.image_url}
+          className="w-full max-w-md rounded-xl border border-zinc-800"
+        />
+      ) : (
+        <div className="w-full max-w-md h-64 flex items-center justify-center bg-zinc-900 border border-zinc-800 rounded-xl text-zinc-500">
+          No Image
+        </div>
+      )}
+
+    </div>
+  );
 }
-
-async function addMedical(formData: FormData) {
-  "use server";
-  const supabase = createServerSupabase();
-  const dog_id = String(formData.get("dog_id"));
-
-  await supabase.from("medical_records").insert({
-    dog_id,
-    date: formData.get("date"),
-    type: formData.get("type"),
-    notes: formData.get("notes"),
-  });
-
-  revalidatePath(`/dogs/${dog_id}`);
-}
-
-async function addShow(formData: FormData) {
-  "use server";
-  const supabase = createServerSupabase();
-  const dog_id = String(formData.get("dog_id"));
-
-  await supabase.from("dog_shows").insert({
-    dog_id,
-    show_name: formData.get("show_name"),
-    date: formData.get("date"),
-    location: formData.get("location"),
-    judge: formData.get("judge"),
-    class: formData.get("class"),
-    placement: formData.get("placement"),
-    notes: formData.get("notes"),
-  });
-
-  revalidatePath(`/dogs/${dog_id}`);
-}
-
-async function addHeat(formData: FormData) {
-  "use server";
-  const supabase = createServerSupabase();
-  const dog_id = String(formData.get("dog_id"));
-
-  await supabase.from("heats").insert({
-    dog_id,
-    start_date: formData.get("date"),
-    progesterone: parseFloat(String(formData.get("progesterone"))) || 0,
-    notes: formData.get("notes"),
-  });
-
-  revalidatePath(`/dogs/${dog_id}`);
-}
-
-async function addMating(formData: FormData) {
-  "use server";
-  const supabase = createServerSupabase();
-  const dog_id = String(formData.get("dog_id"));
-
-  await supabase.from("matings").insert({
-    female_id: dog_id,
-    male_name: formData.get("male_name"),
-    male_id: formData.get("male_id") || null,
-    date: formData.get("date"),
-    notes: formData.get("notes"),
-  });
-
-  revalidatePath(`/dogs/${dog_id}`);
-}
-
-async function addWhelping(formData: FormData) {
-  "use server";
-  const supabase = createServerSupabase();
-  const dog
