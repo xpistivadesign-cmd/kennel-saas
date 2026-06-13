@@ -1,17 +1,14 @@
-'use client' // A window.print() gomb miatt a Next.js-ben ez kliens interakciót igényel a renderelés után, vagy szét kell választani. Hogy ne szívjunk, tegyük le tisztán:
-
 import { createServerSupabase } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
-// Next.js 15 Aszinkron Params típus definíció
 interface PageProps {
   params: Promise<{ id: string }>;
 }
 
 export default async function ContractPage({ params }: PageProps) {
-  // 1. Megvárjuk az ID-t, különben Next.js 15 alatt összeomlik a szerver!
+  // Megvárjuk az aszinkron paramétereket a Next.js 15/16 szabályai szerint
   const resolvedParams = await params;
   const id = resolvedParams.id;
 
@@ -23,7 +20,7 @@ export default async function ContractPage({ params }: PageProps) {
 
   if (!user) redirect("/login");
 
-  // Alom és a hozzá tartozó kiskutyák lekérése az RLS falon keresztül
+  // Alom és kiskutyák lekérése a szerver oldalon az RLS-en keresztül
   const { data: litter } = await supabase
     .from("litters")
     .select("*, puppies(*)")
@@ -32,14 +29,18 @@ export default async function ContractPage({ params }: PageProps) {
     .maybeSingle();
 
   if (!litter) {
-    return <div className="p-10 text-white bg-black min-h-screen flex items-center justify-center">Litter Record Not Found</div>;
+    return (
+      <div className="min-h-screen bg-zinc-950 text-zinc-500 flex items-center justify-center">
+        Litter Record Not Found
+      </div>
+    );
   }
 
   const puppy = litter.puppies?.[0];
 
   return (
     <div className="min-h-screen bg-zinc-900 p-4 md:p-10 print:bg-white print:p-0">
-      {/* Nyomtatási kép doboza - Élesben tiszta fehér papír stílus, fekete szöveggel */}
+      {/* A nyomtatható szerződés papírja */}
       <div className="bg-white text-black p-8 md:p-12 max-w-4xl mx-auto rounded-2xl shadow-2xl print:shadow-none print:rounded-none">
         
         <h1 className="text-3xl font-black text-center uppercase tracking-wide border-b-2 border-black pb-4">
@@ -62,7 +63,7 @@ export default async function ContractPage({ params }: PageProps) {
             </div>
           </div>
 
-          {/* Szülők / Vérvonal */}
+          {/* Szülők */}
           <div className="border border-zinc-300 p-4 rounded-xl bg-zinc-50">
             <h2 className="font-bold text-base border-b border-zinc-200 pb-1 mb-2 uppercase tracking-wider text-zinc-800">Lineage (Parents)</h2>
             <div className="grid grid-cols-2 gap-2">
@@ -71,7 +72,7 @@ export default async function ContractPage({ params }: PageProps) {
             </div>
           </div>
 
-          {/* Vevő adatai (Üresen hagyva a kézi kitöltéshez vagy későbbi automata gazdi összefésüléshez) */}
+          {/* Vevő adatai */}
           <div className="border border-zinc-300 p-4 rounded-xl bg-zinc-50">
             <h2 className="font-bold text-base border-b border-zinc-200 pb-1 mb-2 uppercase tracking-wider text-zinc-800">Buyer Information</h2>
             <div className="space-y-3 mt-2">
@@ -81,7 +82,7 @@ export default async function ContractPage({ params }: PageProps) {
             </div>
           </div>
 
-          {/* Feltételek és Garancia */}
+          {/* Garancia szöveg */}
           <div className="border border-zinc-300 p-4 rounded-xl bg-zinc-50">
             <h2 className="font-bold text-base border-b border-zinc-200 pb-1 mb-2 uppercase tracking-wider text-zinc-800">Terms of Sale & Health Guarantee</h2>
             <p className="text-xs text-zinc-700 mt-1">
@@ -91,7 +92,7 @@ export default async function ContractPage({ params }: PageProps) {
             </p>
           </div>
 
-          {/* Aláírások */}
+          {/* Aláírás sávok */}
           <div className="grid grid-cols-2 gap-8 pt-12">
             <div className="text-center">
               <div className="border-b border-black w-full h-8"></div>
@@ -102,17 +103,16 @@ export default async function ContractPage({ params }: PageProps) {
               <p className="text-xs font-bold mt-2 uppercase">Buyer Signature & Date</p>
             </div>
           </div>
-
         </div>
 
-        {/* Nyomtatás gomb (Nyomtatáskor elrejtve a print:hidden-nel) */}
+        {/* GOLYÓÁLLÓ NYOMTATÁS TRÜKK: HTML alapú link, ami nem igényel 'use client'-ot a fájl tetején! */}
         <div className="mt-12 flex justify-end print:hidden border-t border-zinc-200 pt-6">
-          <button
-            onClick={() => window.print()}
-            className="bg-amber-500 hover:bg-amber-600 text-black font-black uppercase tracking-wider px-6 py-3 rounded-xl transition shadow-lg shadow-amber-500/20"
+          <a
+            href="javascript:window.print()"
+            className="bg-amber-500 hover:bg-amber-600 text-black font-black uppercase tracking-wider px-6 py-3 rounded-xl transition shadow-lg shadow-amber-500/20 text-center text-sm"
           >
             🖨️ Print Document
-          </button>
+          </a>
         </div>
 
       </div>
