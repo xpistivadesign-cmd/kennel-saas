@@ -1,26 +1,41 @@
 import { createServerSupabase } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
+
+async function addMedicalRecord(formData: FormData) {
+  "use server";
+
+  const supabase = createServerSupabase();
+
+  const dog_id = String(formData.get("dog_id"));
+  const type = String(formData.get("type"));
+  const result = String(formData.get("result"));
+  const date = String(formData.get("date"));
+
+  const { error } = await supabase.from("medical_records").insert({
+    dog_id,
+    type,
+    result,
+    date,
+  });
+
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`/dogs/${dog_id}`);
+}
 
 type Dog = {
   id: string;
   name: string | null;
   breed: string | null;
-  microchip_id: string | null;
-  passport_number: string | null;
   sire_id: string | null;
   dam_id: string | null;
 };
 
-type Node = Dog | null;
-
-async function getDog(
-  supabase: any,
-  id: string,
-  userId: string
-): Promise<Dog | null> {
+async function getDog(supabase: any, id: string, userId: string) {
   const { data } = await supabase
     .from("dogs")
     .select("*")
@@ -28,14 +43,10 @@ async function getDog(
     .eq("user_id", userId)
     .maybeSingle();
 
-  return data || null;
+  return data;
 }
 
-export default async function DogProfilePage({
-  params,
-}: {
-  params: { id: string };
-}) {
+export default async function Page({ params }: { params: { id: string } }) {
   const supabase = createServerSupabase();
 
   const {
@@ -44,117 +55,59 @@ export default async function DogProfilePage({
 
   if (!user) redirect("/login");
 
-  const root = await getDog(supabase, params.id, user.id);
+  const dog = await getDog(supabase, params.id, user.id);
+  if (!dog) return <div className="text-white p-10">Not found</div>;
 
-  if (!root) {
-    return (
-      <div className="text-white p-10">
-        Dog not found
-      </div>
-    );
-  }
+  const sire = dog.sire_id ? await getDog(supabase, dog.sire_id, user.id) : null;
+  const dam = dog.dam_id ? await getDog(supabase, dog.dam_id, user.id) : null;
 
-  // 2nd generation
-  const sire = root.sire_id
-    ? await getDog(supabase, root.sire_id, user.id)
-    : null;
+  const records = await supabase
+    .from("medical_records")
+    .select("*")
+    .eq("dog_id", dog.id)
+    .order("date", { ascending: false });
 
-  const dam = root.dam_id
-    ? await getDog(supabase, root.dam_id, user.id)
-    : null;
-
-  // 3rd generation (sire side)
-  const sire_sire = sire?.sire_id
-    ? await getDog(supabase, sire.sire_id, user.id)
-    : null;
-
-  const sire_dam = sire?.dam_id
-    ? await getDog(supabase, sire.dam_id, user.id)
-    : null;
-
-  // 3rd generation (dam side)
-  const dam_sire = dam?.sire_id
-    ? await getDog(supabase, dam.sire_id, user.id)
-    : null;
-
-  const dam_dam = dam?.dam_id
-    ? await getDog(supabase, dam.dam_id, user.id)
-    : null;
-
-  const Card = ({ dog }: { dog: Dog | null }) => {
-    if (!dog) {
-      return (
-        <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-4 text-zinc-500 text-sm">
-          Unknown
-        </div>
-      );
-    }
-
-    return (
-      <Link
-        href={`/dogs/${dog.id}`}
-        className="block rounded-xl border border-zinc-800 bg-zinc-900/60 p-4 hover:bg-zinc-800 transition"
-      >
-        <div className="font-semibold text-white">
-          {dog.name || "Unnamed"}
-        </div>
-        <div className="text-xs text-zinc-400">
-          {dog.breed || "Unknown breed"}
-        </div>
-        <div className="text-xs text-zinc-500 mt-1">
-          {dog.microchip_id || ""}
-        </div>
-      </Link>
-    );
-  };
+  const Card = ({ d }: any) => (
+    <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-3">
+      {d?.name || "Unknown"}
+    </div>
+  );
 
   return (
-    <div className="space-y-10 text-white p-8">
+    <div className="space-y-8 text-white p-8">
 
-      {/* ROOT DOG */}
-      <div className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-6">
-        <h1 className="text-3xl font-bold">
-          {root.name}
-        </h1>
-        <p className="text-zinc-400">
-          {root.breed || "Unknown breed"}
-        </p>
-      </div>
+      <div className="text-3xl font-bold">{dog.name}</div>
 
-      {/* PEDIGREE */}
-      <div className="overflow-x-auto">
-        <div className="min-w-[900px] grid grid-cols-3 gap-6">
-
-          {/* GENERATION 1 */}
-          <div className="flex items-center">
-            <Card dog={root} />
-          </div>
-
-          {/* GENERATION 2 */}
-          <div className="flex flex-col gap-6 justify-center">
-
-            <Card dog={sire} />
-            <Card dog={dam} />
-
-          </div>
-
-          {/* GENERATION 3 */}
-          <div className="grid grid-cols-2 gap-4">
-
-            <Card dog={sire_sire} />
-            <Card dog={sire_dam} />
-            <Card dog={dam_sire} />
-            <Card dog={dam_dam} />
-
-          </div>
-
+      {/* PEDIGREE SIMPLE */}
+      <div className="grid grid-cols-3 gap-4">
+        <Card d={dog} />
+        <div className="space-y-2">
+          <Card d={sire} />
+          <Card d={dam} />
         </div>
       </div>
 
-      {/* DETAILS SECTION */}
-      <div className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-6 space-y-2">
-        <div>Microchip: {root.microchip_id || "-"}</div>
-        <div>Passport: {root.passport_number || "-"}</div>
+      {/* MEDICAL */}
+      <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6 space-y-4">
+        <h2 className="text-xl font-bold">Medical Records</h2>
+
+        {(records.data || []).map((r: any) => (
+          <div key={r.id} className="text-sm border-b border-zinc-800 py-2">
+            {r.date} — {r.type} — {r.result}
+          </div>
+        ))}
+
+        <form action={addMedicalRecord} className="space-y-2">
+          <input type="hidden" name="dog_id" value={dog.id} />
+
+          <input name="date" type="date" className="w-full p-2 bg-black rounded" />
+          <input name="type" placeholder="Type" className="w-full p-2 bg-black rounded" />
+          <input name="result" placeholder="Result" className="w-full p-2 bg-black rounded" />
+
+          <button className="bg-amber-500 text-black px-4 py-2 rounded">
+            Add Record
+          </button>
+        </form>
       </div>
 
     </div>
