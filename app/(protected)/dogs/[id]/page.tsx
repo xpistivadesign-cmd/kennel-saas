@@ -1,5 +1,6 @@
 import { createServerSupabase } from "@/lib/supabase/server";
-import { redirect, revalidatePath } from "next/navigation";
+import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 
 export const dynamic = "force-dynamic";
 
