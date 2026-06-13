@@ -63,10 +63,7 @@ export default async function HeatsPage() {
 
         <div className="space-y-2">
           {heats?.map((h: any) => (
-            <div
-              key={h.id}
-              className="p-3 rounded-lg bg-zinc-800"
-            >
+            <div key={h.id} className="p-3 rounded-lg bg-zinc-800">
               <div className="font-semibold">{h.dog_id}</div>
               <div className="text-sm text-zinc-400">
                 {h.start_date} • {h.status}
@@ -80,10 +77,7 @@ export default async function HeatsPage() {
         <h2 className="text-xl font-bold mb-4">Log New Heat</h2>
 
         <form action={createHeat} className="space-y-4">
-          <select
-            name="dog_id"
-            className="w-full p-3 bg-zinc-800 rounded-lg"
-          >
+          <select name="dog_id" className="w-full p-3 bg-zinc-800 rounded-lg">
             {dogs?.map((d: any) => (
               <option key={d.id} value={d.id}>
                 {d.name}
