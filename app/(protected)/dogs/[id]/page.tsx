@@ -53,6 +53,7 @@ export default async function DogProfilePage({
 
   if (!user) {
     redirect("/login");
+    const authenticatedUserId = user.id;
   }
 
   const { data: dog } = await supabase
@@ -86,11 +87,11 @@ export default async function DogProfilePage({
       throw new Error("Missing filename");
     }
 
-    await updateDogImage(
-      id,
-      user.id,
-      fileName
-    );
+await updateDogImage(
+  id,
+  authenticatedUserId,
+  fileName
+);
   }
 
   return (
