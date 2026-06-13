@@ -1,5 +1,6 @@
 import { createServerSupabase } from "@/lib/supabase/server";
-import { redirect, revalidatePath } from "next/navigation";
+import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache"; // FIX: A revalidatePath a next/cache-ből jön!
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +22,7 @@ async function updateDog(formData: FormData) {
       name: formData.get("name"),
       breed: formData.get("breed"),
       color_markings: formData.get("color_markings"),
-      birth_date: formData.get("birth_date"),
+      birth_date: formData.get("birth_date") || null,
       microchip_id: formData.get("microchip_id"),
       passport_number: formData.get("passport_number"),
       pedigree_number: formData.get("pedigree_number"),
@@ -38,7 +39,6 @@ async function addMedical(formData: FormData) {
   "use server";
 
   const supabase = createServerSupabase();
-
   const dog_id = String(formData.get("dog_id"));
 
   await supabase.from("medical_records").insert({
@@ -55,7 +55,6 @@ async function addShow(formData: FormData) {
   "use server";
 
   const supabase = createServerSupabase();
-
   const dog_id = String(formData.get("dog_id"));
 
   await supabase.from("dog_shows").insert({
@@ -76,13 +75,13 @@ async function addHeat(formData: FormData) {
   "use server";
 
   const supabase = createServerSupabase();
-
   const dog_id = String(formData.get("dog_id"));
 
+  // FIX: Az adatbázis sémádban start_date van, nem sima date!
   await supabase.from("heats").insert({
     dog_id,
-    date: formData.get("date"),
-    progesterone: formData.get("progesterone"),
+    start_date: formData.get("date"),
+    progesterone: parseFloat(String(formData.get("progesterone"))) || 0,
     notes: formData.get("notes"),
   });
 
@@ -93,7 +92,6 @@ async function addMating(formData: FormData) {
   "use server";
 
   const supabase = createServerSupabase();
-
   const dog_id = String(formData.get("dog_id"));
 
   await supabase.from("matings").insert({
@@ -111,15 +109,14 @@ async function addWhelping(formData: FormData) {
   "use server";
 
   const supabase = createServerSupabase();
-
   const dog_id = String(formData.get("dog_id"));
 
   await supabase.from("litters").insert({
     dam_id: dog_id,
-    sire_id: formData.get("sire_id"),
+    sire_id: formData.get("sire_id") || null,
     birth_date: formData.get("birth_date"),
-    live_puppies: formData.get("live_puppies"),
-    dead_puppies: formData.get("dead_puppies"),
+    live_puppies: parseInt(String(formData.get("live_puppies"))) || 0,
+    dead_puppies: parseInt(String(formData.get("dead_puppies"))) || 0,
     status: "Planned",
   });
 
@@ -134,9 +131,10 @@ async function uploadImage(formData: FormData) {
   const dog_id = String(formData.get("dog_id"));
   const file = formData.get("file") as File;
 
+  if (!file || file.size === 0) return;
+
   const arrayBuffer = await file.arrayBuffer();
   const buffer = Buffer.from(arrayBuffer);
-
   const filePath = `${dog_id}-${Date.now()}.jpg`;
 
   await supabase.storage
@@ -178,7 +176,7 @@ export default async function DogProfilePage({ params }: PageProps) {
     .single();
 
   if (!dog) {
-    return <div className="p-10 text-red-400">Not found</div>;
+    return <div className="p-10 text-red-400 bg-black min-h-screen">Dog record not found.</div>;
   }
 
   const { data: medical } = await supabase
@@ -197,150 +195,10 @@ export default async function DogProfilePage({ params }: PageProps) {
     .from("heats")
     .select("*")
     .eq("dog_id", id)
-    .order("date", { ascending: false });
+    .order("start_date", { ascending: false }); // FIX: rendezés start_date szerint
 
   const isFemale = dog.sex === "Female";
 
   return (
-    <div className="min-h-screen bg-black text-white p-8 space-y-8">
-
-      {/* HEADER */}
-      <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 flex justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-amber-400">
-            {dog.name}
-          </h1>
-          <p className="text-zinc-400">{dog.breed}</p>
-        </div>
-
-        <form action={uploadImage} className="space-y-2">
-          <input type="hidden" name="dog_id" value={dog.id} />
-          <input
-            type="file"
-            name="file"
-            accept="image/*"
-            className="text-sm"
-          />
-          <button className="px-4 py-2 bg-amber-500 text-black rounded">
-            Upload Image
-          </button>
-        </form>
-      </div>
-
-      {/* EDIT FORM */}
-      <form action={updateDog} className="grid md:grid-cols-3 gap-3 bg-zinc-900 p-4 rounded-xl">
-        <input type="hidden" name="id" value={dog.id} />
-        <input type="hidden" name="user_id" value={user.id} />
-
-        <input name="name" defaultValue={dog.name} className="p-2 bg-black border border-zinc-700" />
-        <input name="breed" defaultValue={dog.breed} className="p-2 bg-black border border-zinc-700" />
-        <input name="color_markings" defaultValue={dog.color_markings} className="p-2 bg-black border border-zinc-700" />
-        <input name="birth_date" defaultValue={dog.birth_date} className="p-2 bg-black border border-zinc-700" />
-        <input name="microchip_id" defaultValue={dog.microchip_id} className="p-2 bg-black border border-zinc-700" />
-        <input name="passport_number" defaultValue={dog.passport_number} className="p-2 bg-black border border-zinc-700" />
-        <input name="pedigree_number" defaultValue={dog.pedigree_number} className="p-2 bg-black border border-zinc-700" />
-
-        <select name="is_public" defaultValue={String(dog.is_public)} className="p-2 bg-black border border-zinc-700">
-          <option value="true">Public</option>
-          <option value="false">Private</option>
-        </select>
-
-        <select name="is_for_sale" defaultValue={String(dog.is_for_sale)} className="p-2 bg-black border border-zinc-700">
-          <option value="true">For Sale</option>
-          <option value="false">Not for Sale</option>
-        </select>
-
-        <button className="bg-green-500 text-black p-2 rounded col-span-full">
-          Save Profile
-        </button>
-      </form>
-
-      {/* BREEDING (FEMALE ONLY) */}
-      {isFemale && (
-        <div className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl space-y-6">
-
-          <h2 className="text-xl font-bold text-amber-400">Breeding Logs</h2>
-
-          {/* HEAT */}
-          <form action={addHeat} className="grid md:grid-cols-4 gap-2">
-            <input type="hidden" name="dog_id" value={dog.id} />
-            <input name="date" type="date" className="p-2 bg-black border border-zinc-700" />
-            <input name="progesterone" placeholder="ng/ml" className="p-2 bg-black border border-zinc-700" />
-            <input name="notes" placeholder="notes" className="p-2 bg-black border border-zinc-700" />
-            <button className="bg-amber-500 text-black p-2 rounded">Add Heat</button>
-          </form>
-
-          {heats?.map((h: any) => (
-            <div key={h.id} className="text-sm text-zinc-300">
-              {h.date} — {h.progesterone} ng/ml
-              {h.progesterone >= 5 && h.progesterone <= 10 && (
-                <span className="text-green-400 font-bold ml-2">
-                  OPTIMAL BREEDING WINDOW
-                </span>
-              )}
-            </div>
-          ))}
-
-          {/* MATING */}
-          <form action={addMating} className="grid md:grid-cols-3 gap-2">
-            <input type="hidden" name="dog_id" value={dog.id} />
-            <input name="male_name" placeholder="Male name" className="p-2 bg-black border border-zinc-700" />
-            <input name="date" type="date" className="p-2 bg-black border border-zinc-700" />
-            <input name="notes" placeholder="notes" className="p-2 bg-black border border-zinc-700" />
-            <button className="bg-blue-500 text-black p-2 rounded col-span-full">Add Mating</button>
-          </form>
-
-          {/* WHELPING */}
-          <form action={addWhelping} className="grid md:grid-cols-4 gap-2">
-            <input type="hidden" name="dog_id" value={dog.id} />
-            <input name="sire_id" placeholder="Sire ID" className="p-2 bg-black border border-zinc-700" />
-            <input name="birth_date" type="date" className="p-2 bg-black border border-zinc-700" />
-            <input name="live_puppies" placeholder="Live" className="p-2 bg-black border border-zinc-700" />
-            <input name="dead_puppies" placeholder="Dead" className="p-2 bg-black border border-zinc-700" />
-            <button className="bg-green-500 text-black p-2 rounded col-span-full">Add Litter</button>
-          </form>
-
-        </div>
-      )}
-
-      {/* MEDICAL */}
-      <div className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl space-y-3">
-        <h2 className="text-amber-400 font-bold">Medical Records</h2>
-
-        <form action={addMedical} className="grid md:grid-cols-4 gap-2">
-          <input type="hidden" name="dog_id" value={dog.id} />
-          <input name="date" type="date" className="p-2 bg-black border border-zinc-700" />
-          <input name="type" placeholder="type" className="p-2 bg-black border border-zinc-700" />
-          <input name="notes" placeholder="notes" className="p-2 bg-black border border-zinc-700" />
-          <button className="bg-amber-500 text-black p-2 rounded">Add</button>
-        </form>
-
-        {medical?.map((m: any) => (
-          <div key={m.id} className="text-sm text-zinc-300">
-            {m.date} — {m.type} — {m.notes}
-          </div>
-        ))}
-      </div>
-
-      {/* SHOWS */}
-      <div className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl space-y-3">
-        <h2 className="text-amber-400 font-bold">Shows & Journal</h2>
-
-        <form action={addShow} className="grid md:grid-cols-4 gap-2">
-          <input type="hidden" name="dog_id" value={dog.id} />
-          <input name="show_name" placeholder="show" className="p-2 bg-black border border-zinc-700" />
-          <input name="date" type="date" className="p-2 bg-black border border-zinc-700" />
-          <input name="location" placeholder="location" className="p-2 bg-black border border-zinc-700" />
-          <button className="bg-amber-500 text-black p-2 rounded">Add</button>
-        </form>
-
-        {shows?.map((s: any) => (
-          <div key={s.id} className="text-sm text-zinc-300">
-            {s.date} — {s.show_name} — {s.placement}
-          </div>
-        ))}
-      </div>
-
-    </div>
-  );
-}
+    <div className="min-h-screen bg-black text-white p-6 space-y-8">
+      {/* PROFILE HEADER WITH
