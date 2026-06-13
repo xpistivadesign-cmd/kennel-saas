@@ -19,11 +19,13 @@ export default async function DogProfilePage({
     redirect("/login");
   }
 
+  const userId = user!.id;
+
   const { data: dog, error } = await supabase
     .from("dogs")
     .select("*")
     .eq("id", params.id)
-    .eq("user_id", user.id)
+    .eq("user_id", userId)
     .single();
 
   if (error || !dog) {
@@ -37,7 +39,7 @@ export default async function DogProfilePage({
   const { data: allDogs } = await supabase
     .from("dogs")
     .select("id, name, sex")
-    .eq("user_id", user.id);
+    .eq("user_id", userId);
 
   async function uploadAction(formData: FormData) {
     "use server";
@@ -46,14 +48,22 @@ export default async function DogProfilePage({
   async function saveAction(formData: FormData) {
     "use server";
 
+    const supabase = createServerSupabase();
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      throw new Error("Unauthorized");
+    }
+
     const name = String(formData.get("name") || "");
     const microchip_id = String(formData.get("microchip_id") || "");
     const passport_number = String(formData.get("passport_number") || "");
     const color_markings = String(formData.get("color_markings") || "");
     const sire_id = String(formData.get("sire_id") || "");
     const dam_id = String(formData.get("dam_id") || "");
-
-    const supabase = createServerSupabase();
 
     await supabase
       .from("dogs")
