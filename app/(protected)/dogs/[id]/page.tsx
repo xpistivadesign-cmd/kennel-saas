@@ -1,113 +1,208 @@
 import { createServerSupabase } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
-import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
-async function addMedicalRecord(formData: FormData) {
-  "use server";
-
-  const supabase = createServerSupabase();
-
-  const dog_id = String(formData.get("dog_id"));
-  const type = String(formData.get("type"));
-  const result = String(formData.get("result"));
-  const date = String(formData.get("date"));
-
-  const { error } = await supabase.from("medical_records").insert({
-    dog_id,
-    type,
-    result,
-    date,
-  });
-
-  if (error) throw new Error(error.message);
-
-  revalidatePath(`/dogs/${dog_id}`);
-}
-
-type Dog = {
-  id: string;
-  name: string | null;
-  breed: string | null;
-  sire_id: string | null;
-  dam_id: string | null;
+type PageProps = {
+  params: Promise<{ id: string }>;
 };
 
-async function getDog(supabase: any, id: string, userId: string) {
-  const { data } = await supabase
-    .from("dogs")
-    .select("*")
-    .eq("id", id)
-    .eq("user_id", userId)
-    .maybeSingle();
+export default async function DogProfilePage({ params }: PageProps) {
+  const resolvedParams = await params;
+  const id = resolvedParams.id;
 
-  return data;
-}
-
-export default async function Page({ params }: { params: { id: string } }) {
   const supabase = createServerSupabase();
 
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) redirect("/login");
+  if (!user) {
+    redirect("/login");
+  }
 
-  const dog = await getDog(supabase, params.id, user.id);
-  if (!dog) return <div className="text-white p-10">Not found</div>;
+  const { data: dog } = await supabase
+    .from("dogs")
+    .select("*")
+    .eq("id", id)
+    .eq("user_id", user.id)
+    .single();
 
-  const sire = dog.sire_id ? await getDog(supabase, dog.sire_id, user.id) : null;
-  const dam = dog.dam_id ? await getDog(supabase, dog.dam_id, user.id) : null;
+  if (!dog) {
+    return (
+      <div className="p-10 text-red-400">
+        Not found
+      </div>
+    );
+  }
 
-  const records = await supabase
+  const { data: sire } = await supabase
+    .from("dogs")
+    .select("*")
+    .eq("id", dog.sire_id)
+    .maybeSingle();
+
+  const { data: dam } = await supabase
+    .from("dogs")
+    .select("*")
+    .eq("id", dog.dam_id)
+    .maybeSingle();
+
+  const sireSire = sire?.sire_id
+    ? (await supabase.from("dogs").select("*").eq("id", sire.sire_id).maybeSingle()).data
+    : null;
+
+  const sireDam = sire?.dam_id
+    ? (await supabase.from("dogs").select("*").eq("id", sire.dam_id).maybeSingle()).data
+    : null;
+
+  const damSire = dam?.sire_id
+    ? (await supabase.from("dogs").select("*").eq("id", dam.sire_id).maybeSingle()).data
+    : null;
+
+  const damDam = dam?.dam_id
+    ? (await supabase.from("dogs").select("*").eq("id", dam.dam_id).maybeSingle()).data
+    : null;
+
+  const { data: medical } = await supabase
     .from("medical_records")
     .select("*")
-    .eq("dog_id", dog.id)
+    .eq("dog_id", id)
     .order("date", { ascending: false });
 
-  const Card = ({ d }: any) => (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-3">
-      {d?.name || "Unknown"}
-    </div>
-  );
+  const { data: shows } = await supabase
+    .from("dog_shows")
+    .select("*")
+    .eq("dog_id", id)
+    .order("date", { ascending: false });
+
+  const renderTab = "overview";
 
   return (
-    <div className="space-y-8 text-white p-8">
+    <div className="min-h-screen bg-black text-white p-8 space-y-8">
 
-      <div className="text-3xl font-bold">{dog.name}</div>
+      {/* HEADER */}
+      <div className="border border-zinc-800 rounded-2xl p-6 bg-zinc-900/40">
+        <h1 className="text-3xl font-bold text-amber-400">
+          {dog.name}
+        </h1>
 
-      {/* PEDIGREE SIMPLE */}
-      <div className="grid grid-cols-3 gap-4">
-        <Card d={dog} />
-        <div className="space-y-2">
-          <Card d={sire} />
-          <Card d={dam} />
+        <p className="text-zinc-400">
+          {dog.breed}
+        </p>
+      </div>
+
+      {/* OVERVIEW */}
+      <div className="grid md:grid-cols-3 gap-4">
+
+        <div className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl">
+          <div className="text-zinc-400 text-sm">Sex</div>
+          <div className="font-semibold">{dog.sex}</div>
+        </div>
+
+        <div className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl">
+          <div className="text-zinc-400 text-sm">Microchip</div>
+          <div className="font-semibold">{dog.microchip_id || "Unknown"}</div>
+        </div>
+
+        <div className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl">
+          <div className="text-zinc-400 text-sm">Passport</div>
+          <div className="font-semibold">{dog.passport_number || "Unknown"}</div>
+        </div>
+
+      </div>
+
+      {/* PEDIGREE */}
+      <div className="space-y-4">
+        <h2 className="text-xl font-bold text-amber-400">Pedigree</h2>
+
+        <div className="grid grid-cols-3 gap-4">
+
+          {/* DOG */}
+          <div className="bg-amber-500 text-black p-4 rounded-xl font-bold">
+            {dog.name}
+          </div>
+
+          {/* PARENTS */}
+          <div className="space-y-2">
+
+            <div className="bg-zinc-900 border border-zinc-800 p-3 rounded">
+              {sire?.name || "Unknown"}
+            </div>
+
+            <div className="bg-zinc-900 border border-zinc-800 p-3 rounded">
+              {dam?.name || "Unknown"}
+            </div>
+
+          </div>
+
+          {/* GRANDPARENTS */}
+          <div className="space-y-2">
+
+            <div className="bg-zinc-900 border border-zinc-800 p-2 rounded text-sm">
+              {sireSire?.name || "Unknown"}
+            </div>
+
+            <div className="bg-zinc-900 border border-zinc-800 p-2 rounded text-sm">
+              {sireDam?.name || "Unknown"}
+            </div>
+
+            <div className="bg-zinc-900 border border-zinc-800 p-2 rounded text-sm">
+              {damSire?.name || "Unknown"}
+            </div>
+
+            <div className="bg-zinc-900 border border-zinc-800 p-2 rounded text-sm">
+              {damDam?.name || "Unknown"}
+            </div>
+
+          </div>
+
         </div>
       </div>
 
       {/* MEDICAL */}
-      <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6 space-y-4">
-        <h2 className="text-xl font-bold">Medical Records</h2>
+      <div className="space-y-4">
+        <h2 className="text-xl font-bold text-amber-400">Medical Mappa</h2>
 
-        {(records.data || []).map((r: any) => (
-          <div key={r.id} className="text-sm border-b border-zinc-800 py-2">
-            {r.date} — {r.type} — {r.result}
-          </div>
-        ))}
+        <div className="space-y-2">
+          {(medical || []).map((m: any) => (
+            <div
+              key={m.id}
+              className="bg-zinc-900 border border-zinc-800 p-3 rounded-xl flex justify-between"
+            >
+              <div>
+                <div className="font-semibold">{m.type}</div>
+                <div className="text-sm text-zinc-400">{m.notes}</div>
+              </div>
 
-        <form action={addMedicalRecord} className="space-y-2">
-          <input type="hidden" name="dog_id" value={dog.id} />
+              <div className="text-sm text-zinc-500">
+                {m.date}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
 
-          <input name="date" type="date" className="w-full p-2 bg-black rounded" />
-          <input name="type" placeholder="Type" className="w-full p-2 bg-black rounded" />
-          <input name="result" placeholder="Result" className="w-full p-2 bg-black rounded" />
+      {/* SHOWS */}
+      <div className="space-y-4">
+        <h2 className="text-xl font-bold text-amber-400">Shows & Journal</h2>
 
-          <button className="bg-amber-500 text-black px-4 py-2 rounded">
-            Add Record
-          </button>
-        </form>
+        <div className="space-y-2">
+          {(shows || []).map((s: any) => (
+            <div
+              key={s.id}
+              className="bg-zinc-900 border border-zinc-800 p-3 rounded-xl"
+            >
+              <div className="font-semibold">
+                {s.show_name} — {s.placement || "No placement"}
+              </div>
+
+              <div className="text-sm text-zinc-400">
+                {s.notes}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
     </div>
