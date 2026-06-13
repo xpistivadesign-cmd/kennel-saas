@@ -17,7 +17,9 @@ export default async function DogProfilePage({ params }: PageProps) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) redirect("/login");
+  if (!user) {
+    redirect("/login");
+  }
 
   const { data: dog, error } = await supabase
     .from("dogs")
