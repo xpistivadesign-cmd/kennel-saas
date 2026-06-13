@@ -1,8 +1,35 @@
 import { createServerSupabase } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import DogProfileClient from "./profile-client";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
+
+type Dog = {
+  id: string;
+  name: string | null;
+  breed: string | null;
+  microchip_id: string | null;
+  passport_number: string | null;
+  sire_id: string | null;
+  dam_id: string | null;
+};
+
+type Node = Dog | null;
+
+async function getDog(
+  supabase: any,
+  id: string,
+  userId: string
+): Promise<Dog | null> {
+  const { data } = await supabase
+    .from("dogs")
+    .select("*")
+    .eq("id", id)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  return data || null;
+}
 
 export default async function DogProfilePage({
   params,
@@ -15,76 +42,121 @@ export default async function DogProfilePage({
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) {
-    redirect("/login");
-  }
+  if (!user) redirect("/login");
 
-  const userId = user!.id;
+  const root = await getDog(supabase, params.id, user.id);
 
-  const { data: dog, error } = await supabase
-    .from("dogs")
-    .select("*")
-    .eq("id", params.id)
-    .eq("user_id", userId)
-    .single();
-
-  if (error || !dog) {
+  if (!root) {
     return (
-      <div className="p-10 text-red-400">
+      <div className="text-white p-10">
         Dog not found
       </div>
     );
   }
 
-  const { data: allDogs } = await supabase
-    .from("dogs")
-    .select("id, name, sex")
-    .eq("user_id", userId);
+  // 2nd generation
+  const sire = root.sire_id
+    ? await getDog(supabase, root.sire_id, user.id)
+    : null;
 
-  async function uploadAction(formData: FormData) {
-    "use server";
-  }
+  const dam = root.dam_id
+    ? await getDog(supabase, root.dam_id, user.id)
+    : null;
 
-  async function saveAction(formData: FormData) {
-    "use server";
+  // 3rd generation (sire side)
+  const sire_sire = sire?.sire_id
+    ? await getDog(supabase, sire.sire_id, user.id)
+    : null;
 
-    const supabase = createServerSupabase();
+  const sire_dam = sire?.dam_id
+    ? await getDog(supabase, sire.dam_id, user.id)
+    : null;
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+  // 3rd generation (dam side)
+  const dam_sire = dam?.sire_id
+    ? await getDog(supabase, dam.sire_id, user.id)
+    : null;
 
-    if (!user) {
-      throw new Error("Unauthorized");
+  const dam_dam = dam?.dam_id
+    ? await getDog(supabase, dam.dam_id, user.id)
+    : null;
+
+  const Card = ({ dog }: { dog: Dog | null }) => {
+    if (!dog) {
+      return (
+        <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-4 text-zinc-500 text-sm">
+          Unknown
+        </div>
+      );
     }
 
-    const name = String(formData.get("name") || "");
-    const microchip_id = String(formData.get("microchip_id") || "");
-    const passport_number = String(formData.get("passport_number") || "");
-    const color_markings = String(formData.get("color_markings") || "");
-    const sire_id = String(formData.get("sire_id") || "");
-    const dam_id = String(formData.get("dam_id") || "");
-
-    await supabase
-      .from("dogs")
-      .update({
-        name,
-        microchip_id,
-        passport_number,
-        color_markings,
-        sire_id: sire_id || null,
-        dam_id: dam_id || null,
-      })
-      .eq("id", params.id)
-      .eq("user_id", user.id);
-  }
+    return (
+      <Link
+        href={`/dogs/${dog.id}`}
+        className="block rounded-xl border border-zinc-800 bg-zinc-900/60 p-4 hover:bg-zinc-800 transition"
+      >
+        <div className="font-semibold text-white">
+          {dog.name || "Unnamed"}
+        </div>
+        <div className="text-xs text-zinc-400">
+          {dog.breed || "Unknown breed"}
+        </div>
+        <div className="text-xs text-zinc-500 mt-1">
+          {dog.microchip_id || ""}
+        </div>
+      </Link>
+    );
+  };
 
   return (
-    <DogProfileClient
-      dog={dog}
-      dogs={allDogs ?? []}
-      uploadAction={uploadAction}
-      saveAction={saveAction}
-    />
+    <div className="space-y-10 text-white p-8">
+
+      {/* ROOT DOG */}
+      <div className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-6">
+        <h1 className="text-3xl font-bold">
+          {root.name}
+        </h1>
+        <p className="text-zinc-400">
+          {root.breed || "Unknown breed"}
+        </p>
+      </div>
+
+      {/* PEDIGREE */}
+      <div className="overflow-x-auto">
+        <div className="min-w-[900px] grid grid-cols-3 gap-6">
+
+          {/* GENERATION 1 */}
+          <div className="flex items-center">
+            <Card dog={root} />
+          </div>
+
+          {/* GENERATION 2 */}
+          <div className="flex flex-col gap-6 justify-center">
+
+            <Card dog={sire} />
+            <Card dog={dam} />
+
+          </div>
+
+          {/* GENERATION 3 */}
+          <div className="grid grid-cols-2 gap-4">
+
+            <Card dog={sire_sire} />
+            <Card dog={sire_dam} />
+            <Card dog={dam_sire} />
+            <Card dog={dam_dam} />
+
+          </div>
+
+        </div>
+      </div>
+
+      {/* DETAILS SECTION */}
+      <div className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-6 space-y-2">
+        <div>Microchip: {root.microchip_id || "-"}</div>
+        <div>Passport: {root.passport_number || "-"}</div>
+      </div>
+
+    </div>
   );
 }
