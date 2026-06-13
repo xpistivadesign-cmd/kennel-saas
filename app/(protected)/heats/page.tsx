@@ -1,63 +1,119 @@
-import { createClient } from "@/utils/supabase/server";
+import { createServerSupabase } from "@/lib/supabase/server";
+import { redirect, revalidatePath } from "next/navigation";
 
-export default async function HeatsPage() {
-  const supabase = await createClient();
+export const dynamic = "force-dynamic";
 
-  const { data: heats, error } = await supabase
-    .from("heats")
-    .select(
-      `
-      id,
-      start_date,
-      end_date,
-      dog_id,
-      progesterone_tests (
-        id,
-        test_date,
-        value
-      )
-    `
-    )
-    .order("start_date", { ascending: false });
+async function createHeat(formData: FormData) {
+  "use server";
 
-  if (error || !heats) {
-    return (
-      <div className="p-6 text-red-500">
-        Hiba az adatok betöltésekor
-      </div>
-    );
+  const supabase = createServerSupabase();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    throw new Error("Unauthorized");
   }
 
+  const dog_id = String(formData.get("dog_id"));
+  const start_date = String(formData.get("start_date"));
+  const progesterone = String(formData.get("progesterone"));
+  const notes = String(formData.get("notes") || "");
+
+  await supabase.from("heats").insert({
+    user_id: user.id,
+    dog_id,
+    start_date,
+    progesterone,
+    notes,
+    status: "active",
+  });
+
+  revalidatePath("/heats");
+}
+
+export default async function HeatsPage() {
+  const supabase = createServerSupabase();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) redirect("/login");
+
+  const userId = user.id;
+
+  const { data: dogs } = await supabase
+    .from("dogs")
+    .select("id, name, sex")
+    .eq("user_id", userId)
+    .eq("sex", "Female");
+
+  const { data: heats } = await supabase
+    .from("heats")
+    .select("*")
+    .eq("user_id", userId)
+    .order("start_date", { ascending: false });
+
   return (
-    <div className="max-w-5xl mx-auto p-6 space-y-6">
-      <h1 className="text-2xl font-bold">Tüzelési ciklusok</h1>
+    <div className="grid md:grid-cols-2 gap-6 text-white">
+      <div className="p-6 rounded-2xl bg-zinc-900 border border-zinc-800">
+        <h2 className="text-xl font-bold mb-4">Heat History</h2>
 
-      {heats.length === 0 ? (
-        <p className="text-gray-500">Nincs adat</p>
-      ) : (
-        heats.map((heat) => {
-          const tests = heat.progesterone_tests || [];
-
-          return (
+        <div className="space-y-2">
+          {heats?.map((h: any) => (
             <div
-              key={heat.id}
-              className="border rounded-xl p-4 bg-white"
+              key={h.id}
+              className="p-3 rounded-lg bg-zinc-800"
             >
-              <div className="text-xs text-gray-400">
-                Kutya: {heat.dog_id.slice(0, 8)}
-              </div>
-
-              <div className="text-sm mt-2">
-                📅 {new Date(heat.start_date).toLocaleDateString("hu-HU")}
-              </div>
-
-              <div className="text-xs mt-2 text-gray-500">
-                Mérések: {tests.length}
+              <div className="font-semibold">{h.dog_id}</div>
+              <div className="text-sm text-zinc-400">
+                {h.start_date} • {h.status}
               </div>
             </div>
-          );
-        })
-      )}
+          ))}
+        </div>
+      </div>
+
+      <div className="p-6 rounded-2xl bg-zinc-900 border border-zinc-800">
+        <h2 className="text-xl font-bold mb-4">Log New Heat</h2>
+
+        <form action={createHeat} className="space-y-4">
+          <select
+            name="dog_id"
+            className="w-full p-3 bg-zinc-800 rounded-lg"
+          >
+            {dogs?.map((d: any) => (
+              <option key={d.id} value={d.id}>
+                {d.name}
+              </option>
+            ))}
+          </select>
+
+          <input
+            name="start_date"
+            type="date"
+            className="w-full p-3 bg-zinc-800 rounded-lg"
+          />
+
+          <input
+            name="progesterone"
+            placeholder="Progesterone level"
+            className="w-full p-3 bg-zinc-800 rounded-lg"
+          />
+
+          <textarea
+            name="notes"
+            placeholder="Notes"
+            className="w-full p-3 bg-zinc-800 rounded-lg"
+          />
+
+          <button className="w-full bg-emerald-500 text-black font-bold py-3 rounded-xl">
+            Save Heat
+          </button>
+        </form>
+      </div>
     </div>
   );
 }
