@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 
@@ -10,107 +11,126 @@ export default async function DashboardPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) {
-    redirect("/login");
-  }
-
-  const userId = user.id;
+  if (!user) redirect("/login");
 
   const { data: dogs } = await supabase
     .from("dogs")
-    .select("id, created_at")
-    .eq("user_id", userId);
+    .select("id, name, breed, created_at")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false });
+
+  const { data: heats } = await supabase
+    .from("heats")
+    .select("id, start_date, dogs(name)")
+    .eq("user_id", user.id)
+    .order("start_date", { ascending: true });
 
   const { data: payments } = await supabase
     .from("payments")
-    .select("amount")
-    .eq("user_id", userId);
+    .select("amount, type")
+    .eq("user_id", user.id);
 
   const { data: deposits } = await supabase
     .from("deposits")
     .select("amount")
-    .eq("user_id", userId);
+    .eq("user_id", user.id);
 
-  const totalDogs = dogs?.length ?? 0;
+  const totalIncome =
+    (payments || [])
+      .filter((p) => p.type === "income")
+      .reduce((sum, p) => sum + Number(p.amount || 0), 0) +
+    (deposits || []).reduce((sum, d) => sum + Number(d.amount || 0), 0);
 
-  const totalRevenue =
-    payments?.reduce((sum, p) => sum + Number(p.amount), 0) ?? 0;
+  const totalExpense = (payments || [])
+    .filter((p) => p.type === "expense")
+    .reduce((sum, p) => sum + Number(p.amount || 0), 0);
 
-  const totalExpenses =
-    deposits?.reduce((sum, d) => sum + Number(d.amount), 0) ?? 0;
-
-  const netProfit = totalRevenue - totalExpenses;
-
-  const latestDogs = dogs?.slice(-5).reverse() ?? [];
-
-  const { data: heats } = await supabase
-    .from("heats")
-    .select("*")
-    .eq("user_id", userId)
-    .order("start_date", { ascending: false })
-    .limit(5);
+  const netProfit = totalIncome - totalExpense;
 
   return (
-    <div className="space-y-8 text-white">
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="p-6 rounded-2xl bg-zinc-900 border border-zinc-800">
-          <div className="text-zinc-400">Active Dogs</div>
-          <div className="text-3xl font-bold">{totalDogs}</div>
-        </div>
+    <div className="p-8 space-y-10 text-white">
 
-        <div className="p-6 rounded-2xl bg-zinc-900 border border-zinc-800">
-          <div className="text-zinc-400">Revenue</div>
-          <div className="text-3xl font-bold text-green-400">
-            €{totalRevenue}
+      <h1 className="text-3xl font-bold">Dashboard</h1>
+
+      {/* STATS */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
+          <div className="text-zinc-400 text-sm">Total Dogs</div>
+          <div className="text-2xl font-bold">
+            {dogs?.length || 0}
           </div>
         </div>
 
-        <div className="p-6 rounded-2xl bg-zinc-900 border border-zinc-800">
-          <div className="text-zinc-400">Expenses</div>
-          <div className="text-3xl font-bold text-red-400">
-            €{totalExpenses}
+        <div className="bg-green-900/20 border border-green-700 rounded-xl p-5">
+          <div className="text-green-400 text-sm">Total Revenue</div>
+          <div className="text-2xl font-bold">
+            €{totalIncome}
           </div>
         </div>
 
-        <div className="p-6 rounded-2xl bg-zinc-900 border border-zinc-800">
-          <div className="text-zinc-400">Net Profit</div>
-          <div className="text-3xl font-bold text-amber-400">
-            €{netProfit}
+        <div className="bg-red-900/20 border border-red-700 rounded-xl p-5">
+          <div className="text-red-400 text-sm">Total Expenses</div>
+          <div className="text-2xl font-bold">
+            €{totalExpense}
           </div>
+        </div>
+
+      </div>
+
+      <div className="bg-blue-900/20 border border-blue-700 rounded-xl p-5">
+        <div className="text-blue-400 text-sm">Net Profit</div>
+        <div className="text-3xl font-bold">
+          €{netProfit}
         </div>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-6">
-        <div className="p-6 rounded-2xl bg-zinc-900 border border-zinc-800">
-          <h2 className="text-xl font-bold mb-4">Latest Dogs</h2>
+      {/* LATEST DOGS */}
+      <div>
+        <h2 className="text-xl font-bold mb-3">Latest Dogs</h2>
 
-          <div className="space-y-2">
-            {latestDogs.map((d: any) => (
-              <div
-                key={d.id}
-                className="p-3 rounded-lg bg-zinc-800"
-              >
-                {d.id}
+        <div className="grid gap-3">
+          {(dogs || []).map((dog) => (
+            <Link
+              key={dog.id}
+              href={`/dogs/${dog.id}`}
+              className="block bg-zinc-900 border border-zinc-800 rounded-xl p-4 hover:bg-zinc-800 transition"
+            >
+              <div className="text-lg font-semibold">
+                {dog.name}
               </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="p-6 rounded-2xl bg-zinc-900 border border-zinc-800">
-          <h2 className="text-xl font-bold mb-4">Upcoming Heats</h2>
-
-          <div className="space-y-2">
-            {heats?.map((h: any) => (
-              <div
-                key={h.id}
-                className="p-3 rounded-lg bg-zinc-800"
-              >
-                {h.start_date} - {h.status}
+              <div className="text-zinc-400 text-sm">
+                {dog.breed}
               </div>
-            ))}
-          </div>
+            </Link>
+          ))}
         </div>
       </div>
+
+      {/* UPCOMING HEATS */}
+      <div>
+        <h2 className="text-xl font-bold mb-3">Upcoming Heats</h2>
+
+        <div className="space-y-2">
+          {(heats || []).map((heat: any) => (
+            <div
+              key={heat.id}
+              className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 flex justify-between"
+            >
+              <div>
+                <div className="font-semibold">
+                  {heat.start_date} — {heat.dogs?.name || "Unknown"}
+                </div>
+              </div>
+
+              <div className="text-yellow-400 text-sm">
+                Heat
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
     </div>
   );
 }
