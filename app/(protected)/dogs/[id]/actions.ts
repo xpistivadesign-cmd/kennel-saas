@@ -9,13 +9,15 @@ import { createClient } from "@/lib/supabase/server";
 export async function updateDogProfileAction(formData: FormData) {
   const supabase = await createClient();
 
+  const id = formData.get("id") as string;
+
   await supabase
     .from("dogs")
     .update({
       passport_number: formData.get("passport_number") || null,
       registration_number: formData.get("registration_number") || null,
     })
-    .eq("id", formData.get("id"));
+    .eq("id", id);
 }
 
 /* =========================
@@ -66,14 +68,13 @@ export async function addMatingAction(formData: FormData) {
 
   await supabase.from("matings").insert({
     female_id: formData.get("female_id"),
-    male_id: formData.get("male_id"),
-    date: formData.get("date"),
     male_name: formData.get("male_name"),
+    date: formData.get("date"),
     notes: formData.get("notes"),
   });
 }
 
-export async function addLitterAction(formData: FormData) {
+export async function addWhelpingAction(formData: FormData) {
   const supabase = await createClient();
 
   await supabase.from("litters").insert({
