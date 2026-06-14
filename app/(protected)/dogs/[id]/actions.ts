@@ -9,10 +9,13 @@ import { createClient } from "@/lib/supabase/server";
 export async function updateDogProfileAction(formData: FormData) {
   const supabase = await createClient();
 
-  await supabase.from("dogs").update({
-    passport_number: formData.get("passport_number") || null,
-    registration_number: formData.get("registration_number") || null,
-  }).eq("id", formData.get("id"));
+  await supabase
+    .from("dogs")
+    .update({
+      passport_number: formData.get("passport_number") || null,
+      registration_number: formData.get("registration_number") || null,
+    })
+    .eq("id", formData.get("id"));
 }
 
 /* =========================
@@ -44,7 +47,7 @@ export async function addShowResultAction(formData: FormData) {
 }
 
 /* =========================
-   BREEDING (FIXED MAPPING)
+   BREEDING
 ========================= */
 
 export async function addHeatCycleAction(formData: FormData) {
@@ -53,6 +56,8 @@ export async function addHeatCycleAction(formData: FormData) {
   await supabase.from("heat_cycles").insert({
     dog_id: formData.get("dog_id"),
     start_date: formData.get("start_date"),
+    progesterone: formData.get("progesterone"),
+    notes: formData.get("notes"),
   });
 }
 
@@ -62,6 +67,8 @@ export async function addMatingAction(formData: FormData) {
   await supabase.from("matings").insert({
     female_id: formData.get("female_id"),
     male_id: formData.get("male_id"),
+    date: formData.get("date"),
+    notes: formData.get("notes"),
   });
 }
 
@@ -71,5 +78,7 @@ export async function addLitterAction(formData: FormData) {
   await supabase.from("litters").insert({
     female_id: formData.get("female_id"),
     birth_date: formData.get("birth_date"),
+    live_puppies: formData.get("live_puppies"),
+    dead_puppies: formData.get("dead_puppies"),
   });
 }
