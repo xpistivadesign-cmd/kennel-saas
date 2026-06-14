@@ -25,33 +25,93 @@ async function supabase() {
 }
 
 /* =========================
-   HEAT CYCLE
+   DOG PROFILE UPDATE
 ========================= */
 
-export async function addHeatCycleAction(dogId: string, formData: FormData) {
-  const supabaseClient = await supabase();
+export async function updateDogProfileAction(dogId: string, formData: FormData) {
+  const sb = await supabase();
 
-  const start_date = formData.get("start_date");
-  const notes = formData.get("notes");
+  await sb
+    .from("dogs")
+    .update({
+      name: formData.get("name"),
+      breed: formData.get("breed"),
+      color: formData.get("color"),
+      birth_date: formData.get("birth_date"),
+      microchip_number: formData.get("microchip_number"),
+      passport_number: formData.get("passport_number"),
+      registration_number: formData.get("registration_number"),
+    })
+    .eq("id", dogId);
+}
 
-  await supabaseClient.from("heat_cycles").insert({
+/* =========================
+   IMAGE UPLOAD (SAFE PLACEHOLDER)
+========================= */
+
+export async function uploadDogImageAction(dogId: string, formData: FormData) {
+  const sb = await supabase();
+
+  // TODO: ide jön Supabase Storage később
+  const file = formData.get("file");
+
+  await sb
+    .from("dogs")
+    .update({
+      image_url: "uploaded-image-placeholder.jpg",
+    })
+    .eq("id", dogId);
+}
+
+/* =========================
+   MEDICAL RECORD
+========================= */
+
+export async function addMedicalRecordAction(dogId: string, formData: FormData) {
+  const sb = await supabase();
+
+  await sb.from("medical_records").insert({
     dog_id: dogId,
-    start_date,
-    notes,
+    date: formData.get("date"),
+    type: formData.get("type"),
+    notes: formData.get("notes"),
   });
 }
 
 /* =========================
-   PROGESTERONE
+   SHOW RESULT
 ========================= */
 
-export async function addProgesteroneTestAction(
-  dogId: string,
-  formData: FormData
-) {
-  const supabaseClient = await supabase();
+export async function addShowResultAction(dogId: string, formData: FormData) {
+  const sb = await supabase();
 
-  await supabaseClient.from("progesterone_tests").insert({
+  await sb.from("dog_shows").insert({
+    dog_id: dogId,
+    show_name: formData.get("show_name"),
+    date: formData.get("date"),
+    location: formData.get("location"),
+    placement: formData.get("placement"),
+  });
+}
+
+/* =========================
+   BREEDING (KÜLÖN MODUL)
+========================= */
+
+export async function addHeatCycleAction(dogId: string, formData: FormData) {
+  const sb = await supabase();
+
+  await sb.from("heat_cycles").insert({
+    dog_id: dogId,
+    start_date: formData.get("start_date"),
+    notes: formData.get("notes"),
+  });
+}
+
+export async function addProgesteroneTestAction(dogId: string, formData: FormData) {
+  const sb = await supabase();
+
+  await sb.from("progesterone_tests").insert({
     dog_id: dogId,
     date: formData.get("date"),
     value: formData.get("value"),
@@ -59,14 +119,10 @@ export async function addProgesteroneTestAction(
   });
 }
 
-/* =========================
-   MATING
-========================= */
-
 export async function addMatingAction(dogId: string, formData: FormData) {
-  const supabaseClient = await supabase();
+  const sb = await supabase();
 
-  await supabaseClient.from("matings").insert({
+  await sb.from("matings").insert({
     female_id: dogId,
     male_name: formData.get("male_name"),
     date: formData.get("date"),
