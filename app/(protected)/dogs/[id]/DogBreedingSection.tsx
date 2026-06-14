@@ -2,9 +2,9 @@
 
 import { useMemo, useState } from "react";
 import {
-  addHeatAction,
+  addHeatCycleAction,
   addMatingAction,
-  addWhelpingAction,
+  addLitterAction,
 } from "./actions";
 
 type Heat = {
@@ -36,14 +36,13 @@ export default function DogBreedingSection({
   const [matings] = useState<Mating[]>(initialMatings);
 
   const latestProg = useMemo(() => {
-    if (!heats || heats.length === 0) return null;
-    return heats
-      .slice()
-      .sort(
-        (a, b) =>
-          new Date(b.start_date).getTime() -
-          new Date(a.start_date).getTime()
-      )[0];
+    if (!heats?.length) return null;
+
+    return [...heats].sort(
+      (a, b) =>
+        new Date(b.start_date).getTime() -
+        new Date(a.start_date).getTime()
+    )[0];
   }, [heats]);
 
   const optimalWindow =
@@ -53,25 +52,25 @@ export default function DogBreedingSection({
 
   return (
     <div className="space-y-10 text-white">
-      {/* HEADER STATUS */}
+
+      {/* STATUS */}
       {optimalWindow && (
-        <div className="p-4 rounded-xl border border-emerald-500 bg-emerald-500/10 animate-pulse">
+        <div className="p-4 rounded-xl border border-emerald-500 bg-emerald-500/10">
           <div className="text-emerald-300 font-bold text-lg">
             OPTIMAL BREEDING WINDOW - OVULATION DETECTED
           </div>
         </div>
       )}
 
-      {/* HEAT FORM */}
+      {/* HEAT */}
       <div className="p-6 rounded-xl bg-zinc-900 border border-zinc-800">
         <h2 className="text-amber-400 font-semibold text-lg mb-4">
           Heat & Progesterone Log
         </h2>
 
-        <form
-          action={addHeatAction.bind(null, dogId)}
-          className="grid gap-3"
-        >
+        <form action={addHeatCycleAction} className="grid gap-3">
+          <input type="hidden" name="dog_id" value={dogId} />
+
           <input
             name="start_date"
             type="date"
@@ -83,14 +82,12 @@ export default function DogBreedingSection({
             name="progesterone"
             type="number"
             step="0.1"
-            placeholder="Progesterone ng/ml"
             className="bg-zinc-800 p-2 rounded"
             required
           />
 
           <textarea
             name="notes"
-            placeholder="Notes"
             className="bg-zinc-800 p-2 rounded"
           />
 
@@ -104,34 +101,26 @@ export default function DogBreedingSection({
 
         <div className="mt-6 space-y-2">
           {heats.map((h) => (
-            <div
-              key={h.id}
-              className="p-3 rounded bg-zinc-800 border border-zinc-700"
-            >
-              <div className="text-sm text-zinc-300">
-                {h.start_date}
-              </div>
+            <div key={h.id} className="p-3 rounded bg-zinc-800 border border-zinc-700">
+              <div className="text-sm text-zinc-300">{h.start_date}</div>
               <div className="text-white font-semibold">
                 {h.progesterone} ng/ml
               </div>
-              <div className="text-zinc-400 text-sm">
-                {h.notes}
-              </div>
+              <div className="text-zinc-400 text-sm">{h.notes}</div>
             </div>
           ))}
         </div>
       </div>
 
-      {/* MATING FORM */}
+      {/* MATING */}
       <div className="p-6 rounded-xl bg-zinc-900 border border-zinc-800">
         <h2 className="text-amber-400 font-semibold text-lg mb-4">
           Mating Log
         </h2>
 
-        <form
-          action={addMatingAction.bind(null, dogId)}
-          className="grid gap-3"
-        >
+        <form action={addMatingAction} className="grid gap-3">
+          <input type="hidden" name="female_id" value={dogId} />
+
           <input
             name="date"
             type="date"
@@ -140,16 +129,14 @@ export default function DogBreedingSection({
           />
 
           <input
-            name="male_name"
+            name="male_id"
             type="text"
-            placeholder="Stud / Male name"
             className="bg-zinc-800 p-2 rounded"
             required
           />
 
           <textarea
             name="notes"
-            placeholder="Notes"
             className="bg-zinc-800 p-2 rounded"
           />
 
@@ -167,19 +154,11 @@ export default function DogBreedingSection({
             due.setDate(due.getDate() + 63);
 
             return (
-              <div
-                key={m.id}
-                className="p-3 rounded bg-zinc-800 border border-zinc-700"
-              >
-                <div className="text-sm text-zinc-300">
-                  Mating: {m.date}
-                </div>
-                <div className="text-white font-semibold">
-                  {m.male_name}
-                </div>
+              <div key={m.id} className="p-3 rounded bg-zinc-800 border border-zinc-700">
+                <div className="text-sm text-zinc-300">{m.date}</div>
+                <div className="text-white font-semibold">{m.male_name}</div>
                 <div className="text-amber-400 text-sm">
-                  Expected Whelping:{" "}
-                  {due.toISOString().split("T")[0]}
+                  Expected Whelping: {due.toISOString().split("T")[0]}
                 </div>
               </div>
             );
@@ -187,16 +166,15 @@ export default function DogBreedingSection({
         </div>
       </div>
 
-      {/* WHELPING FORM */}
+      {/* LITTER */}
       <div className="p-6 rounded-xl bg-zinc-900 border border-zinc-800">
         <h2 className="text-amber-400 font-semibold text-lg mb-4">
           Whelping / Litter Registration
         </h2>
 
-        <form
-          action={addWhelpingAction.bind(null, dogId)}
-          className="grid gap-3"
-        >
+        <form action={addLitterAction} className="grid gap-3">
+          <input type="hidden" name="female_id" value={dogId} />
+
           <input
             name="birth_date"
             type="date"
@@ -207,7 +185,6 @@ export default function DogBreedingSection({
           <input
             name="live_puppies"
             type="number"
-            placeholder="Live puppies"
             className="bg-zinc-800 p-2 rounded"
             required
           />
@@ -215,7 +192,6 @@ export default function DogBreedingSection({
           <input
             name="dead_puppies"
             type="number"
-            placeholder="Stillborn puppies"
             className="bg-zinc-800 p-2 rounded"
           />
 
@@ -227,6 +203,7 @@ export default function DogBreedingSection({
           </button>
         </form>
       </div>
+
     </div>
   );
 }
