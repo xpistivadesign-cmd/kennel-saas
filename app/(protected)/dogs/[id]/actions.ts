@@ -3,8 +3,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
-function supabase() {
-  const cookieStore = cookies();
+async function supabase() {
+  const cookieStore = await cookies();
 
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -14,7 +14,7 @@ function supabase() {
         getAll() {
           return cookieStore.getAll();
         },
-        setAll(cookiesToSet) {
+        setAll(cookiesToSet: any[]) {
           cookiesToSet.forEach(({ name, value, options }) => {
             cookieStore.set(name, value, options);
           });
@@ -24,64 +24,52 @@ function supabase() {
   );
 }
 
-// PROFILE IMAGE
-export async function uploadDogImageAction(dogId: string, formData: FormData) {
-  const file = formData.get("file") as File;
+/* =========================
+   HEAT CYCLE
+========================= */
 
-  if (!file) return;
+export async function addHeatCycleAction(dogId: string, formData: FormData) {
+  const supabaseClient = await supabase();
 
-  const supabaseClient = supabase();
+  const start_date = formData.get("start_date");
+  const notes = formData.get("notes");
 
-  const filePath = `${dogId}/${Date.now()}-${file.name}`;
-
-  const { error } = await supabaseClient.storage
-    .from("dog-images")
-    .upload(filePath, file);
-
-  if (error) throw error;
-
-  const { data } = supabaseClient.storage
-    .from("dog-images")
-    .getPublicUrl(filePath);
-
-  await supabaseClient
-    .from("dogs")
-    .update({ image_url: data.publicUrl })
-    .eq("id", dogId);
+  await supabaseClient.from("heat_cycles").insert({
+    dog_id: dogId,
+    start_date,
+    notes,
+  });
 }
 
-// MEDICAL
-export async function addMedicalRecordAction(dogId: string, formData: FormData) {
-  const supabaseClient = supabase();
+/* =========================
+   PROGESTERONE
+========================= */
 
-  await supabaseClient.from("medical_records").insert({
+export async function addProgesteroneTestAction(
+  dogId: string,
+  formData: FormData
+) {
+  const supabaseClient = await supabase();
+
+  await supabaseClient.from("progesterone_tests").insert({
     dog_id: dogId,
     date: formData.get("date"),
-    type: formData.get("type"),
+    value: formData.get("value"),
     notes: formData.get("notes"),
   });
 }
 
-// SHOWS
-export async function addShowResultAction(dogId: string, formData: FormData) {
-  const supabaseClient = supabase();
+/* =========================
+   MATING
+========================= */
 
-  await supabaseClient.from("dog_shows").insert({
-    dog_id: dogId,
-    show_name: formData.get("show_name"),
+export async function addMatingAction(dogId: string, formData: FormData) {
+  const supabaseClient = await supabase();
+
+  await supabaseClient.from("matings").insert({
+    female_id: dogId,
+    male_name: formData.get("male_name"),
     date: formData.get("date"),
-    location: formData.get("location"),
-    placement: formData.get("placement"),
-  });
-}
-
-// BREEDING FIXED ACTION (EZ VOLT A BAJ)
-export async function addHeatCycleAction(dogId: string, formData: FormData) {
-  const supabaseClient = supabase();
-
-  await supabaseClient.from("heat_cycles").insert({
-    dog_id: dogId,
-    start_date: formData.get("start_date"),
     notes: formData.get("notes"),
   });
 }
