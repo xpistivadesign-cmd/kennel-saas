@@ -6,7 +6,6 @@ import Link from "next/link";
 import DogBreedingSection from "./DogBreedingSection";
 
 import {
-  updateDogProfileAction,
   addMedicalRecordAction,
   addShowResultAction,
 } from "./actions";
@@ -23,12 +22,12 @@ export default async function DogProfilePage({
   searchParams,
 }: PageProps) {
   const { id } = await params;
-  const { tab, edit } = await searchParams;
+  const { tab } = await searchParams;
 
   const activeTab = tab || "overview";
-  const isEditing = edit === "true";
 
-  const cookieStore = cookies();
+  // ✅ FIX: cookies() is async in Next 16
+  const cookieStore = await cookies();
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -135,17 +134,6 @@ export default async function DogProfilePage({
             <p className="text-zinc-400 text-sm">{dog.breed}</p>
           </div>
         </div>
-
-        {/* IMAGE UPLOAD FORM (FIXED - no missing action) */}
-        <form className="flex gap-3 items-end">
-          <input type="file" name="file" className="text-xs" />
-          <button
-            type="button"
-            className="bg-zinc-700 text-white px-4 py-2 text-xs rounded"
-          >
-            Upload (disabled)
-          </button>
-        </form>
       </div>
 
       {/* NAV */}
@@ -153,15 +141,13 @@ export default async function DogProfilePage({
         <Link href={`/dogs/${id}?tab=overview`} className="p-2">
           Overview
         </Link>
-        <Link href={`/dogs/${id}?tab=pedigree`} className="p-2">
-          Pedigree
-        </Link>
         <Link href={`/dogs/${id}?tab=medical`} className="p-2">
           Medical
         </Link>
         <Link href={`/dogs/${id}?tab=shows`} className="p-2">
           Shows
         </Link>
+
         {isFemale && (
           <Link href={`/dogs/${id}?tab=breeding`} className="p-2">
             Breeding
@@ -171,60 +157,31 @@ export default async function DogProfilePage({
 
       {/* OVERVIEW */}
       {activeTab === "overview" && (
-        <div className="grid gap-4 bg-zinc-900 p-6 rounded-xl border border-zinc-800">
-          <div>
-            <div className="text-zinc-500 text-xs">Passport Number</div>
-            <div className="text-white font-mono">
-              {dog.passport_number || "Not recorded"}
-            </div>
-          </div>
-
-          <div>
-            <div className="text-zinc-500 text-xs">Pedigree Number</div>
-            <div className="text-amber-400 font-mono">
-              {dog.registration_number || "Not recorded"}
-            </div>
-          </div>
+        <div className="bg-zinc-900 p-6 rounded-xl border border-zinc-800">
+          <div>Passport: {dog.passport_number || "—"}</div>
+          <div>Registration: {dog.registration_number || "—"}</div>
         </div>
       )}
 
       {/* MEDICAL */}
       {activeTab === "medical" && (
         <div className="bg-zinc-900 p-5 rounded-xl border border-zinc-800">
-          {medical?.length ? (
-            medical.map((m: any) => (
-              <div
-                key={m.id}
-                className="text-sm border-b border-zinc-800 py-2"
-              >
-                {m.date} — {m.type} — {m.notes}
-              </div>
-            ))
-          ) : (
-            <div className="text-zinc-500 text-sm">
-              No medical records found
+          {medical?.map((m: any) => (
+            <div key={m.id} className="py-2 border-b border-zinc-800">
+              {m.date} — {m.type}
             </div>
-          )}
+          ))}
         </div>
       )}
 
       {/* SHOWS */}
       {activeTab === "shows" && (
         <div className="bg-zinc-900 p-5 rounded-xl border border-zinc-800">
-          {shows?.length ? (
-            shows.map((s: any) => (
-              <div
-                key={s.id}
-                className="text-sm border-b border-zinc-800 py-2"
-              >
-                {s.date} — {s.show_name} — {s.placement}
-              </div>
-            ))
-          ) : (
-            <div className="text-zinc-500 text-sm">
-              No show records found
+          {shows?.map((s: any) => (
+            <div key={s.id} className="py-2 border-b border-zinc-800">
+              {s.date} — {s.show_name}
             </div>
-          )}
+          ))}
         </div>
       )}
 
