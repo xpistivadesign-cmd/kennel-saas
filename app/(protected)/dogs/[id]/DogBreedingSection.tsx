@@ -36,13 +36,15 @@ export default function DogBreedingSection({
   const [matings] = useState<Mating[]>(initialMatings);
 
   const latestProg = useMemo(() => {
-    if (!heats?.length) return null;
+    if (!heats || heats.length === 0) return null;
 
-    return [...heats].sort(
-      (a, b) =>
-        new Date(b.start_date).getTime() -
-        new Date(a.start_date).getTime()
-    )[0];
+    return heats
+      .slice()
+      .sort(
+        (a, b) =>
+          new Date(b.start_date).getTime() -
+          new Date(a.start_date).getTime()
+      )[0];
   }, [heats]);
 
   const optimalWindow =
@@ -53,9 +55,8 @@ export default function DogBreedingSection({
   return (
     <div className="space-y-10 text-white">
 
-      {/* STATUS */}
       {optimalWindow && (
-        <div className="p-4 rounded-xl border border-emerald-500 bg-emerald-500/10">
+        <div className="p-4 rounded-xl border border-emerald-500 bg-emerald-500/10 animate-pulse">
           <div className="text-emerald-300 font-bold text-lg">
             OPTIMAL BREEDING WINDOW - OVULATION DETECTED
           </div>
@@ -68,33 +69,25 @@ export default function DogBreedingSection({
           Heat & Progesterone Log
         </h2>
 
-        <form action={addHeatCycleAction} className="grid gap-3">
-          <input type="hidden" name="dog_id" value={dogId} />
-
-          <input
-            name="start_date"
-            type="date"
-            className="bg-zinc-800 p-2 rounded"
-            required
-          />
+        <form action={addHeatCycleAction.bind(null, dogId)} className="grid gap-3">
+          <input name="start_date" type="date" className="bg-zinc-800 p-2 rounded" required />
 
           <input
             name="progesterone"
             type="number"
             step="0.1"
+            placeholder="Progesterone ng/ml"
             className="bg-zinc-800 p-2 rounded"
             required
           />
 
           <textarea
             name="notes"
+            placeholder="Notes"
             className="bg-zinc-800 p-2 rounded"
           />
 
-          <button
-            type="submit"
-            className="bg-amber-500 hover:bg-amber-600 text-black font-bold p-2 rounded"
-          >
+          <button className="bg-amber-500 text-black font-bold p-2 rounded">
             Save Heat
           </button>
         </form>
@@ -118,32 +111,20 @@ export default function DogBreedingSection({
           Mating Log
         </h2>
 
-        <form action={addMatingAction} className="grid gap-3">
-          <input type="hidden" name="female_id" value={dogId} />
+        <form action={addMatingAction.bind(null, dogId)} className="grid gap-3">
+          <input name="date" type="date" className="bg-zinc-800 p-2 rounded" required />
 
           <input
-            name="date"
-            type="date"
-            className="bg-zinc-800 p-2 rounded"
-            required
-          />
-
-          <input
-            name="male_id"
+            name="male_name"
             type="text"
+            placeholder="Stud / Male name"
             className="bg-zinc-800 p-2 rounded"
             required
           />
 
-          <textarea
-            name="notes"
-            className="bg-zinc-800 p-2 rounded"
-          />
+          <textarea name="notes" className="bg-zinc-800 p-2 rounded" />
 
-          <button
-            type="submit"
-            className="bg-emerald-500 hover:bg-emerald-600 text-black font-bold p-2 rounded"
-          >
+          <button className="bg-emerald-500 text-black font-bold p-2 rounded">
             Save Mating
           </button>
         </form>
@@ -155,7 +136,7 @@ export default function DogBreedingSection({
 
             return (
               <div key={m.id} className="p-3 rounded bg-zinc-800 border border-zinc-700">
-                <div className="text-sm text-zinc-300">{m.date}</div>
+                <div className="text-sm text-zinc-300">Mating: {m.date}</div>
                 <div className="text-white font-semibold">{m.male_name}</div>
                 <div className="text-amber-400 text-sm">
                   Expected Whelping: {due.toISOString().split("T")[0]}
@@ -172,19 +153,13 @@ export default function DogBreedingSection({
           Whelping / Litter Registration
         </h2>
 
-        <form action={addLitterAction} className="grid gap-3">
-          <input type="hidden" name="female_id" value={dogId} />
-
-          <input
-            name="birth_date"
-            type="date"
-            className="bg-zinc-800 p-2 rounded"
-            required
-          />
+        <form action={addLitterAction.bind(null, dogId)} className="grid gap-3">
+          <input name="birth_date" type="date" className="bg-zinc-800 p-2 rounded" required />
 
           <input
             name="live_puppies"
             type="number"
+            placeholder="Live puppies"
             className="bg-zinc-800 p-2 rounded"
             required
           />
@@ -192,18 +167,15 @@ export default function DogBreedingSection({
           <input
             name="dead_puppies"
             type="number"
+            placeholder="Stillborn puppies"
             className="bg-zinc-800 p-2 rounded"
           />
 
-          <button
-            type="submit"
-            className="bg-amber-500 hover:bg-amber-600 text-black font-bold p-2 rounded"
-          >
+          <button className="bg-amber-500 text-black font-bold p-2 rounded">
             Register Litter
           </button>
         </form>
       </div>
-
     </div>
   );
 }
