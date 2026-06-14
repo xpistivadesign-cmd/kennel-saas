@@ -1,86 +1,87 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
 
-/* =========================
-   DOG PROFILE
-========================= */
+function supabase() {
+  const cookieStore = cookies();
 
-export async function updateDogProfileAction(formData: FormData) {
-  const supabase = await createClient();
-
-  const id = formData.get("id") as string;
-
-  await supabase
-    .from("dogs")
-    .update({
-      passport_number: formData.get("passport_number") || null,
-      registration_number: formData.get("registration_number") || null,
-    })
-    .eq("id", id);
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            cookieStore.set(name, value, options);
+          });
+        },
+      },
+    }
+  );
 }
 
-/* =========================
-   MEDICAL
-========================= */
+// PROFILE IMAGE
+export async function uploadDogImageAction(dogId: string, formData: FormData) {
+  const file = formData.get("file") as File;
 
-export async function addMedicalRecordAction(formData: FormData) {
-  const supabase = await createClient();
+  if (!file) return;
 
-  await supabase.from("medical_records").insert({
-    dog_id: formData.get("dog_id"),
+  const supabaseClient = supabase();
+
+  const filePath = `${dogId}/${Date.now()}-${file.name}`;
+
+  const { error } = await supabaseClient.storage
+    .from("dog-images")
+    .upload(filePath, file);
+
+  if (error) throw error;
+
+  const { data } = supabaseClient.storage
+    .from("dog-images")
+    .getPublicUrl(filePath);
+
+  await supabaseClient
+    .from("dogs")
+    .update({ image_url: data.publicUrl })
+    .eq("id", dogId);
+}
+
+// MEDICAL
+export async function addMedicalRecordAction(dogId: string, formData: FormData) {
+  const supabaseClient = supabase();
+
+  await supabaseClient.from("medical_records").insert({
+    dog_id: dogId,
+    date: formData.get("date"),
     type: formData.get("type"),
     notes: formData.get("notes"),
   });
 }
 
-/* =========================
-   SHOWS
-========================= */
+// SHOWS
+export async function addShowResultAction(dogId: string, formData: FormData) {
+  const supabaseClient = supabase();
 
-export async function addShowResultAction(formData: FormData) {
-  const supabase = await createClient();
-
-  await supabase.from("dog_shows").insert({
-    dog_id: formData.get("dog_id"),
+  await supabaseClient.from("dog_shows").insert({
+    dog_id: dogId,
     show_name: formData.get("show_name"),
-    result: formData.get("result"),
-  });
-}
-
-/* =========================
-   BREEDING
-========================= */
-
-export async function addHeatCycleAction(formData: FormData) {
-  const supabase = await createClient();
-
-  await supabase.from("heat_cycles").insert({
-    dog_id: formData.get("dog_id"),
-    start_date: formData.get("start_date"),
-    progesterone: formData.get("progesterone"),
-    notes: formData.get("notes"),
-  });
-}
-
-export async function addMatingAction(formData: FormData) {
-  const supabase = await createClient();
-
-  await supabase.from("matings").insert({
-    female_id: formData.get("female_id"),
-    male_name: formData.get("male_name"),
     date: formData.get("date"),
-    notes: formData.get("notes"),
+    location: formData.get("location"),
+    placement: formData.get("placement"),
   });
 }
 
-export async function addWhelpingAction(formData: FormData) {
-  const supabase = await createClient();
+// BREEDING FIXED ACTION (EZ VOLT A BAJ)
+export async function addHeatCycleAction(dogId: string, formData: FormData) {
+  const supabaseClient = supabase();
 
-  await supabase.from("litters").insert({
-    female_id: formData.get("female_id"),
-    birth_date: formData.get("birth_date"),
-    live_puppies: formData.get("live_puppies"),
-    dead_puppies: formData.get("dead_puppies"),
+  await supabaseClient.from("heat_cycles").insert({
+    dog_id: dogId,
+    start_date: formData.get("start_date"),
+    notes: formData.get("notes"),
   });
 }
