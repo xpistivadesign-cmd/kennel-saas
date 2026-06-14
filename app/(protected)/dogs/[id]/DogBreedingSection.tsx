@@ -24,6 +24,7 @@ type Mating = {
 type Props = {
   dogId: string;
   heatCycles: Heat[];
+  progesteroneTests?: any[];
   matings?: Mating[];
 };
 
@@ -33,62 +34,64 @@ export default function DogBreedingSection({
   matings = [],
 }: Props) {
   const [heats] = useState<Heat[]>(heatCycles);
-  const [matingList] = useState<Mating[]>(matings);
 
   const latest = useMemo(() => {
     if (!heats.length) return null;
-    return [...heats].sort(
-      (a, b) =>
-        new Date(b.start_date).getTime() -
-        new Date(a.start_date).getTime()
-    )[0];
+
+    return heats
+      .slice()
+      .sort(
+        (a, b) =>
+          new Date(b.start_date).getTime() -
+          new Date(a.start_date).getTime()
+      )[0];
   }, [heats]);
 
-  const optimal =
+  const optimalWindow =
     latest &&
     latest.progesterone >= 5 &&
     latest.progesterone <= 10;
 
   return (
     <div className="space-y-10 text-white">
-
-      {optimal && (
-        <div className="p-4 border border-emerald-500 bg-emerald-500/10">
-          OPTIMAL BREEDING WINDOW
+      {optimalWindow && (
+        <div className="p-4 rounded-xl border border-emerald-500 bg-emerald-500/10">
+          <div className="text-emerald-300 font-bold">
+            OPTIMAL BREEDING WINDOW
+          </div>
         </div>
       )}
 
       {/* HEAT */}
-      <div className="p-6 bg-zinc-900 border border-zinc-800 rounded-xl">
-        <h2 className="text-amber-400 mb-4">Heat Cycle</h2>
+      <div className="p-6 rounded-xl bg-zinc-900 border border-zinc-800">
+        <h2 className="text-amber-400 font-semibold mb-4">
+          Heat Log
+        </h2>
 
-        <form
-          action={addHeatCycleAction}
-          className="grid gap-3"
-        >
-          <input type="hidden" name="dog_id" value={dogId} />
-
+        <form action={addHeatCycleAction.bind(null, dogId)}>
           <input name="start_date" type="date" required />
           <input name="progesterone" type="number" step="0.1" required />
-          <textarea name="notes" placeholder="Notes" />
+          <textarea name="notes" />
 
           <button type="submit">Save Heat</button>
         </form>
 
-        {heats.map((h) => (
-          <div key={h.id}>
-            {h.start_date} - {h.progesterone} ng/ml
-          </div>
-        ))}
+        <div className="mt-4">
+          {heats.map((h) => (
+            <div key={h.id}>
+              {h.start_date} — {h.progesterone}
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* MATING */}
-      <div className="p-6 bg-zinc-900 border border-zinc-800 rounded-xl">
-        <h2>Mating</h2>
+      <div className="p-6 rounded-xl bg-zinc-900 border border-zinc-800">
+        <h2 className="text-amber-400 font-semibold mb-4">
+          Mating Log
+        </h2>
 
-        <form action={addMatingAction} className="grid gap-3">
-          <input type="hidden" name="female_id" value={dogId} />
-
+        <form action={addMatingAction.bind(null, dogId)}>
           <input name="date" type="date" required />
           <input name="male_name" type="text" required />
           <textarea name="notes" />
@@ -96,25 +99,27 @@ export default function DogBreedingSection({
           <button type="submit">Save Mating</button>
         </form>
 
-        {matingList.map((m) => (
-          <div key={m.id}>
-            {m.date} - {m.male_name}
-          </div>
-        ))}
+        <div className="mt-4">
+          {matings.map((m) => (
+            <div key={m.id}>
+              {m.date} — {m.male_name}
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* LITTER */}
-      <div className="p-6 bg-zinc-900 border border-zinc-800 rounded-xl">
-        <h2>Litter</h2>
+      <div className="p-6 rounded-xl bg-zinc-900 border border-zinc-800">
+        <h2 className="text-amber-400 font-semibold mb-4">
+          Whelping / Litter
+        </h2>
 
-        <form action={addLitterAction} className="grid gap-3">
-          <input type="hidden" name="female_id" value={dogId} />
-
+        <form action={addLitterAction.bind(null, dogId)}>
           <input name="birth_date" type="date" required />
-          <input name="live_puppies" type="number" />
+          <input name="live_puppies" type="number" required />
           <input name="dead_puppies" type="number" />
 
-          <button type="submit">Register Litter</button>
+          <button type="submit">Save Litter</button>
         </form>
       </div>
     </div>
