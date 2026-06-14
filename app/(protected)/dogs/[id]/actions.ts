@@ -66,7 +66,7 @@ export async function addMatingAction(formData: FormData) {
 
   await supabase.from("matings").insert({
     female_id: formData.get("female_id"),
-    male_id: formData.get("male_id"),
+    male_name: formData.get("male_name"),
     date: formData.get("date"),
     notes: formData.get("notes"),
   });
