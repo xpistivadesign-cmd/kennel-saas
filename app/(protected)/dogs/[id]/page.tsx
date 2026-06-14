@@ -14,21 +14,21 @@ import {
 export const dynamic = "force-dynamic";
 
 type PageProps = {
-  params: { id: string };
-  searchParams: { tab?: string; edit?: string };
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ tab?: string; edit?: string }>;
 };
 
 export default async function DogProfilePage({
   params,
   searchParams,
 }: PageProps) {
-  const { id } = params;
-  const { tab, edit } = searchParams;
+  const { id } = await params;
+  const { tab, edit } = await searchParams;
 
   const activeTab = tab || "overview";
   const isEditing = edit === "true";
 
-  const cookieStore = await cookies();
+  const cookieStore = cookies();
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -38,7 +38,7 @@ export default async function DogProfilePage({
         getAll() {
           return cookieStore.getAll();
         },
-        setAll(cookiesToSet) {
+        setAll(cookiesToSet: any[]) {
           cookiesToSet.forEach(({ name, value, options }) => {
             cookieStore.set(name, value, options);
           });
@@ -86,7 +86,6 @@ export default async function DogProfilePage({
     .eq("dog_id", id)
     .order("date", { ascending: false });
 
-  // BREEDING
   const { data: heatCycles } = await supabase
     .from("heat_cycles")
     .select("*")
@@ -115,6 +114,7 @@ export default async function DogProfilePage({
 
       {/* HEADER */}
       <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 flex flex-col md:flex-row justify-between gap-6">
+
         <div className="flex items-center gap-4">
           {dog.image_url ? (
             <img
@@ -136,16 +136,32 @@ export default async function DogProfilePage({
           </div>
         </div>
 
-        {/* ❌ uploadDogImageAction ELTÁVOLÍTVA */}
+        {/* IMAGE UPLOAD FORM (FIXED - no missing action) */}
+        <form className="flex gap-3 items-end">
+          <input type="file" name="file" className="text-xs" />
+          <button
+            type="button"
+            className="bg-zinc-700 text-white px-4 py-2 text-xs rounded"
+          >
+            Upload (disabled)
+          </button>
+        </form>
       </div>
 
       {/* NAV */}
       <div className="flex gap-2 border-b border-zinc-800 text-xs">
-        <Link href={`/dogs/${id}?tab=overview`} className="p-2">Overview</Link>
-        <Link href={`/dogs/${id}?tab=pedigree`} className="p-2">Pedigree</Link>
-        <Link href={`/dogs/${id}?tab=medical`} className="p-2">Medical</Link>
-        <Link href={`/dogs/${id}?tab=shows`} className="p-2">Shows</Link>
-
+        <Link href={`/dogs/${id}?tab=overview`} className="p-2">
+          Overview
+        </Link>
+        <Link href={`/dogs/${id}?tab=pedigree`} className="p-2">
+          Pedigree
+        </Link>
+        <Link href={`/dogs/${id}?tab=medical`} className="p-2">
+          Medical
+        </Link>
+        <Link href={`/dogs/${id}?tab=shows`} className="p-2">
+          Shows
+        </Link>
         {isFemale && (
           <Link href={`/dogs/${id}?tab=breeding`} className="p-2">
             Breeding
@@ -177,7 +193,10 @@ export default async function DogProfilePage({
         <div className="bg-zinc-900 p-5 rounded-xl border border-zinc-800">
           {medical?.length ? (
             medical.map((m: any) => (
-              <div key={m.id} className="text-sm border-b border-zinc-800 py-2">
+              <div
+                key={m.id}
+                className="text-sm border-b border-zinc-800 py-2"
+              >
                 {m.date} — {m.type} — {m.notes}
               </div>
             ))
@@ -194,7 +213,10 @@ export default async function DogProfilePage({
         <div className="bg-zinc-900 p-5 rounded-xl border border-zinc-800">
           {shows?.length ? (
             shows.map((s: any) => (
-              <div key={s.id} className="text-sm border-b border-zinc-800 py-2">
+              <div
+                key={s.id}
+                className="text-sm border-b border-zinc-800 py-2"
+              >
                 {s.date} — {s.show_name} — {s.placement}
               </div>
             ))
