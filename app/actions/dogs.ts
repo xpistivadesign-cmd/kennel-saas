@@ -1,44 +1,37 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { createSupabaseServer } from "@/lib/db/supabase-server";
 
-type CreateDogInput = {
-  name: string;
-  sex: "male" | "female";
-  breed: string;
-};
+function assertUser(userId?: string) {
+  if (!userId) throw new Error("Unauthorized");
+}
 
-export async function createDogSecure(input: CreateDogInput) {
-  const supabase = await createClient();
+export async function updateDogProfileAction(dogId: string, formData: FormData) {
+  const supabase = createSupabaseServer();
 
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
+  const { data: userData } = await supabase.auth.getUser();
+  const user = userData.user;
 
-  if (authError || !user) {
-    throw new Error("Unauthorized");
-  }
+  assertUser(user?.id);
 
-  const { data, error } = await supabase
+  const payload = {
+    name: String(formData.get("name")),
+    breed: String(formData.get("breed")),
+    color: String(formData.get("color")),
+    birth_date: String(formData.get("birth_date")) || null,
+    microchip_number: String(formData.get("microchip_number")) || null,
+    passport_number: String(formData.get("passport_number")) || null,
+    registration_number: String(formData.get("registration_number")) || null,
+  };
+
+  const { error } = await supabase
     .from("dogs")
-    .insert({
-      name: input.name,
-      sex: input.sex,
-      breed: input.breed,
+    .update(payload)
+    .eq("id", dogId)
+    .eq("user_id", user!.id);
 
-      // SAFE SERVER-SIDE CONTEXT
-      user_id: user.id,
-    })
-    .select()
-    .single();
+  if (error) throw new Error(error.message);
 
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  revalidatePath("/protected/dogs");
-
-  return data;
+  revalidatePath(`/dogs/${dogId}`);
 }
