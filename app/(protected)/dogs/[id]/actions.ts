@@ -3,16 +3,10 @@
 import { createServerSupabase } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 
-/**
- * UPDATE DOG PROFILE
- */
-export async function updateDogProfileAction(
-  dogId: string,
-  formData: FormData
-) {
+export async function updateDogProfileAction(dogId: string, formData: FormData) {
   const supabase = await createServerSupabase();
 
-  const payload = {
+  await supabase.from("dogs").update({
     name: formData.get("name"),
     breed: formData.get("breed"),
     color_markings: formData.get("color"),
@@ -20,20 +14,12 @@ export async function updateDogProfileAction(
     microchip_number: formData.get("microchip_number"),
     passport_number: formData.get("passport_number"),
     registration_number: formData.get("registration_number"),
-  };
-
-  await supabase.from("dogs").update(payload).eq("id", dogId);
+  }).eq("id", dogId);
 
   revalidatePath(`/dogs/${dogId}`);
 }
 
-/**
- * MEDICAL RECORDS
- */
-export async function addMedicalRecordAction(
-  dogId: string,
-  formData: FormData
-) {
+export async function addMedicalRecordAction(dogId: string, formData: FormData) {
   const supabase = await createServerSupabase();
 
   await supabase.from("medical_records").insert({
@@ -46,13 +32,7 @@ export async function addMedicalRecordAction(
   revalidatePath(`/dogs/${dogId}`);
 }
 
-/**
- * SHOW RESULTS
- */
-export async function addShowResultAction(
-  dogId: string,
-  formData: FormData
-) {
+export async function addShowResultAction(dogId: string, formData: FormData) {
   const supabase = await createServerSupabase();
 
   await supabase.from("dog_shows").insert({
