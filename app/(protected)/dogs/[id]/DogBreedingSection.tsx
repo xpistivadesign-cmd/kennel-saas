@@ -1,261 +1,329 @@
 "use client";
 
 import { useMemo, useState } from "react";
+
 import {
-addHeatAction,
-addMatingAction,
-addWhelpingAction,
+  addHeatAction,
+  addMatingAction,
+  addWhelpingAction,
 } from "./actions";
 
 type Heat = {
-id: string;
-start_date: string;
-progesterone: number | null;
-notes: string | null;
+  id: string;
+  start_date: string;
+  progesterone?: number | null;
+  notes?: string | null;
 };
 
 type Props = {
-dogId: string;
-heats: Heat[];
+  dogId: string;
+  initialHeats: Heat[];
 };
 
+function formatDate(value?: string | null) {
+  if (!value) {
+    return "-";
+  }
+
+  return new Date(value).toLocaleDateString();
+}
+
+function addDays(date: string, days: number) {
+  const d = new Date(date);
+
+  d.setDate(d.getDate() + days);
+
+  return d.toLocaleDateString();
+}
+
 export default function DogBreedingSection({
-dogId,
-heats,
+  dogId,
+  initialHeats,
 }: Props) {
-const [matingDate, setMatingDate] =
-useState("");
+  const [matingDate, setMatingDate] =
+    useState("");
 
-const latestHeat =
-heats.length > 0
-? heats[0]
-: null;
+  const latestHeat =
+    initialHeats?.[0];
 
-const showWindow =
-latestHeat?.progesterone !== null &&
-latestHeat?.progesterone !== undefined &&
-latestHeat.progesterone >= 5 &&
-latestHeat.progesterone <= 10;
+  const showWindow =
+    typeof latestHeat?.progesterone ===
+      "number" &&
+    latestHeat.progesterone >= 5 &&
+    latestHeat.progesterone <= 10;
 
-const dueDate = useMemo(() => {
-if (!matingDate) {
-return "";
-}
+  const dueDate =
+    useMemo(() => {
+      if (!matingDate) {
+        return null;
+      }
 
-const value =
-new Date(matingDate);
+      return addDays(
+        matingDate,
+        63
+      );
+    }, [matingDate]);
 
-value.setDate(
-value.getDate() + 63
-);
+  return (
+    <div className="space-y-8">
 
-return value
-.toISOString()
-.slice(0, 10);
-}, [matingDate]);
+      {showWindow && (
+        <div className="animate-pulse rounded-3xl border border-green-500 bg-green-500/10 p-6">
 
-return (
+          <div className="text-center text-2xl font-black text-green-400">
 
-<div className="space-y-8">
+            🔥 OPTIMAL BREEDING WINDOW
 
-{showWindow && (
+          </div>
 
-<div className="animate-pulse rounded-3xl border border-green-500 bg-green-500/10 p-6 text-center text-2xl font-bold text-green-300">
-🔥 OPTIMAL BREEDING WINDOW
-</div>
-)}
+          <div className="mt-2 text-center text-green-300">
 
-<section className="rounded-3xl border border-zinc-800 bg-zinc-900 p-6">
+            OVULATION DETECTED
 
-<h2 className="mb-6 text-xl font-bold text-amber-300">
-Heat & Progesterone
-</h2>
+          </div>
 
-<form
-action={addHeatAction}
-className="grid gap-4"
->
+        </div>
+      )}
 
-<input
-type="hidden"
-name="dogId"
-value={dogId}
-/>
+      <div className="grid gap-8 lg:grid-cols-3">
 
-<input
-required
-type="date"
-name="startDate"
-className="rounded-xl bg-zinc-800 p-3"
-/>
+        <section className="rounded-3xl border border-zinc-800 bg-zinc-950 p-6">
 
-<input
-required
-step="0.1"
-type="number"
-name="progesterone"
-placeholder="Ng/ml"
-className="rounded-xl bg-zinc-800 p-3"
-/>
+          <h2 className="mb-6 text-xl font-bold text-amber-400">
 
-<textarea
-name="notes"
-placeholder="Notes"
-className="rounded-xl bg-zinc-800 p-3"
-/>
+            Heat & Progesterone
 
-<button
-className="rounded-xl bg-amber-500 px-5 py-3 font-semibold text-black"
->
-Save Heat
-</button>
+          </h2>
 
-</form>
+          <form
+            action={addHeatAction.bind(
+              null,
+              dogId
+            )}
+            className="grid gap-4"
+          >
 
-<div className="mt-6 space-y-3">
+            <input
+              type="date"
+              name="start_date"
+              required
+              className="rounded-xl bg-zinc-900 p-3"
+            />
 
-{heats.map((heat) => (
-<div
-key={heat.id}
-className="rounded-xl bg-zinc-800 p-4"
->
+            <input
+              type="number"
+              step="0.1"
+              name="progesterone"
+              required
+              placeholder="Progesterone ng/ml"
+              className="rounded-xl bg-zinc-900 p-3"
+            />
 
-<div className="font-medium">
-{heat.start_date}
-</div>
+            <textarea
+              name="notes"
+              placeholder="Notes"
+              className="rounded-xl bg-zinc-900 p-3"
+            />
 
-<div>
-Progesterone:
-{" "}
-{heat.progesterone ?? "-"}
-</div>
+            <button
+              className="rounded-xl bg-amber-500 p-3 font-bold text-black"
+            >
+              Save Heat
+            </button>
 
-<div className="text-zinc-400">
-{heat.notes}
-</div>
+          </form>
 
-</div>
-))}
+          <div className="mt-6 space-y-3">
 
-</div>
+            {initialHeats?.length >
+            0 ? (
+              initialHeats.map(
+                (
+                  heat
+                ) => (
+                  <div
+                    key={
+                      heat.id
+                    }
+                    className="rounded-xl bg-zinc-900 p-4"
+                  >
 
-</section>
+                    <div>
 
-<section className="rounded-3xl border border-zinc-800 bg-zinc-900 p-6">
+                      {
+                        formatDate(
+                          heat.start_date
+                        )
+                      }
 
-<h2 className="mb-6 text-xl font-bold text-amber-300">
-Mating Log
-</h2>
+                    </div>
 
-<form
-action={addMatingAction}
-className="grid gap-4"
->
+                    <div className="text-amber-400">
 
-<input
-hidden
-name="femaleId"
-value={dogId}
-/>
+                      {
+                        heat.progesterone ??
+                        "-"
+                      }{" "}
+                      ng/ml
 
-<input
-required
-type="date"
-name="matingDate"
-onChange={(event) =>
-setMatingDate(
-event.target.value
-)
-}
-className="rounded-xl bg-zinc-800 p-3"
-/>
+                    </div>
 
-<input
-required
-name="maleName"
-placeholder="Stud Name"
-className="rounded-xl bg-zinc-800 p-3"
-/>
+                    <div className="text-sm text-zinc-500">
 
-<textarea
-name="notes"
-className="rounded-xl bg-zinc-800 p-3"
-/>
+                      {
+                        heat.notes
+                      }
 
-<button
-className="rounded-xl bg-amber-500 px-5 py-3 font-semibold text-black"
->
-Save Mating
-</button>
+                    </div>
 
-</form>
+                  </div>
+                )
+              )
+            ) : (
+              <div className="text-zinc-500">
 
-{dueDate && (
-<div className="mt-6 rounded-xl bg-blue-500/10 p-5 text-blue-300">
+                No heats recorded
 
-Expected Whelping:
-{" "}
-{dueDate}
+              </div>
+            )}
 
-</div>
-)}
+          </div>
 
-</section>
+        </section>
 
-<section className="rounded-3xl border border-zinc-800 bg-zinc-900 p-6">
+        <section className="rounded-3xl border border-zinc-800 bg-zinc-950 p-6">
 
-<h2 className="mb-6 text-xl font-bold text-amber-300">
-Register Litter
-</h2>
+          <h2 className="mb-6 text-xl font-bold text-amber-400">
 
-<form
-action={addWhelpingAction}
-className="grid gap-4"
->
+            Mating Planner
 
-<input
-hidden
-name="damId"
-value={dogId}
-/>
+          </h2>
 
-<input
-required
-type="date"
-name="birthDate"
-className="rounded-xl bg-zinc-800 p-3"
-/>
+          <form
+            action={addMatingAction.bind(
+              null,
+              dogId
+            )}
+            className="grid gap-4"
+          >
 
-<input
-required
-name="litterName"
-className="rounded-xl bg-zinc-800 p-3"
-/>
+            <input
+              type="date"
+              name="mating_date"
+              required
+              value={
+                matingDate
+              }
+              onChange={(
+                e
+              ) =>
+                setMatingDate(
+                  e.target
+                    .value
+                )
+              }
+              className="rounded-xl bg-zinc-900 p-3"
+            />
 
-<input
-required
-type="number"
-name="livePuppies"
-className="rounded-xl bg-zinc-800 p-3"
-/>
+            <input
+              name="male_name"
+              required
+              placeholder="Stud name"
+              className="rounded-xl bg-zinc-900 p-3"
+            />
 
-<input
-required
-type="number"
-name="deadPuppies"
-className="rounded-xl bg-zinc-800 p-3"
-/>
+            <textarea
+              name="notes"
+              placeholder="Notes"
+              className="rounded-xl bg-zinc-900 p-3"
+            />
 
-<button
-className="rounded-xl bg-amber-500 px-5 py-3 font-semibold text-black"
->
-Register Litter
-</button>
+            <button
+              className="rounded-xl bg-blue-500 p-3 font-bold"
+            >
+              Save Mating
+            </button>
 
-</form>
+          </form>
 
-</section>
+          {dueDate && (
+            <div className="mt-6 rounded-xl bg-blue-500/10 p-4">
 
-</div>
-);
+              <div className="text-sm text-blue-300">
+
+                Estimated Whelping Date
+
+              </div>
+
+              <div className="text-xl font-bold text-blue-200">
+
+                {dueDate}
+
+              </div>
+
+            </div>
+          )}
+
+        </section>
+
+        <section className="rounded-3xl border border-zinc-800 bg-zinc-950 p-6">
+
+          <h2 className="mb-6 text-xl font-bold text-amber-400">
+
+            Register Litter
+
+          </h2>
+
+          <form
+            action={addWhelpingAction.bind(
+              null,
+              dogId
+            )}
+            className="grid gap-4"
+          >
+
+            <input
+              type="date"
+              name="birth_date"
+              required
+              className="rounded-xl bg-zinc-900 p-3"
+            />
+
+            <input
+              name="litter_name"
+              required
+              placeholder="Litter letter"
+              className="rounded-xl bg-zinc-900 p-3"
+            />
+
+            <input
+              type="number"
+              name="live_puppies"
+              required
+              placeholder="Live puppies"
+              className="rounded-xl bg-zinc-900 p-3"
+            />
+
+            <input
+              type="number"
+              name="dead_puppies"
+              required
+              placeholder="Stillborn"
+              className="rounded-xl bg-zinc-900 p-3"
+            />
+
+            <button
+              className="rounded-xl bg-green-500 p-3 font-bold text-black"
+            >
+              Register Litter
+            </button>
+
+          </form>
+
+        </section>
+
+      </div>
+
+    </div>
+  );
 }
