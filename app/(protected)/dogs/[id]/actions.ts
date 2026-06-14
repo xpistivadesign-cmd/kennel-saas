@@ -1,51 +1,47 @@
-"use server";
-
-import { createClient } from "@/lib/supabase/server";
-
-// DOG PROFILE
-export async function updateDogProfileAction(formData: FormData) {
-  const id = formData.get("id") as string;
-
-  const passport_number = formData.get("passport_number") as string;
-  const registration_number = formData.get("registration_number") as string;
-
-  const supabase = await createClient();
-
-  await supabase
-    .from("dogs")
-    .update({
-      passport_number: passport_number || null,
-      registration_number: registration_number || null,
-    })
-    .eq("id", id);
-}
-
-// MEDICAL
-export async function addMedicalRecordAction(formData: FormData) {
+export async function addHeatCycleAction(formData: FormData) {
   const dog_id = formData.get("dog_id") as string;
-  const type = formData.get("type") as string;
-  const notes = formData.get("notes") as string;
+  const start_date = formData.get("start_date") as string;
 
   const supabase = await createClient();
 
-  await supabase.from("medical_records").insert({
+  await supabase.from("heat_cycles").insert({
     dog_id,
-    type,
-    notes,
+    start_date,
   });
 }
 
-// SHOWS
-export async function addShowResultAction(formData: FormData) {
-  const dog_id = formData.get("dog_id") as string;
-  const show_name = formData.get("show_name") as string;
-  const result = formData.get("result") as string;
+export async function addMatingAction(formData: FormData) {
+  const female_id = formData.get("female_id") as string;
+  const male_id = formData.get("male_id") as string;
 
   const supabase = await createClient();
 
-  await supabase.from("dog_shows").insert({
+  await supabase.from("matings").insert({
+    female_id,
+    male_id,
+  });
+}
+
+export async function addProgesteroneTestAction(formData: FormData) {
+  const dog_id = formData.get("dog_id") as string;
+  const value = formData.get("value") as string;
+
+  const supabase = await createClient();
+
+  await supabase.from("progesterone_tests").insert({
     dog_id,
-    show_name,
-    result,
+    value: Number(value),
+  });
+}
+
+export async function addLitterAction(formData: FormData) {
+  const female_id = formData.get("female_id") as string;
+  const birth_date = formData.get("birth_date") as string;
+
+  const supabase = await createClient();
+
+  await supabase.from("litters").insert({
+    female_id,
+    birth_date,
   });
 }
