@@ -23,157 +23,98 @@ type Mating = {
 
 type Props = {
   dogId: string;
-  initialHeats: Heat[];
-  initialMatings?: Mating[];
+  heatCycles: Heat[];
+  matings?: Mating[];
 };
 
 export default function DogBreedingSection({
   dogId,
-  initialHeats,
-  initialMatings = [],
+  heatCycles,
+  matings = [],
 }: Props) {
-  const [heats] = useState<Heat[]>(initialHeats);
-  const [matings] = useState<Mating[]>(initialMatings);
+  const [heats] = useState<Heat[]>(heatCycles);
+  const [matingList] = useState<Mating[]>(matings);
 
-  const latestProg = useMemo(() => {
-    if (!heats || heats.length === 0) return null;
-
-    return heats
-      .slice()
-      .sort(
-        (a, b) =>
-          new Date(b.start_date).getTime() -
-          new Date(a.start_date).getTime()
-      )[0];
+  const latest = useMemo(() => {
+    if (!heats.length) return null;
+    return [...heats].sort(
+      (a, b) =>
+        new Date(b.start_date).getTime() -
+        new Date(a.start_date).getTime()
+    )[0];
   }, [heats]);
 
-  const optimalWindow =
-    latestProg &&
-    latestProg.progesterone >= 5 &&
-    latestProg.progesterone <= 10;
+  const optimal =
+    latest &&
+    latest.progesterone >= 5 &&
+    latest.progesterone <= 10;
 
   return (
     <div className="space-y-10 text-white">
 
-      {optimalWindow && (
-        <div className="p-4 rounded-xl border border-emerald-500 bg-emerald-500/10 animate-pulse">
-          <div className="text-emerald-300 font-bold text-lg">
-            OPTIMAL BREEDING WINDOW - OVULATION DETECTED
-          </div>
+      {optimal && (
+        <div className="p-4 border border-emerald-500 bg-emerald-500/10">
+          OPTIMAL BREEDING WINDOW
         </div>
       )}
 
       {/* HEAT */}
-      <div className="p-6 rounded-xl bg-zinc-900 border border-zinc-800">
-        <h2 className="text-amber-400 font-semibold text-lg mb-4">
-          Heat & Progesterone Log
-        </h2>
+      <div className="p-6 bg-zinc-900 border border-zinc-800 rounded-xl">
+        <h2 className="text-amber-400 mb-4">Heat Cycle</h2>
 
-        <form action={addHeatCycleAction.bind(null, dogId)} className="grid gap-3">
-          <input name="start_date" type="date" className="bg-zinc-800 p-2 rounded" required />
+        <form
+          action={addHeatCycleAction}
+          className="grid gap-3"
+        >
+          <input type="hidden" name="dog_id" value={dogId} />
 
-          <input
-            name="progesterone"
-            type="number"
-            step="0.1"
-            placeholder="Progesterone ng/ml"
-            className="bg-zinc-800 p-2 rounded"
-            required
-          />
+          <input name="start_date" type="date" required />
+          <input name="progesterone" type="number" step="0.1" required />
+          <textarea name="notes" placeholder="Notes" />
 
-          <textarea
-            name="notes"
-            placeholder="Notes"
-            className="bg-zinc-800 p-2 rounded"
-          />
-
-          <button className="bg-amber-500 text-black font-bold p-2 rounded">
-            Save Heat
-          </button>
+          <button type="submit">Save Heat</button>
         </form>
 
-        <div className="mt-6 space-y-2">
-          {heats.map((h) => (
-            <div key={h.id} className="p-3 rounded bg-zinc-800 border border-zinc-700">
-              <div className="text-sm text-zinc-300">{h.start_date}</div>
-              <div className="text-white font-semibold">
-                {h.progesterone} ng/ml
-              </div>
-              <div className="text-zinc-400 text-sm">{h.notes}</div>
-            </div>
-          ))}
-        </div>
+        {heats.map((h) => (
+          <div key={h.id}>
+            {h.start_date} - {h.progesterone} ng/ml
+          </div>
+        ))}
       </div>
 
       {/* MATING */}
-      <div className="p-6 rounded-xl bg-zinc-900 border border-zinc-800">
-        <h2 className="text-amber-400 font-semibold text-lg mb-4">
-          Mating Log
-        </h2>
+      <div className="p-6 bg-zinc-900 border border-zinc-800 rounded-xl">
+        <h2>Mating</h2>
 
-        <form action={addMatingAction.bind(null, dogId)} className="grid gap-3">
-          <input name="date" type="date" className="bg-zinc-800 p-2 rounded" required />
+        <form action={addMatingAction} className="grid gap-3">
+          <input type="hidden" name="female_id" value={dogId} />
 
-          <input
-            name="male_name"
-            type="text"
-            placeholder="Stud / Male name"
-            className="bg-zinc-800 p-2 rounded"
-            required
-          />
+          <input name="date" type="date" required />
+          <input name="male_name" type="text" required />
+          <textarea name="notes" />
 
-          <textarea name="notes" className="bg-zinc-800 p-2 rounded" />
-
-          <button className="bg-emerald-500 text-black font-bold p-2 rounded">
-            Save Mating
-          </button>
+          <button type="submit">Save Mating</button>
         </form>
 
-        <div className="mt-6 space-y-2">
-          {matings.map((m) => {
-            const due = new Date(m.date);
-            due.setDate(due.getDate() + 63);
-
-            return (
-              <div key={m.id} className="p-3 rounded bg-zinc-800 border border-zinc-700">
-                <div className="text-sm text-zinc-300">Mating: {m.date}</div>
-                <div className="text-white font-semibold">{m.male_name}</div>
-                <div className="text-amber-400 text-sm">
-                  Expected Whelping: {due.toISOString().split("T")[0]}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        {matingList.map((m) => (
+          <div key={m.id}>
+            {m.date} - {m.male_name}
+          </div>
+        ))}
       </div>
 
       {/* LITTER */}
-      <div className="p-6 rounded-xl bg-zinc-900 border border-zinc-800">
-        <h2 className="text-amber-400 font-semibold text-lg mb-4">
-          Whelping / Litter Registration
-        </h2>
+      <div className="p-6 bg-zinc-900 border border-zinc-800 rounded-xl">
+        <h2>Litter</h2>
 
-        <form action={addLitterAction.bind(null, dogId)} className="grid gap-3">
-          <input name="birth_date" type="date" className="bg-zinc-800 p-2 rounded" required />
+        <form action={addLitterAction} className="grid gap-3">
+          <input type="hidden" name="female_id" value={dogId} />
 
-          <input
-            name="live_puppies"
-            type="number"
-            placeholder="Live puppies"
-            className="bg-zinc-800 p-2 rounded"
-            required
-          />
+          <input name="birth_date" type="date" required />
+          <input name="live_puppies" type="number" />
+          <input name="dead_puppies" type="number" />
 
-          <input
-            name="dead_puppies"
-            type="number"
-            placeholder="Stillborn puppies"
-            className="bg-zinc-800 p-2 rounded"
-          />
-
-          <button className="bg-amber-500 text-black font-bold p-2 rounded">
-            Register Litter
-          </button>
+          <button type="submit">Register Litter</button>
         </form>
       </div>
     </div>
