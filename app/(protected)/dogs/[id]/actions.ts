@@ -3,260 +3,157 @@
 import { revalidatePath } from "next/cache";
 import { createServerSupabase } from "@/lib/supabase/server";
 
-async function getSession() {
-const supabase =
-createServerSupabase();
+async function requireUser() {
+  const supabase = await createServerSupabase();
 
-const {
-data: { user },
-} =
-await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-if (!user) {
-throw new Error(
-"Unauthorized"
-);
+  if (!user) {
+    throw new Error("Unauthorized");
+  }
+
+  return { supabase, user };
 }
 
-return {
-supabase,
-user,
-};
+export async function updateDogProfileAction(
+  dogId: string,
+  formData: FormData,
+) {
+  const { supabase, user } = await requireUser();
+
+  const payload = {
+    name: String(formData.get("name") ?? ""),
+    breed: String(formData.get("breed") ?? ""),
+    color: String(formData.get("color") ?? ""),
+    birth_date: String(formData.get("birth_date") ?? "") || null,
+    microchip_number:
+      String(formData.get("microchip_number") ?? "") || null,
+    registration_number:
+      String(formData.get("registration_number") ?? "") || null,
+    passport_number:
+      String(formData.get("passport_number") ?? "") || null,
+    is_public: formData.get("is_public") === "on",
+    is_for_sale: formData.get("is_for_sale") === "on",
+  };
+
+  const { error } = await supabase
+    .from("dogs")
+    .update(payload)
+    .eq("id", dogId)
+    .eq("user_id", user.id);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath(`/dogs/${dogId}`);
 }
 
 export async function addHeatAction(
-formData: FormData
-): Promise<void> {
-const {
-supabase,
-user,
-} =
-await getSession();
-
-const dogId =
-String(
-formData.get(
-"dogId"
-) ?? ""
-);
-
-const startDate =
-String(
-formData.get(
-"startDate"
-) ?? ""
-);
-
-const progesterone =
-Number(
-formData.get(
-"progesterone"
-) ?? 0
-);
-
-const notes =
-String(
-formData.get(
-"notes"
-) ?? ""
-);
-
-if (
-!dogId ||
-!startDate
+  dogId: string,
+  formData: FormData,
 ) {
-throw new Error(
-"Missing fields"
-);
-}
+  const { supabase, user } = await requireUser();
 
-const {
-error,
-} =
-await supabase
-.from(
-"heats"
-)
-.insert({
-user_id:
-user.id,
-dog_id:
-dogId,
-start_date:
-startDate,
-progesterone,
-notes,
-});
+  const startDate = String(formData.get("start_date") ?? "");
+  const progesterone = Number(
+    formData.get("progesterone") ?? 0,
+  );
 
-if (error) {
-throw error;
-}
+  const notes = String(formData.get("notes") ?? "");
 
-revalidatePath(
-`/dogs/${dogId}`
-);
+  const { error } = await supabase
+    .from("heats")
+    .insert({
+      user_id: user.id,
+      dog_id: dogId,
+      start_date: startDate,
+      progesterone,
+      notes,
+    });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath(`/dogs/${dogId}?tab=breeding`);
 }
 
 export async function addMatingAction(
-formData: FormData
-): Promise<void> {
-const {
-supabase,
-user,
-} =
-await getSession();
-
-const femaleId =
-String(
-formData.get(
-"femaleId"
-) ?? ""
-);
-
-const maleName =
-String(
-formData.get(
-"maleName"
-) ?? ""
-);
-
-const matingDate =
-String(
-formData.get(
-"matingDate"
-) ?? ""
-);
-
-const notes =
-String(
-formData.get(
-"notes"
-) ?? ""
-);
-
-if (
-!femaleId ||
-!matingDate
+  dogId: string,
+  formData: FormData,
 ) {
-throw new Error(
-"Missing fields"
-);
-}
+  const { supabase, user } = await requireUser();
 
-const {
-error,
-} =
-await supabase
-.from(
-"matings"
-)
-.insert({
-user_id:
-user.id,
-female_id:
-femaleId,
-male_name:
-maleName,
-date:
-matingDate,
-notes,
-});
+  const date = String(
+    formData.get("mating_date") ?? "",
+  );
 
-if (error) {
-throw error;
-}
+  const maleName = String(
+    formData.get("male_name") ?? "",
+  );
 
-revalidatePath(
-`/dogs/${femaleId}`
-);
+  const notes = String(
+    formData.get("notes") ?? "",
+  );
+
+  const { error } = await supabase
+    .from("matings")
+    .insert({
+      user_id: user.id,
+      female_id: dogId,
+      date,
+      male_name: maleName,
+      notes,
+    });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath(`/dogs/${dogId}?tab=breeding`);
 }
 
 export async function addWhelpingAction(
-formData: FormData
-): Promise<void> {
-const {
-supabase,
-user,
-} =
-await getSession();
-
-const damId =
-String(
-formData.get(
-"damId"
-) ?? ""
-);
-
-const birthDate =
-String(
-formData.get(
-"birthDate"
-) ?? ""
-);
-
-const litterName =
-String(
-formData.get(
-"litterName"
-) ?? ""
-);
-
-const livePuppies =
-Number(
-formData.get(
-"livePuppies"
-) ?? 0
-);
-
-const deadPuppies =
-Number(
-formData.get(
-"deadPuppies"
-) ?? 0
-);
-
-if (
-!damId ||
-!birthDate
+  dogId: string,
+  formData: FormData,
 ) {
-throw new Error(
-"Missing fields"
-);
-}
+  const { supabase, user } = await requireUser();
 
-const {
-error,
-} =
-await supabase
-.from(
-"litters"
-)
-.insert({
-user_id:
-user.id,
-dam_id:
-damId,
-name:
-litterName,
-birth_date:
-birthDate,
-live_puppies:
-livePuppies,
-dead_puppies:
-deadPuppies,
-status:
-"Active",
-});
+  const birthDate = String(
+    formData.get("birth_date") ?? "",
+  );
 
-if (error) {
-throw error;
-}
+  const litterName = String(
+    formData.get("litter_name") ?? "",
+  );
 
-revalidatePath(
-"/litters"
-);
+  const livePuppies = Number(
+    formData.get("live_puppies") ?? 0,
+  );
 
-revalidatePath(
-`/dogs/${damId}`
-);
+  const deadPuppies = Number(
+    formData.get("dead_puppies") ?? 0,
+  );
+
+  const { error } = await supabase
+    .from("litters")
+    .insert({
+      user_id: user.id,
+      dam_id: dogId,
+      litter_name: litterName,
+      birth_date: birthDate,
+      live_puppies: livePuppies,
+      dead_puppies: deadPuppies,
+      status: "Active",
+    });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath("/litters");
+  revalidatePath(`/dogs/${dogId}?tab=breeding`);
 }
