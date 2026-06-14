@@ -1,47 +1,51 @@
 "use server";
 
-import { createServerSupabase } from "@/lib/supabase/server";
-import { revalidatePath } from "next/cache";
+import { createClient } from "@/lib/supabase/server";
 
-export async function updateDogProfileAction(dogId: string, formData: FormData) {
-  const supabase = await createServerSupabase();
+// DOG PROFILE
+export async function updateDogProfileAction(formData: FormData) {
+  const id = formData.get("id") as string;
 
-  await supabase.from("dogs").update({
-    name: formData.get("name"),
-    breed: formData.get("breed"),
-    color_markings: formData.get("color"),
-    birth_date: formData.get("birth_date"),
-    microchip_number: formData.get("microchip_number"),
-    passport_number: formData.get("passport_number"),
-    registration_number: formData.get("registration_number"),
-  }).eq("id", dogId);
+  const passport_number = formData.get("passport_number") as string;
+  const registration_number = formData.get("registration_number") as string;
 
-  revalidatePath(`/dogs/${dogId}`);
+  const supabase = await createClient();
+
+  await supabase
+    .from("dogs")
+    .update({
+      passport_number: passport_number || null,
+      registration_number: registration_number || null,
+    })
+    .eq("id", id);
 }
 
-export async function addMedicalRecordAction(dogId: string, formData: FormData) {
-  const supabase = await createServerSupabase();
+// MEDICAL
+export async function addMedicalRecordAction(formData: FormData) {
+  const dog_id = formData.get("dog_id") as string;
+  const type = formData.get("type") as string;
+  const notes = formData.get("notes") as string;
+
+  const supabase = await createClient();
 
   await supabase.from("medical_records").insert({
-    dog_id: dogId,
-    date: formData.get("date"),
-    type: formData.get("type"),
-    notes: formData.get("notes"),
+    dog_id,
+    type,
+    notes,
   });
-
-  revalidatePath(`/dogs/${dogId}`);
 }
 
-export async function addShowResultAction(dogId: string, formData: FormData) {
-  const supabase = await createServerSupabase();
+// SHOWS
+export async function addShowResultAction(formData: FormData) {
+  const dog_id = formData.get("dog_id") as string;
+  const show_name = formData.get("show_name") as string;
+  const result = formData.get("result") as string;
+
+  const supabase = await createClient();
 
   await supabase.from("dog_shows").insert({
-    dog_id: dogId,
-    show_name: formData.get("show_name"),
-    date: formData.get("date"),
-    location: formData.get("location"),
-    placement: formData.get("placement"),
+    dog_id,
+    show_name,
+    result,
   });
-
-  revalidatePath(`/dogs/${dogId}`);
 }
