@@ -7,7 +7,6 @@ import DogBreedingSection from "./DogBreedingSection";
 
 import {
   updateDogProfileAction,
-  uploadDogImageAction,
   addMedicalRecordAction,
   addShowResultAction,
 } from "./actions";
@@ -15,21 +14,21 @@ import {
 export const dynamic = "force-dynamic";
 
 type PageProps = {
-  params: Promise<{ id: string }>;
-  searchParams: Promise<{ tab?: string; edit?: string }>;
+  params: { id: string };
+  searchParams: { tab?: string; edit?: string };
 };
 
 export default async function DogProfilePage({
   params,
   searchParams,
 }: PageProps) {
-  const { id } = await params;
-  const { tab, edit } = await searchParams;
+  const { id } = params;
+  const { tab, edit } = searchParams;
 
   const activeTab = tab || "overview";
   const isEditing = edit === "true";
 
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -64,12 +63,13 @@ export default async function DogProfilePage({
     .eq("user_id", user.id)
     .single();
 
-  if (!dog)
+  if (!dog) {
     return (
       <div className="p-10 text-red-400 bg-black min-h-screen">
         Dog not found
       </div>
     );
+  }
 
   // ======================
   // RELATED DATA
@@ -86,7 +86,7 @@ export default async function DogProfilePage({
     .eq("dog_id", id)
     .order("date", { ascending: false });
 
-  // BREEDING DOMAIN (NEW SCHEMA)
+  // BREEDING
   const { data: heatCycles } = await supabase
     .from("heat_cycles")
     .select("*")
@@ -112,6 +112,7 @@ export default async function DogProfilePage({
   // ======================
   return (
     <div className="min-h-screen bg-black text-white p-6 space-y-6">
+
       {/* HEADER */}
       <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 flex flex-col md:flex-row justify-between gap-6">
         <div className="flex items-center gap-4">
@@ -135,31 +136,16 @@ export default async function DogProfilePage({
           </div>
         </div>
 
-        <form
-          action={uploadDogImageAction.bind(null, id)}
-          className="flex gap-3 items-end"
-        >
-          <input type="file" name="file" required className="text-xs" />
-          <button className="bg-amber-500 text-black px-4 py-2 text-xs font-bold rounded">
-            Upload
-          </button>
-        </form>
+        {/* ❌ uploadDogImageAction ELTÁVOLÍTVA */}
       </div>
 
       {/* NAV */}
       <div className="flex gap-2 border-b border-zinc-800 text-xs">
-        <Link href={`/dogs/${id}?tab=overview`} className="p-2">
-          Overview
-        </Link>
-        <Link href={`/dogs/${id}?tab=pedigree`} className="p-2">
-          Pedigree
-        </Link>
-        <Link href={`/dogs/${id}?tab=medical`} className="p-2">
-          Medical
-        </Link>
-        <Link href={`/dogs/${id}?tab=shows`} className="p-2">
-          Shows
-        </Link>
+        <Link href={`/dogs/${id}?tab=overview`} className="p-2">Overview</Link>
+        <Link href={`/dogs/${id}?tab=pedigree`} className="p-2">Pedigree</Link>
+        <Link href={`/dogs/${id}?tab=medical`} className="p-2">Medical</Link>
+        <Link href={`/dogs/${id}?tab=shows`} className="p-2">Shows</Link>
+
         {isFemale && (
           <Link href={`/dogs/${id}?tab=breeding`} className="p-2">
             Breeding
