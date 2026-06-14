@@ -18,7 +18,8 @@ export default async function DogProfilePage({
 }: any) {
   const { id } = params;
 
-  const cookieStore = cookies();
+  // ✅ FIX: cookies() IS NOW ASYNC (Next 16)
+  const cookieStore = await cookies();
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -63,8 +64,8 @@ export default async function DogProfilePage({
     .eq("female_id", id);
 
   return (
-    <div>
-      <h1>{dog.name}</h1>
+    <div className="min-h-screen bg-black text-white p-6">
+      <h1 className="text-2xl font-bold">{dog.name}</h1>
 
       <DogBreedingSection
         dogId={id}
