@@ -1,7 +1,8 @@
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 
-export const createClient = () => {
+export function createSupabaseServer() {
+  // Next.js 16 aszinkron cookie kezelés támogatása
   const cookieStore = cookies();
 
   return createServerClient(
@@ -9,11 +10,20 @@ export const createClient = () => {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        getAll: () => cookieStore.getAll(),
-        setAll: (c) => c.forEach(({ name, value, options }) =>
-          cookieStore.set(name, value, options)
-        ),
+        async getAll() {
+          return (await cookieStore).getAll();
+        },
+        async setAll(cookiesToSet) {
+          try {
+            const resolvedCookies = await cookieStore;
+            cookiesToSet.forEach(({ name, value, options }) => {
+              resolvedCookies.set(name, value, options);
+            });
+          } catch (error) {
+            // Server Component-ek alatt a set-elést a Next.js middleware kezeli, itt elkapjuk ha hibára futna
+          }
+        },
       },
     }
   );
-};
+}
