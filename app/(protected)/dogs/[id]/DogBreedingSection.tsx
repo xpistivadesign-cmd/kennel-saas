@@ -1,3 +1,8 @@
+import {
+  addHeatCycleAction,
+  addMatingAction,
+  addLitterAction,
+} from "./actions";
 <form action={addHeatCycleAction} className="grid gap-3">
   <input type="hidden" name="dog_id" value={dogId} />
 
