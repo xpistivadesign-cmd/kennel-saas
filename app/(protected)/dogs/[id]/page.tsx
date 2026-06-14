@@ -1,8 +1,16 @@
-import { createServerSupabase } from "@/lib/supabase/server";
-import DogBreedingSection from "./DogBreedingSection";
-import Link from "next/link";
+import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
+import Link from "next/link";
+
+import DogBreedingSection from "./DogBreedingSection";
+
+import {
+  updateDogProfileAction,
+  uploadDogImageAction,
+  addMedicalRecordAction,
+  addShowResultAction,
+} from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -11,23 +19,44 @@ type PageProps = {
   searchParams: Promise<{ tab?: string; edit?: string }>;
 };
 
-export default async function DogPage({ params, searchParams }: PageProps) {
+export default async function DogProfilePage({
+  params,
+  searchParams,
+}: PageProps) {
   const { id } = await params;
   const { tab, edit } = await searchParams;
 
-  const activeTab = tab ?? "overview";
-  const isEdit = edit === "true";
+  const activeTab = tab || "overview";
+  const isEditing = edit === "true";
 
-  const supabase = createServerSupabase();
+  const cookieStore = cookies();
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            cookieStore.set(name, value, options);
+          });
+        },
+      },
+    }
+  );
 
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) {
-    redirect("/login");
-  }
+  if (!user) redirect("/login");
 
+  // ======================
+  // DOG
+  // ======================
   const { data: dog } = await supabase
     .from("dogs")
     .select("*")
@@ -35,71 +64,171 @@ export default async function DogPage({ params, searchParams }: PageProps) {
     .eq("user_id", user.id)
     .single();
 
-  if (!dog) {
-    return <div className="p-10 text-white">Dog not found</div>;
-  }
+  if (!dog)
+    return (
+      <div className="p-10 text-red-400 bg-black min-h-screen">
+        Dog not found
+      </div>
+    );
 
-  const { data: heats } = await supabase
-    .from("heats")
+  // ======================
+  // RELATED DATA
+  // ======================
+  const { data: medical } = await supabase
+    .from("medical_records")
+    .select("*")
+    .eq("dog_id", id)
+    .order("date", { ascending: false });
+
+  const { data: shows } = await supabase
+    .from("dog_shows")
+    .select("*")
+    .eq("dog_id", id)
+    .order("date", { ascending: false });
+
+  // BREEDING DOMAIN (NEW SCHEMA)
+  const { data: heatCycles } = await supabase
+    .from("heat_cycles")
     .select("*")
     .eq("dog_id", id)
     .order("start_date", { ascending: false });
 
-  return (
-    <div className="min-h-screen bg-zinc-950 text-white p-6">
-      <div className="max-w-6xl mx-auto space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-amber-400">{dog.name}</h1>
+  const { data: progesterone } = await supabase
+    .from("progesterone_tests")
+    .select("*")
+    .eq("dog_id", id)
+    .order("test_date", { ascending: false });
 
-          <div className="flex gap-2">
-            <Link
-              href={`/dogs/${id}?tab=overview`}
-              className="px-3 py-1 bg-zinc-800 rounded"
-            >
-              Overview
-            </Link>
-            <Link
-              href={`/dogs/${id}?tab=pedigree`}
-              className="px-3 py-1 bg-zinc-800 rounded"
-            >
-              Pedigree
-            </Link>
-            <Link
-              href={`/dogs/${id}?tab=medical`}
-              className="px-3 py-1 bg-zinc-800 rounded"
-            >
-              Medical
-            </Link>
-            <Link
-              href={`/dogs/${id}?tab=shows`}
-              className="px-3 py-1 bg-zinc-800 rounded"
-            >
-              Shows
-            </Link>
-            {dog.sex === "Female" && (
-              <Link
-                href={`/dogs/${id}?tab=breeding`}
-                className="px-3 py-1 bg-amber-600 rounded"
-              >
-                Breeding
-              </Link>
-            )}
+  const { data: matings } = await supabase
+    .from("matings")
+    .select("*")
+    .eq("female_id", id)
+    .order("date", { ascending: false });
+
+  const isFemale = dog.sex === "Female";
+
+  // ======================
+  // RENDER
+  // ======================
+  return (
+    <div className="min-h-screen bg-black text-white p-6 space-y-6">
+      {/* HEADER */}
+      <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 flex flex-col md:flex-row justify-between gap-6">
+        <div className="flex items-center gap-4">
+          {dog.image_url ? (
+            <img
+              src={dog.image_url}
+              className="w-24 h-24 rounded-xl object-cover border border-zinc-700"
+              alt={dog.name}
+            />
+          ) : (
+            <div className="w-24 h-24 bg-zinc-800 rounded-xl flex items-center justify-center text-xs text-zinc-500">
+              No Image
+            </div>
+          )}
+
+          <div>
+            <h1 className="text-3xl font-black text-amber-400">
+              {dog.name}
+            </h1>
+            <p className="text-zinc-400 text-sm">{dog.breed}</p>
           </div>
         </div>
 
-        {activeTab === "overview" && (
-          <div className="bg-zinc-900 p-6 rounded-lg space-y-3">
-            <p className="text-lg">Breed: {dog.breed}</p>
-            <p>Sex: {dog.sex}</p>
-            <p>Color: {dog.color}</p>
-            <p>Microchip: {dog.microchip}</p>
-          </div>
-        )}
+        <form
+          action={uploadDogImageAction.bind(null, id)}
+          className="flex gap-3 items-end"
+        >
+          <input type="file" name="file" required className="text-xs" />
+          <button className="bg-amber-500 text-black px-4 py-2 text-xs font-bold rounded">
+            Upload
+          </button>
+        </form>
+      </div>
 
-        {activeTab === "breeding" && dog.sex === "Female" && (
-          <DogBreedingSection dogId={dog.id} initialHeats={heats ?? []} />
+      {/* NAV */}
+      <div className="flex gap-2 border-b border-zinc-800 text-xs">
+        <Link href={`/dogs/${id}?tab=overview`} className="p-2">
+          Overview
+        </Link>
+        <Link href={`/dogs/${id}?tab=pedigree`} className="p-2">
+          Pedigree
+        </Link>
+        <Link href={`/dogs/${id}?tab=medical`} className="p-2">
+          Medical
+        </Link>
+        <Link href={`/dogs/${id}?tab=shows`} className="p-2">
+          Shows
+        </Link>
+        {isFemale && (
+          <Link href={`/dogs/${id}?tab=breeding`} className="p-2">
+            Breeding
+          </Link>
         )}
       </div>
+
+      {/* OVERVIEW */}
+      {activeTab === "overview" && (
+        <div className="grid gap-4 bg-zinc-900 p-6 rounded-xl border border-zinc-800">
+          <div>
+            <div className="text-zinc-500 text-xs">Passport Number</div>
+            <div className="text-white font-mono">
+              {dog.passport_number || "Not recorded"}
+            </div>
+          </div>
+
+          <div>
+            <div className="text-zinc-500 text-xs">Pedigree Number</div>
+            <div className="text-amber-400 font-mono">
+              {dog.registration_number || "Not recorded"}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MEDICAL */}
+      {activeTab === "medical" && (
+        <div className="bg-zinc-900 p-5 rounded-xl border border-zinc-800">
+          {medical?.length ? (
+            medical.map((m: any) => (
+              <div key={m.id} className="text-sm border-b border-zinc-800 py-2">
+                {m.date} — {m.type} — {m.notes}
+              </div>
+            ))
+          ) : (
+            <div className="text-zinc-500 text-sm">
+              No medical records found
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* SHOWS */}
+      {activeTab === "shows" && (
+        <div className="bg-zinc-900 p-5 rounded-xl border border-zinc-800">
+          {shows?.length ? (
+            shows.map((s: any) => (
+              <div key={s.id} className="text-sm border-b border-zinc-800 py-2">
+                {s.date} — {s.show_name} — {s.placement}
+              </div>
+            ))
+          ) : (
+            <div className="text-zinc-500 text-sm">
+              No show records found
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* BREEDING */}
+      {activeTab === "breeding" && isFemale && (
+        <DogBreedingSection
+          dogId={id}
+          heatCycles={heatCycles || []}
+          progesteroneTests={progesterone || []}
+          matings={matings || []}
+        />
+      )}
     </div>
   );
 }
