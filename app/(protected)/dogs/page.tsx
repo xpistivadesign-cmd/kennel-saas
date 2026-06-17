@@ -1,217 +1,80 @@
-import { createClient } from "@/lib/supabase/server";
+import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import Link from "next/link";
-import { revalidatePath } from "next/cache";
+import AddDogForm from "./AddDogForm";
 
 export const dynamic = "force-dynamic";
 
 export default async function DogsPage() {
-  const supabase = await createClient();
+  const cookieStore = await cookies();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll(cookiesToSet: any[]) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            cookieStore.set(name, value, options);
+          });
+        },
+      },
+    }
+  );
 
-  if (!user) {
-    return <div className="p-6 text-red-400">Not authenticated</div>;
-  }
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
 
+  // Összes kutya lekérése a listához és a szülő-választáshoz
   const { data: dogs } = await supabase
     .from("dogs")
     .select("*")
-    .eq("user_id", user.id)
     .order("created_at", { ascending: false });
 
-  const maleDogs = dogs?.filter((d) => d.sex === "Male") || [];
-  const femaleDogs = dogs?.filter((d) => d.sex === "Female") || [];
-
-  async function addDog(formData: FormData) {
-    "use server";
-
-    const supabase = await createClient();
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) return;
-
-    await supabase.from("dogs").insert({
-      user_id: user.id,
-      name: String(formData.get("name") || ""),
-      breed: String(formData.get("breed") || ""),
-      sex: String(formData.get("sex") || ""),
-      birth_date: formData.get("birth_date") || null,
-      microchip_id: String(formData.get("microchip_id") || ""),
-      passport_number: String(formData.get("passport_number") || ""),
-      color_markings: String(formData.get("color_markings") || ""),
-      notes: String(formData.get("notes") || ""),
-      is_public: formData.get("is_public") === "on",
-      is_for_sale: formData.get("is_for_sale") === "on",
-      sire_id:
-        formData.get("sire_id") === "none"
-          ? null
-          : String(formData.get("sire_id") || null),
-      dam_id:
-        formData.get("dam_id") === "none"
-          ? null
-          : String(formData.get("dam_id") || null),
-    });
-
-    revalidatePath("/dogs");
-  }
+  const potentialSires = dogs?.filter((d: any) => d.sex === "Male") || [];
+  const potentialDams = dogs?.filter((d: any) => d.sex === "Female") || [];
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 text-white">
-      {/* LEFT SIDE - LIST */}
-      <div className="space-y-4">
-        <h1 className="text-2xl font-bold text-amber-400">Dogs</h1>
-
-        <div className="space-y-3">
-          {dogs?.map((dog) => (
-            <Link
-              key={dog.id}
-              href={`/dogs/${dog.id}`}
-              className="block p-4 rounded-xl border border-zinc-800 bg-zinc-900/40 hover:border-zinc-700 transition"
-            >
-              <div className="text-xl font-bold text-amber-400 hover:underline">
-                {dog.name}
-              </div>
-              <div className="text-sm text-zinc-400">
-                {dog.breed} • {dog.sex}
-              </div>
-            </Link>
-          ))}
+    <div className="min-h-screen bg-black text-white p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+      
+      {/* BAL OLDAL: KUTYÁK LISTÁJA */}
+      <div className="lg:col-span-2 space-y-4">
+        <h1 className="text-2xl font-black uppercase text-amber-400 tracking-wider">Dogs Directory</h1>
+        <div className="grid grid-cols-1 gap-3">
+          {dogs && dogs.length > 0 ? (
+            dogs.map((dog: any) => (
+              <Link 
+                key={dog.id} 
+                href={`/dogs/${dog.id}`}
+                className="bg-zinc-900/40 border border-zinc-800/80 p-5 rounded-xl block hover:border-amber-500/40 transition group"
+              >
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h2 className="text-lg font-bold text-white group-hover:text-amber-400 transition">{dog.name}</h2>
+                    <p className="text-xs text-zinc-500 mt-1">
+                      {dog.breed || "Presa Canario"} • <span className={dog.sex === "Male" ? "text-blue-400" : "text-pink-400"}>{dog.sex}</span>
+                    </p>
+                  </div>
+                  <span className="text-zinc-600 text-xs font-mono group-hover:text-zinc-400 transition">View Core Profile →</span>
+                </div>
+              </Link>
+            ))
+          ) : (
+            <p className="text-zinc-600 italic text-xs">No dogs registered in your database yet.</p>
+          )}
         </div>
       </div>
 
-      {/* RIGHT SIDE - FORM */}
-      <form
-        action={addDog}
-        className="space-y-4 p-6 rounded-xl border border-zinc-800 bg-zinc-900/40"
-      >
-        <h2 className="text-xl font-semibold text-white">Add New Dog</h2>
+      {/* JOBB OLDAL: JAVÍTOTT, INTELIGENS ADD NEW DOG KÁRTYA */}
+      <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-xl h-fit space-y-4">
+        <h2 className="text-base font-black uppercase tracking-wider text-zinc-300">Add New Dog</h2>
+        <AddDogForm potentialSires={potentialSires} potentialDams={potentialDams} />
+      </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="text-sm text-zinc-400">Name</label>
-            <input
-              name="name"
-              className="w-full mt-1 p-2 rounded bg-zinc-950 border border-zinc-800"
-            />
-          </div>
-
-          <div>
-            <label className="text-sm text-zinc-400">Breed</label>
-            <input
-              name="breed"
-              className="w-full mt-1 p-2 rounded bg-zinc-950 border border-zinc-800"
-            />
-          </div>
-
-          <div>
-            <label className="text-sm text-zinc-400">Sex</label>
-            <select
-              name="sex"
-              className="w-full mt-1 p-2 rounded bg-zinc-950 border border-zinc-800"
-            >
-              <option value="Male">Male</option>
-              <option value="Female">Female</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="text-sm text-zinc-400">Birth Date</label>
-            <input
-              type="date"
-              name="birth_date"
-              className="w-full mt-1 p-2 rounded bg-zinc-950 border border-zinc-800"
-            />
-          </div>
-
-          <div>
-            <label className="text-sm text-zinc-400">Microchip ID</label>
-            <input
-              name="microchip_id"
-              className="w-full mt-1 p-2 rounded bg-zinc-950 border border-zinc-800"
-            />
-          </div>
-
-          <div>
-            <label className="text-sm text-zinc-400">Passport Number</label>
-            <input
-              name="passport_number"
-              className="w-full mt-1 p-2 rounded bg-zinc-950 border border-zinc-800"
-            />
-          </div>
-
-          <div className="col-span-2">
-            <label className="text-sm text-zinc-400">Color Markings</label>
-            <input
-              name="color_markings"
-              className="w-full mt-1 p-2 rounded bg-zinc-950 border border-zinc-800"
-            />
-          </div>
-
-          {/* SIRE */}
-          <div>
-            <label className="text-sm text-zinc-400">Sire (Father)</label>
-            <select
-              name="sire_id"
-              className="w-full mt-1 p-2 rounded bg-zinc-950 border border-zinc-800"
-            >
-              <option value="none">None</option>
-              {maleDogs.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* DAM */}
-          <div>
-            <label className="text-sm text-zinc-400">Dam (Mother)</label>
-            <select
-              name="dam_id"
-              className="w-full mt-1 p-2 rounded bg-zinc-950 border border-zinc-800"
-            >
-              <option value="none">None</option>
-              {femaleDogs.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="text-sm text-zinc-400">Notes</label>
-            <textarea
-              name="notes"
-              className="w-full mt-1 p-2 rounded bg-zinc-950 border border-zinc-800"
-            />
-          </div>
-        </div>
-
-        <div className="flex gap-6 pt-2">
-          <label className="text-sm text-zinc-400 flex items-center gap-2">
-            <input type="checkbox" name="is_public" />
-            Public
-          </label>
-
-          <label className="text-sm text-zinc-400 flex items-center gap-2">
-            <input type="checkbox" name="is_for_sale" />
-            For Sale
-          </label>
-        </div>
-
-        <button
-          type="submit"
-          className="w-full mt-4 bg-amber-500 hover:bg-amber-400 text-black font-bold py-2 rounded-lg transition"
-        >
-          Add Dog
-        </button>
-      </form>
     </div>
   );
 }
