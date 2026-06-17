@@ -9,18 +9,13 @@ export async function createLitterAction(formData: FormData) {
   
   const { data: { user } } = await supabase.auth.getUser();
 
-  // Csak akkor küldjük be az UUID-t, ha az egy valódi, valid azonosító, nem pedig "null" vagy "other" string
   const rawSireId = formData.get("sire_id") ? String(formData.get("sire_id")) : "null";
   const rawDamId = formData.get("dam_id") ? String(formData.get("dam_id")) : "null";
 
-  const sire_id = (rawSireId === "null" || rawSireId === "other" || rawSireId.trim() === "") ? null : rawSireId;
-  const dam_id = (rawDamId === "null" || rawDamId === "other" || rawDamId.trim() === "") ? null : rawDamId;
-
+  // Alapadatok felépítése
   const basePayload: any = {
     letter: String(formData.get("letter") || "").trim(),
     birth_date: formData.get("birth_date") ? String(formData.get("birth_date")) : null,
-    sire_id: sire_id,
-    dam_id: dam_id,
     sire_name: formData.get("sire_name") ? String(formData.get("sire_name")) : null,
     dam_name: formData.get("dam_name") ? String(formData.get("dam_name")) : null,
     status: String(formData.get("status") || "Planning"),
@@ -28,10 +23,19 @@ export async function createLitterAction(formData: FormData) {
     user_id: user?.id || null
   };
 
+  // DINAMIKUS HOZZÁADÁS: Csak akkor küldjük be ezeket az oszlopokat, ha valóban belső kutyát választottál ki
+  // Ezzel kivédjük, ha a táblában nem létezik a 'dam_id' vagy 'sire_id' oszlop!
+  if (rawSireId !== "null" && rawSireId !== "other" && rawSireId.trim() !== "") {
+    basePayload.sire_id = rawSireId;
+  }
+  
+  if (rawDamId !== "null" && rawDamId !== "other" && rawDamId.trim() !== "") {
+    basePayload.dam_id = rawDamId;
+  }
+
   let success = false;
   let errorMessage = "";
 
-  // Végrehajtjuk a mentést tiszta blokkban
   try {
     const { error } = await supabase.from("litters").insert(basePayload);
     if (error) {
@@ -40,18 +44,18 @@ export async function createLitterAction(formData: FormData) {
       success = true;
     }
   } catch (err: any) {
-    errorMessage = err?.message || "Ismeretlen hiba az adatbázis kapcsolatban.";
+    errorMessage = err?.message || "Ismeretlen hiba történt a mentés során.";
   }
 
-  // Ha elhasalt a mentés, átirányítjuk egy hiba paraméterrel ahelyett, hogy összeomlana a szerver!
+  // Ha nem sikerült, visszadobjuk a hibaüzenettel a felületre
   if (!success) {
     console.error("Supabase mentési hiba:", errorMessage);
-    redirect(`/litters?error=${encodeURIComponent(errorMessage || "Database insert failed")}`);
+    return redirect(`/litters?error=${encodeURIComponent(errorMessage || "Database insert failed")}`);
   }
 
-  // Sikeres mentés után cache ürítés és visszalépés
+  // Sikeres mentés esetén tisztítjuk a cache-t és frissítünk
   revalidatePath("/litters");
-  redirect("/litters");
+  return redirect("/litters");
 }
 
 export async function addPuppyAction(litterId: string, formData: FormData) {
