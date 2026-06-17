@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { createSupabaseServer } from "@/lib/db/supabase-server";
 
 async function requireUser() {
@@ -10,11 +11,11 @@ async function requireUser() {
   return { supabase, user };
 }
 
-/** 1. KUTYA ADATOK MÓDOSÍTÁSA */
-export async function updateDogProfileAction(dogId: string, formData: FormData) {
+/** 1. KUTYA ÉS CSALÁDFA ADATOK MÓDOSÍTÁSA */
+export async function updateDogProfileAction(dogId: string, currentTab: string, formData: FormData) {
   const { supabase } = await requireUser();
 
-  const payload = {
+  const payload: any = {
     name: String(formData.get("name") ?? ""),
     breed: String(formData.get("breed") ?? ""),
     color: String(formData.get("color") ?? ""),
@@ -24,16 +25,30 @@ export async function updateDogProfileAction(dogId: string, formData: FormData) 
     registration_number: String(formData.get("registration_number") ?? "") || null,
   };
 
+  // Ha a családfa formból jönnek az adatok, azokat is elmentjük (UUID és Text fallback is)
+  if (formData.has("sire_id")) {
+    const sireId = formData.get("sire_id");
+    payload.sire_id = sireId && sireId !== "null" ? String(sireId) : null;
+  }
+  if (formData.has("dam_id")) {
+    const damId = formData.get("dam_id");
+    payload.dam_id = damId && damId !== "null" ? String(damId) : null;
+  }
+  if (formData.has("sire_name")) payload.sire_name = String(formData.get("sire_name") || "") || null;
+  if (formData.has("dam_name")) payload.dam_name = String(formData.get("dam_name") || "") || null;
+
   const { error } = await supabase
     .from("dogs")
     .update(payload)
     .eq("id", dogId);
 
   if (error) throw new Error(error.message);
-  revalidatePath(`/dogs/${dogId}`);
+  
+  // Tiszta visszairányítás az edit mód lezárásához
+  redirect(`/dogs/${dogId}?tab=${currentTab}`);
 }
 
-/** 2. ORVOSI ADAT HOZZÁADÁSA (DOG_EVENTS TÁBLA) */
+/** 2. ORVOSI ADAT HOZZÁADÁSA */
 export async function addMedicalRecordAction(dogId: string, formData: FormData) {
   const { supabase } = await requireUser();
 
@@ -48,7 +63,7 @@ export async function addMedicalRecordAction(dogId: string, formData: FormData) 
   revalidatePath(`/dogs/${dogId}`);
 }
 
-/** 3. KIÁLLÍTÁSI EREDMÉNY HOZZÁADÁSA (DOG_SHOWS TÁBLA) */
+/** 3. KIÁLLÍTÁSI EREDMÉNY HOZZÁADÁSA */
 export async function addShowResultAction(dogId: string, formData: FormData) {
   const { supabase } = await requireUser();
 
@@ -64,7 +79,7 @@ export async function addShowResultAction(dogId: string, formData: FormData) {
   revalidatePath(`/dogs/${dogId}`);
 }
 
-/** 4. TÜZELÉSI CIKLUS HOZZÁADÁSA (HEAT_CYCLES TÁBLA) */
+/** 4. TÜZELÉSI CIKLUS HOZZÁADÁSA */
 export async function addHeatAction(dogId: string, formData: FormData) {
   const { supabase } = await requireUser();
 
@@ -78,7 +93,7 @@ export async function addHeatAction(dogId: string, formData: FormData) {
   revalidatePath(`/dogs/${dogId}`);
 }
 
-/** 5. PROGESZTERON TESZT HOZZÁADÁSA (PROGESTERONE_TESTS TÁBLA) */
+/** 5. PROGESZTERON TESZT HOZZÁADÁSA */
 export async function addProgesteroneAction(dogId: string, formData: FormData) {
   const { supabase } = await requireUser();
 
@@ -93,7 +108,7 @@ export async function addProgesteroneAction(dogId: string, formData: FormData) {
   revalidatePath(`/dogs/${dogId}`);
 }
 
-/** 6. FEDEZTETÉS HOZZÁADÁSA (MATINGS TÁBLA) */
+/** 6. FEDEZTETÉS HOZZÁADÁSA */
 export async function addMatingAction(dogId: string, formData: FormData) {
   const { supabase } = await requireUser();
 
