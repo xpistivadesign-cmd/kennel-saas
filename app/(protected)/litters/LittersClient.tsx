@@ -26,7 +26,6 @@ export default function LittersClient({ litters, puppies, potentialSires, potent
       const err = params.get("error");
       if (err) {
         setDbError(decodeURIComponent(err));
-        setActiveTab("planner");
       }
     }
   }, []);
@@ -162,7 +161,7 @@ export default function LittersClient({ litters, puppies, potentialSires, potent
       {/* ERROR DISPLAY */}
       {dbError && (
         <div className="bg-red-950/80 border border-red-800 p-4 rounded-xl text-xs text-red-300 font-mono">
-          <span className="font-bold uppercase text-red-400 block mb-1">⚠️ SÉMA VAGY ADATBÁZIS HIBA DETEKTÁLVA:</span>
+          <span className="font-bold uppercase text-red-400 block mb-1">⚠️ HIBA DETEKTÁLVA:</span>
           {dbError}
         </div>
       )}
@@ -271,7 +270,7 @@ export default function LittersClient({ litters, puppies, potentialSires, potent
               
               {(selectedLitter.status === "Tervezett" || selectedLitter.status === "Planning" || selectedLitter.status === "Pregnant") && currentPuppies.length === 0 && (
                 <div className="text-xs text-zinc-500 italic bg-zinc-900/30 p-4 border border-dashed border-zinc-800 rounded-xl">
-                  Ez egy tervezett párosítás, kiskutyák rögzítése előtt válaszd ki a fenti "Megszületett" opciót a valós adatok szinkronizalkozásához.
+                  Ez egy tervezett párosítás, kiskutyák rögzítése előtt válaszd ki a fenti "Megszületett" opciót a valós adatok szinkronizálásához.
                 </div>
               )}
 
@@ -279,12 +278,12 @@ export default function LittersClient({ litters, puppies, potentialSires, potent
                 {currentPuppies.map((p) => (
                   <div key={p.id} className="bg-zinc-950 border border-zinc-900 p-4 rounded-xl flex justify-between items-center text-xs">
                     <div>
-                      <span className="font-bold text-white block">🎀 Nyakörv: {p.collar_color} ({p.gender})</span>
-                      <span className="text-[10px] text-zinc-500 block font-mono">Születési súly: {p.birth_weight}g</span>
+                      <span className="font-bold text-white block">🎀 Jelölés/Nyakörv: {p.collar_color} ({p.gender === "Male" ? "Kan" : "Szuka"})</span>
+                      <span className="text-[10px] text-zinc-500 block font-mono">Születési súly: {p.birth_weight}{p.weight_unit || 'g'}</span>
                       {p.buyer_name && <span className="text-[10px] text-emerald-400 font-bold block mt-1">Gazdi: {p.buyer_name} ({p.sale_price} EUR)</span>}
                     </div>
 
-                    {p.current_status !== "Sold" ? (
+                    {p.status !== "Sold" ? (
                       <form action={sellPuppyAction.bind(null, p.id, selectedLitter.id)} className="flex gap-2 bg-zinc-900 p-2 rounded-lg border border-zinc-800">
                         <input name="buyer_name" required placeholder="Gazdi neve" className="p-1 bg-black rounded border border-zinc-800 text-[11px]" />
                         <input name="sale_price" type="number" required placeholder="Ár (EUR)" className="w-16 p-1 bg-black rounded border border-zinc-800 text-[11px]" />
@@ -299,12 +298,13 @@ export default function LittersClient({ litters, puppies, potentialSires, potent
               </div>
             </div>
 
+            {/* MÓDOSÍTOTT ADD PUPPY FORM JELÖLÉSSEL ÉS AMERIKAI/EURÓPAI SÚLLYAL */}
             <div className="bg-zinc-900 border border-zinc-800 p-5 rounded-xl h-fit space-y-3">
               <h3 className="text-xs font-black uppercase text-zinc-400">Add Puppy to Litter</h3>
               <form action={addPuppyAction.bind(null, selectedLitter.id)} className="space-y-3 text-xs">
                 <div>
-                  <label className="text-zinc-500 uppercase block mb-1">Collar Color / Markings</label>
-                  <input name="collar_color" required placeholder="e.g., Zöld nyakörves" className="w-full p-2 bg-black border border-zinc-800 rounded-lg text-white" />
+                  <label className="text-zinc-500 uppercase block mb-1">Collar Color / Markings / Name</label>
+                  <input name="collar_color" required placeholder="e.g., Kék nyakörv / 'Kis foltos'" className="w-full p-2 bg-black border border-zinc-800 rounded-lg text-white" />
                 </div>
                 <div>
                   <label className="text-zinc-500 uppercase block mb-1">Gender</label>
@@ -314,8 +314,15 @@ export default function LittersClient({ litters, puppies, potentialSires, potent
                   </select>
                 </div>
                 <div>
-                  <label className="text-zinc-500 uppercase block mb-1">Birth Weight (g)</label>
-                  <input name="birth_weight" type="number" placeholder="450" className="w-full p-2 bg-black border border-zinc-800 rounded-lg text-white" />
+                  <label className="text-zinc-500 uppercase block mb-1">Weight Unit (Súlytípus)</label>
+                  <select name="weight_unit" className="w-full p-2 bg-black border border-zinc-800 rounded-lg text-white">
+                    <option value="g">Európai (Gramm - g)</option>
+                    <option value="oz">Amerikai (Uncia - oz)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-zinc-500 uppercase block mb-1">Birth Weight</label>
+                  <input name="birth_weight" type="number" placeholder="e.g., 450 vagy 15" className="w-full p-2 bg-black border border-zinc-800 rounded-lg text-white" />
                 </div>
                 <button type="submit" className="w-full bg-amber-500 text-black font-bold uppercase py-2 rounded-lg">Add Puppy</button>
               </form>
