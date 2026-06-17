@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createLitterAction, addPuppyAction, sellPuppyAction } from "./actions";
 import { getWhelpingPrediction } from "./helpers";
 
@@ -17,6 +17,19 @@ export default function LittersClient({ litters, puppies, potentialSires, potent
   const [selectedLitterId, setSelectedLitterId] = useState<string | null>(activeLitterId || (litters[0]?.id || null));
   const [sireType, setSireType] = useState("");
   const [damType, setDamType] = useState("");
+  const [dbError, setDbError] = useState<string | null>(null);
+
+  // URL-ből kiolvassuk, ha van error paraméter
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const err = params.get("error");
+      if (err) {
+        setDbError(decodeURIComponent(err));
+        setActiveTab("planner"); // Ha hiba volt, ugorjon vissza a tervezőhöz
+      }
+    }
+  }, []);
 
   const selectedLitter = litters.find((l) => l.id === selectedLitterId);
   const currentPuppies = puppies.filter((p) => p.litter_id === selectedLitterId);
@@ -26,33 +39,38 @@ export default function LittersClient({ litters, puppies, potentialSires, potent
       
       {/* ALMENÜ NAVIGÁCIÓ */}
       <div className="flex border-b border-zinc-800 gap-2 overflow-x-auto">
-        <button onClick={() => setActiveTab("directory")} className={`px-4 py-2 text-xs font-black uppercase border-b-2 transition ${activeTab === "directory" ? "border-amber-500 text-amber-400" : "border-transparent text-zinc-500"}`}>📂 Litters Directory</button>
+        <button onClick={() => { setActiveTab("directory"); setDbError(null); }} className={`px-4 py-2 text-xs font-black uppercase border-b-2 transition ${activeTab === "directory" ? "border-amber-500 text-amber-400" : "border-transparent text-zinc-500"}`}>📂 Litters Directory</button>
         <button onClick={() => setActiveTab("planner")} className={`px-4 py-2 text-xs font-black uppercase border-b-2 transition ${activeTab === "planner" ? "border-amber-500 text-amber-400" : "border-transparent text-zinc-500"}`}>🎯 Mating Planner</button>
         {selectedLitter && (
-          <button onClick={() => setActiveTab("litter-profile")} className={`px-4 py-2 text-xs font-black uppercase border-b-2 transition ${activeTab === "litter-profile" ? "border-amber-500 text-amber-400" : "border-transparent text-zinc-500"}`}>🐶 {selectedLitter.letter} Litter Manager</button>
+          <button onClick={() => { setActiveTab("litter-profile"); setDbError(null); }} className={`px-4 py-2 text-xs font-black uppercase border-b-2 transition ${activeTab === "litter-profile" ? "border-amber-500 text-amber-400" : "border-transparent text-zinc-500"}`}>🐶 {selectedLitter.letter} Litter Manager</button>
         )}
       </div>
+
+      {/* ERROR DISPLAY */}
+      {dbError && (
+        <div className="bg-red-950/80 border border-red-800 p-4 rounded-xl text-xs text-red-300 font-mono">
+          <span className="font-bold uppercase text-red-400 block mb-1">⚠️ SÉMA VAGY ADATBÁZIS HIBA DETEKTÁLVA:</span>
+          {dbError}
+        </div>
+      )}
 
       {/* A FÜL: DIRECTORY */}
       {activeTab === "directory" && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {litters.map((l) => {
-            const pred = getWhelpingPrediction(l.birth_date);
-            return (
-              <button 
-                key={l.id} 
-                onClick={() => { setSelectedLitterId(l.id); setActiveTab("litter-profile"); }}
-                className="bg-zinc-900/40 border border-zinc-800 p-5 rounded-xl text-left hover:border-amber-500 transition"
-              >
-                <div className="flex justify-between items-center">
-                  <h2 className="text-xl font-black text-amber-400">"{l.letter}" Litter</h2>
-                  <span className="text-[10px] font-mono bg-zinc-800 px-2 py-1 rounded border border-zinc-700 uppercase">{l.status}</span>
-                </div>
-                <p className="text-xs text-zinc-400 mt-2">Apa: {l.sire_name || "Saját kan"} • Anya: {l.dam_name || "Saját szuka"}</p>
-                <p className="text-[11px] text-zinc-500 mt-1 font-mono">Dátum / Ellés: {l.birth_date || "Tervezett"}</p>
-              </button>
-            );
-          })}
+          {litters.map((l) => (
+            <button 
+              key={l.id} 
+              onClick={() => { setSelectedLitterId(l.id); setActiveTab("litter-profile"); }}
+              className="bg-zinc-900/40 border border-zinc-800 p-5 rounded-xl text-left hover:border-amber-500 transition"
+            >
+              <div className="flex justify-between items-center">
+                <h2 className="text-xl font-black text-amber-400">"{l.letter}" Litter</h2>
+                <span className="text-[10px] font-mono bg-zinc-800 px-2 py-1 rounded border border-zinc-700 uppercase">{l.status}</span>
+              </div>
+              <p className="text-xs text-zinc-400 mt-2">Apa: {l.sire_name || "Saját kan"} • Anya: {l.dam_name || "Saját szuka"}</p>
+              <p className="text-[11px] text-zinc-500 mt-1 font-mono">Dátum / Ellés: {l.birth_date || "Tervezett"}</p>
+            </button>
+          ))}
         </div>
       )}
 
@@ -64,37 +82,37 @@ export default function LittersClient({ litters, puppies, potentialSires, potent
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
                 <label className="text-zinc-500 uppercase font-bold">Litter ID / Letter</label>
-                <input name="letter" required placeholder="e.g., 'A' Litter" className="w-full p-2.5 bg-black border border-zinc-800 rounded-xl text-sm" />
+                <input name="letter" required placeholder="e.g., 'A' Litter" className="w-full p-2.5 bg-black border border-zinc-800 rounded-xl text-sm text-white" />
               </div>
               <div className="space-y-1">
                 <label className="text-zinc-500 uppercase font-bold">Mating / Birth Date</label>
-                <input name="birth_date" type="date" className="w-full p-2.5 bg-black border border-zinc-800 rounded-xl text-sm" />
+                <input name="birth_date" type="date" className="w-full p-2.5 bg-black border border-zinc-800 rounded-xl text-sm text-white" />
               </div>
             </div>
 
             <div className="space-y-1">
               <label className="text-blue-400 uppercase font-bold">Sire (Father)</label>
-              <select name="sire_id" onChange={(e) => setSireType(e.target.value)} className="w-full p-2.5 bg-black border border-zinc-800 rounded-xl text-sm">
+              <select name="sire_id" onChange={(e) => setSireType(e.target.value)} className="w-full p-2.5 bg-black border border-zinc-800 rounded-xl text-sm text-white">
                 <option value="null">-- Select Sire --</option>
                 {potentialSires.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                 <option value="other">Other (External stud)...</option>
               </select>
-              {sireType === "other" && <input name="sire_name" placeholder="Type external stud full name" className="w-full p-2 bg-zinc-950 border border-zinc-800 rounded-lg mt-1" />}
+              {sireType === "other" && <input name="sire_name" placeholder="Type external stud full name" className="w-full p-2 bg-zinc-950 border border-zinc-800 rounded-lg mt-1 text-white" />}
             </div>
 
             <div className="space-y-1">
               <label className="text-pink-400 uppercase font-bold">Dam (Mother)</label>
-              <select name="dam_id" onChange={(e) => setDamType(e.target.value)} className="w-full p-2.5 bg-black border border-zinc-800 rounded-xl text-sm">
+              <select name="dam_id" onChange={(e) => setDamType(e.target.value)} className="w-full p-2.5 bg-black border border-zinc-800 rounded-xl text-sm text-white">
                 <option value="null">-- Select Dam --</option>
                 {potentialDams.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                 <option value="other">Other (External female)...</option>
               </select>
-              {damType === "other" && <input name="dam_name" placeholder="Type external dam full name" className="w-full p-2 bg-zinc-950 border border-zinc-800 rounded-lg mt-1" />}
+              {damType === "other" && <input name="dam_name" placeholder="Type external dam full name" className="w-full p-2 bg-zinc-950 border border-zinc-800 rounded-lg mt-1 text-white" />}
             </div>
 
             <div className="space-y-1">
               <label className="text-zinc-500 uppercase font-bold">Státusz</label>
-              <select name="status" className="w-full p-2.5 bg-black border border-zinc-800 rounded-xl text-sm">
+              <select name="status" className="w-full p-2.5 bg-black border border-zinc-800 rounded-xl text-sm text-white">
                 <option value="Planning">Planning (Tervezett párosítás)</option>
                 <option value="Born">Born (Megszületett alom)</option>
               </select>
@@ -105,7 +123,7 @@ export default function LittersClient({ litters, puppies, potentialSires, potent
         </div>
       )}
 
-      {/* C FÜL: LITTER PROFILE & PUPPIES & AUTOMATED INCOME */}
+      {/* C FÜL: LITTER PROFILE */}
       {activeTab === "litter-profile" && selectedLitter && (
         <div className="space-y-6">
           <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-2xl flex justify-between items-center">
@@ -116,8 +134,6 @@ export default function LittersClient({ litters, puppies, potentialSires, potent
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            
-            {/* KISKUTYÁK LISTÁJA */}
             <div className="lg:col-span-2 space-y-4">
               <h3 className="text-sm font-black text-zinc-400 uppercase">Puppies in this litter ({currentPuppies.length})</h3>
               <div className="grid grid-cols-1 gap-2">
@@ -130,7 +146,6 @@ export default function LittersClient({ litters, puppies, potentialSires, potent
                     </div>
 
                     {p.current_status !== "Sold" ? (
-                      /* ELADÁSI FORMA GAZDIVAL, AMI FINANCE INCOME-OT GENERÁL */
                       <form action={sellPuppyAction.bind(null, p.id, selectedLitter.id)} className="flex gap-2 bg-zinc-900 p-2 rounded-lg border border-zinc-800">
                         <input name="buyer_name" required placeholder="Gazdi neve" className="p-1 bg-black rounded border border-zinc-800 text-[11px]" />
                         <input name="sale_price" type="number" required placeholder="Ár (EUR)" className="w-16 p-1 bg-black rounded border border-zinc-800 text-[11px]" />
@@ -145,29 +160,27 @@ export default function LittersClient({ litters, puppies, potentialSires, potent
               </div>
             </div>
 
-            {/* ÚJ KISKUTYA REGISZTRÁLÁSA AZ ALOMBA */}
             <div className="bg-zinc-900 border border-zinc-800 p-5 rounded-xl h-fit space-y-3">
               <h3 className="text-xs font-black uppercase text-zinc-400">Add Puppy to Litter</h3>
               <form action={addPuppyAction.bind(null, selectedLitter.id)} className="space-y-3 text-xs">
                 <div>
                   <label className="text-zinc-500 uppercase block mb-1">Collar Color / Markings</label>
-                  <input name="collar_color" required placeholder="e.g., Zöld nyakörves" className="w-full p-2 bg-black border border-zinc-800 rounded-lg" />
+                  <input name="collar_color" required placeholder="e.g., Zöld nyakörves" className="w-full p-2 bg-black border border-zinc-800 rounded-lg text-white" />
                 </div>
                 <div>
                   <label className="text-zinc-500 uppercase block mb-1">Gender</label>
-                  <select name="gender" className="w-full p-2 bg-black border border-zinc-800 rounded-lg">
+                  <select name="gender" className="w-full p-2 bg-black border border-zinc-800 rounded-lg text-white">
                     <option value="Male">Male (Kan)</option>
                     <option value="Female">Female (Szuka)</option>
                   </select>
                 </div>
                 <div>
                   <label className="text-zinc-500 uppercase block mb-1">Birth Weight (g)</label>
-                  <input name="birth_weight" type="number" placeholder="450" className="w-full p-2 bg-black border border-zinc-800 rounded-lg" />
+                  <input name="birth_date" type="number" placeholder="450" className="w-full p-2 bg-black border border-zinc-800 rounded-lg text-white" />
                 </div>
                 <button type="submit" className="w-full bg-amber-500 text-black font-bold uppercase py-2 rounded-lg">Add Puppy</button>
               </form>
             </div>
-
           </div>
         </div>
       )}
