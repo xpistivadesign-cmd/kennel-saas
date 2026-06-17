@@ -82,11 +82,15 @@ export async function addPuppyAction(litterId: string, formData: FormData) {
   const rawStatus = formData.get("status") ? String(formData.get("status")).trim() : "Elérhető";
   const dbStatus = rawStatus === "Available" ? "Elérhető" : rawStatus;
 
+  // Kivesszük a súly mértékegységét a formról (pl. 'g' vagy 'oz'), ha nincs megadva, alapértelmezetten 'g' (gramm)
+  const weightUnit = formData.get("weight_unit") ? String(formData.get("weight_unit")).trim() : "g";
+
   const payload = {
     litter_id: litterId,
-    collar_color: String(formData.get("collar_color") || "").trim(),
-    gender: String(formData.get("gender") || "").trim(),
+    collar_color: String(formData.get("collar_color") || "").trim(), // Ide jöhet a nyakörv szín vagy egyedi jelölés neve is
+    gender: String(formData.get("gender") || "").trim(),             // Mentjük a kiválasztott nemet (Kan/Szuka)
     birth_weight: parseInt(String(formData.get("birth_weight") || "0")),
+    weight_unit: weightUnit,                                         // Elmentjük, hogy amerikai vagy európai súlyt használsz-e
     status: dbStatus
   };
 
