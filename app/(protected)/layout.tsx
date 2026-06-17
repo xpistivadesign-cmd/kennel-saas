@@ -19,12 +19,14 @@ export default async function ProtectedLayout({
     redirect("/login");
   }
 
+  // Beleraktam a Buyers menüpontot a listába!
   const navItems = [
     { href: "/dashboard", label: "Dashboard" },
     { href: "/dogs", label: "Dogs" },
     { href: "/heats", label: "Heats" },
     { href: "/litters", label: "Litters" },
     { href: "/shows", label: "Shows" },
+    { href: "/buyers", label: "Buyers & Waitlist" }, // ÚJ MENÜPONT
     { href: "/finance", label: "Finance" },
   ];
 
