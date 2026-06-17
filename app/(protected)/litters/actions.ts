@@ -4,34 +4,45 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createSupabaseServer } from "@/lib/db/supabase-server";
 
+// Alom létrehozása
 export async function createLitterAction(formData: FormData) {
   const supabase = createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
 
   const letter = String(formData.get("letter") || "").trim();
   const birthDate = formData.get("birth_date") ? String(formData.get("birth_date")) : null;
-  const rawStatus = String(formData.get("status") || "Planning");
+  const rawStatus = String(formData.get("status") || "").trim();
   const formNotes = String(formData.get("notes") || "");
 
-  // TŰPONTOS STÁTUSZ FORDÍTÁS AZ ADATBÁZISODHOZ:
-  // Ha az űrlap 'Planning'-et küld, azt 'Tervezett'-ként mentjük.
-  // Ha 'Born'-t vagy bármi mást, azt az adatbázisod szerinti 'Éllés'-ként mentjük.
-  let dbStatus = "Éllés"; 
-  if (rawStatus === "Planning" || rawStatus === "Tervezett" || rawStatus.toLowerCase() === "planning") {
-    dbStatus = "Tervezett";
-  } else if (rawStatus === "Born" || rawStatus === "Born/Active" || rawStatus === "Megszületett") {
-    dbStatus = "Éllés";
+  let dbStatus = "Tervezett";
+  if (
+    rawStatus === "Born" || 
+    rawStatus === "Megszületett" || 
+    rawStatus === "Ellés" || 
+    rawStatus.toLowerCase().includes("born") ||
+    rawStatus.toLowerCase().includes("szület") ||
+    rawStatus.toLowerCase().includes("ell")
+  ) {
+    dbStatus = "Ellés";
   }
 
-  // Mivel nincs külön letter oszlop a sémádban, a notes mezőbe mentjük el a jelet
-  const combinedNotes = letter 
-    ? `[Alom jele/betűje: ${letter}] ${formNotes}`.trim() 
-    : formNotes;
+  const sireName = formData.get("sire_name") ? String(formData.get("sire_name")).trim() : "";
+  const damName = formData.get("dam_name") ? String(formData.get("dam_name")).trim() : "";
+  
+  let parentInfo = "";
+  if (sireName) parentInfo += `Apa: ${sireName}; `;
+  if (damName) parentInfo += `Anya: ${damName}; `;
+
+  let combinedNotes = "";
+  if (letter) combinedNotes += `[Alom jele/betűje: ${letter}] `;
+  if (parentInfo) combinedNotes += `[Szülők - ${parentInfo.trim()}] `;
+  if (formNotes) combinedNotes += formNotes;
+  combinedNotes = combinedNotes.trim();
 
   const payload: any = {
     birth_date: birthDate || null,
-    status: dbStatus, // Most már a pontos, validált magyar szót küldjük be!
-    notes: combinedNotes,
+    status: dbStatus,
+    notes: combinedNotes || null,
     user_id: user?.id || null,
     female_count: 0,
     male_count: 0
@@ -46,6 +57,35 @@ export async function createLitterAction(formData: FormData) {
 
   revalidatePath("/litters");
   return redirect("/litters");
+}
+
+// ÚJ: Alom státuszának frissítése "Ellés"-re (Amikor rányomsz, hogy Megszületett)
+export async function markLitterAsBornAction(litterId: string, actualBirthDate: string) {
+  const supabase = createSupabaseServer();
+  
+  const { error } = await supabase
+    .from("litters")
+    .update({
+      status: "Ellés",
+      birth_date: actualBirthDate
+    })
+    .eq("id", litterId);
+
+  if (error) throw new Error(error.message);
+  revalidatePath("/litters");
+}
+
+// ÚJ: Alom törlése (Eltávolítás a listából)
+export async function deleteLitterAction(litterId: string) {
+  const supabase = createSupabaseServer();
+  
+  const { error } = await supabase
+    .from("litters")
+    .delete()
+    .eq("id", litterId);
+
+  if (error) throw new Error(error.message);
+  revalidatePath("/litters");
 }
 
 export async function addPuppyAction(litterId: string, formData: FormData) {
