@@ -7,20 +7,30 @@ import { createSupabaseServer } from "@/lib/db/supabase-server";
 export async function createLitterAction(formData: FormData) {
   const supabase = createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
+  
   const letter = String(formData.get("letter") || "").trim();
   const birthDate = formData.get("birth_date") ? String(formData.get("birth_date")) : null;
   const rawStatus = String(formData.get("status") || "Tervezett").trim();
-  const formNotes = String(formData.get("notes") || "");
-  const sireName = formData.get("sire_name") ? String(formData.get("sire_name")).trim() : "";
-  const damName = formData.get("dam_name") ? String(formData.get("dam_name")).trim() : "";
+  const sireId = formData.get("sire_id");
+  const damId = formData.get("dam_id");
   
-  let combinedNotes = `[Alom: ${letter}] ` + (sireName ? `Apa: ${sireName} ` : "") + (damName ? `Anya: ${damName} ` : "") + formNotes;
+  let sireName = formData.get("sire_name") ? String(formData.get("sire_name")).trim() : "";
+  let damName = formData.get("dam_name") ? String(formData.get("dam_name")).trim() : "";
+
+  // Ha nem külső szülőt választott, próbáljuk meg kiszedni az id alapján a nevét
+  if (sireId && sireId !== "null" && sireId !== "other") {
+    const { data: sDog } = await supabase.from("dogs").select("name").eq("id", sireId).single();
+    if (sDog) sireName = sDog.name;
+  }
+  if (damId && damId !== "null" && damId !== "other") {
+    const { data: dDog } = await supabase.from("dogs").select("name").eq("id", damId).single();
+    if (dDog) damName = dDog.name;
+  }
 
   const { error } = await supabase.from("litters").insert({
-    letter: letter || null,
-    birth_date: birthDate || null,
+    letter: letter,
+    birth_date: birthDate,
     status: rawStatus,
-    notes: combinedNotes.trim() || null,
     user_id: user?.id || null,
     female_count: 0,
     male_count: 0,
@@ -45,7 +55,6 @@ export async function deleteLitterAction(litterId: string) {
   revalidatePath("/litters");
 }
 
-// BIZTONSÁGOS KISKUTYA MENTŐ NÉV MEZŐVEL
 export async function addPuppyAction(data: { 
   litter_id: string; 
   name: string;
@@ -56,15 +65,12 @@ export async function addPuppyAction(data: {
 }) {
   const supabase = createSupabaseServer();
   
-  // Ha az adatbázisodban nincs 'name' oszlop, összefűzzük a nyakörvvel, 
-  // így nem dob hibát a Supabase, de a név is megmarad!
-  const displayName = data.name ? `${data.name} (${data.collar_color})` : data.collar_color;
-
   const { data: newPuppy, error } = await supabase
     .from("puppies")
     .insert({
       litter_id: data.litter_id,
-      collar_color: displayName, // Itt mentjük el a nevet és a jelölést egyben
+      name: data.name,
+      collar_color: data.collar_color,
       gender: data.gender,
       birth_weight: data.birth_weight,
       weight_unit: data.weight_unit,
@@ -73,10 +79,7 @@ export async function addPuppyAction(data: {
     .select()
     .single();
 
-  if (error) {
-    throw new Error(error.message);
-  }
-
+  if (error) throw new Error(error.message);
   revalidatePath("/litters");
   return newPuppy;
 }
