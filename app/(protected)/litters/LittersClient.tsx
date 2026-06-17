@@ -11,8 +11,10 @@ export default function LittersClient({ litters, puppies, potentialSires, potent
   const [sireType, setSireType] = useState("");
   const [damType, setDamType] = useState("");
   const [err, setErr] = useState<string | null>(null);
-  const [pugs, setPugs] = useState<any[]>(puppies || []);
-  const [vaccs, setVaccs] = useState<any[]>(vaccinations || []);
+  
+  // FIX: Csak az első induláskor vesszük át a szerveroldali listát, utána SOHA nem engedjük felülírni!
+  const [pugs, setPugs] = useState<any[]>(() => puppies || []);
+  const [vaccs, setVaccs] = useState<any[]>(() => vaccinations || []);
 
   const [selPuppy, setSelPuppy] = useState<any | null>(null);
   const [vName, setVName] = useState("");
@@ -25,8 +27,7 @@ export default function LittersClient({ litters, puppies, potentialSires, potent
   const [fb, setBirthWeight] = useState("");
   const [load, setLoad] = useState(false);
 
-  useEffect(() => { if (puppies) setPugs(puppies); }, [puppies]);
-  useEffect(() => { if (vaccinations) setVaccs(vaccinations); }, [vaccinations]);
+  // FIX: Kivágtuk az eddigi hibás useEffect-et, ami letörölte a listát!
 
   const litter = litters.find((l: any) => l.id === selId);
   const currentPuppies = pugs.filter((p) => p.litter_id === selId);
@@ -56,11 +57,20 @@ export default function LittersClient({ litters, puppies, potentialSires, potent
         litter_id: selId, name: fname.trim(), collar_color: fc.trim(),
         gender: fg, weight_unit: fw, birth_weight: parseInt(fb || "0", 10)
       });
-      if (nP) setPugs(prev => [...prev, nP]);
+      
+      // Fixen beleerőltetjük a listába kliens oldalon, és mivel nincs useEffect ami felülbírálja, itt is MARAD!
+      if (nP) {
+        setPugs(prev => {
+          if (prev.some(p => p.id === nP.id)) return prev;
+          return [...prev, nP];
+        });
+      }
       setFname(""); 
       setFc(""); 
-      setBirthWeight(""); // FIX: setFb helyett a jó state setter függvényt hívjuk!
-    } catch (e: any) { alert(e.message); } finally { setLoad(false); }
+      setBirthWeight("");
+    } catch (e: any) { 
+      alert(e.message); 
+    } { setLoad(false); }
   };
 
   const onSaveProfile = async (e: React.FormEvent) => {
@@ -183,6 +193,9 @@ export default function LittersClient({ litters, puppies, potentialSires, potent
                   </div>
                 </div>
               ))}
+              {currentPuppies.length === 0 && (
+                <p className="text-zinc-600 italic p-2">Nincs még kiskutya felvéve ebbe az alomba.</p>
+              )}
             </div>
 
             {selPuppy && (
