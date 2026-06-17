@@ -70,7 +70,7 @@ export default function HeatsClient({ heatCycles, femaleDogs }: Props) {
   return (
     <div className="min-h-screen bg-black text-white p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
       
-      {/* BAL OLDAL: INTELLIGENS CIKLUS MONITOR LISTA */}
+      {/* BAL OLDAL */}
       <div className="lg:col-span-2 space-y-4">
         <h1 className="text-2xl font-black uppercase text-amber-400 tracking-wider">
           Heat Cycles & Fertility Monitor
@@ -81,7 +81,10 @@ export default function HeatsClient({ heatCycles, femaleDogs }: Props) {
               const data = calculateBreedingData(heat.start_date);
               
               return (
-                <div key={heat.id} className="bg-zinc-900/50 border border-zinc-800/80 p-6 rounded-2xl space-y-4 shadow-xl">
+                <div 
+                  key={heat.id} 
+                  className="bg-zinc-900/50 border border-zinc-800/80 p-6 rounded-2xl space-y-4 shadow-xl"
+                >
                   
                   {/* Fejléc */}
                   <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
@@ -106,31 +109,83 @@ export default function HeatsClient({ heatCycles, femaleDogs }: Props) {
                     </div>
                     <div className="w-full bg-zinc-950 rounded-full h-2 overflow-hidden border border-zinc-900">
                       <div 
-                        className={`h-full transition-all duration-500 ${data.elapsedDays >= 10 && data.elapsedDays <= 14 ? 'bg-pink-500' : 'bg-amber-500'}`}
+                        className={`h-full transition-all duration-500 ${data.elapsedDays >= 10 && data.elapsedDays <= 14 ? "bg-pink-500" : "bg-amber-500"}`}
                         style={{ width: `${data.progressPercent}%` }}
                       ></div>
                     </div>
                   </div>
 
-                  {/* Predikciók rács rövidített sorokkal */}
+                  {/* Predikciók rács szigorúan rövidített sorokkal */}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 text-xs">
                     
-                    {/* Fedeztetési ablak */}
+                    {/* Fedeztetés Box */}
                     <div className="bg-zinc-950/60 border border-zinc-900 p-3 rounded-xl space-y-1">
-                      <span className="text-[10px] uppercase text-zinc-500 font-bold block">🎯 Optimális Fedeztetés</span>
-                      <span className="font-mono text-pink-400 font-bold block">
-                        {data.windowStart} / {data.windowEnd.split('-')[2]}
+                      <span className="text-[10px] uppercase text-zinc-500 font-bold block">
+                        🎯 Optimális Fedeztetés
                       </span>
-                      <span className="text-[10px] text-zinc-600 block italic">A ciklus 11-14. napja</span>
+                      <span className="font-mono text-pink-400 font-bold block">
+                        {data.windowStart} / {data.windowEnd.split("-")[2]}
+                      </span>
+                      <span className="text-[10px] text-zinc-600 block italic">
+                        A ciklus 11-14. napja
+                      </span>
                     </div>
 
-                    {/* Várható vége */}
+                    {/* Vége Box */}
                     <div className="bg-zinc-950/60 border border-zinc-900 p-3 rounded-xl space-y-1">
-                      <span className="text-[10px] uppercase text-zinc-500 font-bold block">📅 Ciklus Várható Vége</span>
-                      <span className="font-mono text-zinc-300 font-semibold block">{data.endDate}</span>
-                      <span className="text-[10px] text-zinc-600 block italic">21 napos normál lefolyás</span>
+                      <span className="text-[10px] uppercase text-zinc-500 font-bold block">
+                        📅 Ciklus Várható Vége
+                      </span>
+                      <span className="font-mono text-zinc-300 font-semibold block">
+                        {data.endDate}
+                      </span>
+                      <span className="text-[10px] text-zinc-600 block italic">
+                        21 napos lefolyás
+                      </span>
                     </div>
 
-                    {/* Következő tüzelés */}
+                    {/* Következő Box */}
                     <div className="bg-zinc-950/60 border border-zinc-900 p-3 rounded-xl space-y-1">
-                      <span className="text-[10px] uppercase text-
+                      <span className="text-[10px] uppercase text-zinc-400 font-bold block">
+                        🔮 Következő Tüzelés
+                      </span>
+                      <span className="font-mono text-amber-400 font-bold block">
+                        {data.nextHeatDate}
+                      </span>
+                      <span className="text-[10px] text-zinc-600 block italic">
+                        ~6 hónap pihenő után
+                      </span>
+                    </div>
+
+                  </div>
+
+                  {/* Jegyzet */}
+                  {heat.notes && (
+                    <div className="bg-black/40 border border-zinc-900 px-4 py-2.5 rounded-xl text-zinc-400 text-xs italic">
+                      <span className="text-[10px] uppercase font-bold text-zinc-600 not-italic block mb-0.5">
+                        Megfigyelt tünetek:
+                      </span>
+                      "{heat.notes}"
+                    </div>
+                  )}
+
+                </div>
+              );
+            })
+          ) : (
+            <p className="text-zinc-600 italic text-xs">No active heat cycles logged.</p>
+          )}
+        </div>
+      </div>
+
+      {/* JOBB OLDAL: FORM */}
+      <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-2xl h-fit space-y-4 shadow-xl">
+        <h2 className="text-base font-black uppercase tracking-wider text-zinc-300">
+          Log New Heat
+        </h2>
+        
+        <form action={addGlobalHeatAction} className="space-y-4 text-xs">
+          <div className="space-y-1">
+            <label className="text-[10px] uppercase font-bold text-zinc-500">
+              Select Female Dog
+            </label>
