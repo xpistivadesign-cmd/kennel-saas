@@ -17,7 +17,6 @@ export async function createLitterAction(formData: FormData) {
   let sireName = formData.get("sire_name") ? String(formData.get("sire_name")).trim() : "";
   let damName = formData.get("dam_name") ? String(formData.get("dam_name")).trim() : "";
 
-  // Ha nem külső szülőt választott, próbáljuk meg kiszedni az id alapján a nevét
   if (sireId && sireId !== "null" && sireId !== "other") {
     const { data: sDog } = await supabase.from("dogs").select("name").eq("id", sireId).single();
     if (sDog) sireName = sDog.name;
@@ -55,6 +54,7 @@ export async function deleteLitterAction(litterId: string) {
   revalidatePath("/litters");
 }
 
+// FIX: SEHOL NINCS REDIRECT, CSAK ADATVISSZAADÁS!
 export async function addPuppyAction(data: { 
   litter_id: string; 
   name: string;
@@ -79,9 +79,12 @@ export async function addPuppyAction(data: {
     .select()
     .single();
 
-  if (error) throw new Error(error.message);
-  revalidatePath("/litters");
-  return newPuppy;
+  if (error) {
+    console.error("Supabase hiba:", error.message);
+    throw new Error(error.message);
+  }
+
+  return newPuppy; // Csak visszaküldjük a tiszta adatot, nincs Next.js revalidate hiba!
 }
 
 export async function sellPuppyAction(puppyId: string, litterId: string, formData: FormData) {
