@@ -9,7 +9,6 @@ interface Props {
 
 export default function HeatsClient({ heatCycles, femaleDogs }: Props) {
   
-  // Segédfunkció az intelligens tenyésztői adatok kiszámításához
   const calculateBreedingData = (startDateStr: string) => {
     const start = new Date(startDateStr);
     const today = new Date();
@@ -73,7 +72,9 @@ export default function HeatsClient({ heatCycles, femaleDogs }: Props) {
       
       {/* BAL OLDAL: INTELLIGENS CIKLUS MONITOR LISTA */}
       <div className="lg:col-span-2 space-y-4">
-        <h1 className="text-2xl font-black uppercase text-amber-400 tracking-wider">Heat Cycles & Fertility Monitor</h1>
+        <h1 className="text-2xl font-black uppercase text-amber-400 tracking-wider">
+          Heat Cycles & Fertility Monitor
+        </h1>
         <div className="grid grid-cols-1 gap-4">
           {heatCycles && heatCycles.length > 0 ? (
             heatCycles.map((heat: any) => {
@@ -82,7 +83,7 @@ export default function HeatsClient({ heatCycles, femaleDogs }: Props) {
               return (
                 <div key={heat.id} className="bg-zinc-900/50 border border-zinc-800/80 p-6 rounded-2xl space-y-4 shadow-xl">
                   
-                  {/* Fejléc: Kutya név + Aktuális fázis címke */}
+                  {/* Fejléc */}
                   <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
                     <div>
                       <h2 className="text-xl font-black text-white tracking-wide">
@@ -97,7 +98,7 @@ export default function HeatsClient({ heatCycles, femaleDogs }: Props) {
                     </span>
                   </div>
 
-                  {/* Vizuális folyamatjelző (Progress Bar) */}
+                  {/* Progress Bar */}
                   <div className="space-y-1">
                     <div className="flex justify-between text-[10px] text-zinc-500 uppercase font-bold">
                       <span>Ciklus lefolyása</span>
@@ -105,14 +106,31 @@ export default function HeatsClient({ heatCycles, femaleDogs }: Props) {
                     </div>
                     <div className="w-full bg-zinc-950 rounded-full h-2 overflow-hidden border border-zinc-900">
                       <div 
-                        className={`h-full transition-all duration-500 ${data.elapsedDays >= 10 && data.elapsedDays <= 14 ? 'bg-pink-500 shadow-[0_0_10px_rgba(236,72,153,0.5)]' : 'bg-amber-500'}`}
+                        className={`h-full transition-all duration-500 ${data.elapsedDays >= 10 && data.elapsedDays <= 14 ? 'bg-pink-500' : 'bg-amber-500'}`}
                         style={{ width: `${data.progressPercent}%` }}
                       ></div>
                     </div>
                   </div>
 
-                  {/* Automata Tenyésztői Predikciók rács */}
+                  {/* Predikciók rács rövidített sorokkal */}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 text-xs">
                     
                     {/* Fedeztetési ablak */}
-                    <div className="bg-zinc-950/60 border border-zinc-900 p-3 rounded-xl space-y
+                    <div className="bg-zinc-950/60 border border-zinc-900 p-3 rounded-xl space-y-1">
+                      <span className="text-[10px] uppercase text-zinc-500 font-bold block">🎯 Optimális Fedeztetés</span>
+                      <span className="font-mono text-pink-400 font-bold block">
+                        {data.windowStart} / {data.windowEnd.split('-')[2]}
+                      </span>
+                      <span className="text-[10px] text-zinc-600 block italic">A ciklus 11-14. napja</span>
+                    </div>
+
+                    {/* Várható vége */}
+                    <div className="bg-zinc-950/60 border border-zinc-900 p-3 rounded-xl space-y-1">
+                      <span className="text-[10px] uppercase text-zinc-500 font-bold block">📅 Ciklus Várható Vége</span>
+                      <span className="font-mono text-zinc-300 font-semibold block">{data.endDate}</span>
+                      <span className="text-[10px] text-zinc-600 block italic">21 napos normál lefolyás</span>
+                    </div>
+
+                    {/* Következő tüzelés */}
+                    <div className="bg-zinc-950/60 border border-zinc-900 p-3 rounded-xl space-y-1">
+                      <span className="text-[10px] uppercase text-
