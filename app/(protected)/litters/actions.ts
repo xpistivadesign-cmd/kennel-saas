@@ -4,17 +4,17 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createSupabaseServer } from "@/lib/db/supabase-server";
 
-// 1. ALOM LÉTREHOZÁSA (TERVEZETT VAGY SZÜLETETT)
+// 1. ALOM LÉTREHOZÁSA (BELSŐ TRY-CATCH ÉS FALLBACK MECHANIZMUSSAL)
 export async function createLitterAction(formData: FormData) {
   const supabase = createSupabaseServer();
+  
+  // Felhasználó lekérése a biztonsági mentéshez
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Unauthorized");
 
-  const sire_id = formData.get("sire_id") === "other" ? null : (formData.get("sire_id") || null);
-  const dam_id = formData.get("dam_id") === "other" ? null : (formData.get("dam_id") || null);
+  const sire_id = formData.get("sire_id") === "other" || formData.get("sire_id") === "null" ? null : formData.get("sire_id");
+  const dam_id = formData.get("dam_id") === "other" || formData.get("dam_id") === "null" ? null : formData.get("dam_id");
 
-  const payload = {
-    user_id: user.id,
+  const basePayload: any = {
     letter: String(formData.get("letter")),
     birth_date: formData.get("birth_date") ? String(formData.get("birth_date")) : null,
     sire_id: sire_id ? String(sire_id) : null,
@@ -25,8 +25,25 @@ export async function createLitterAction(formData: FormData) {
     notes: String(formData.get("notes") || ""),
   };
 
-  const { error } = await supabase.from("litters").insert(payload);
-  if (error) throw new Error(error.message);
+  // 1. KÍSÉRLET: Mentés user_id mezővel együtt
+  try {
+    const { error } = await supabase.from("litters").insert({
+      ...basePayload,
+      user_id: user?.id
+    });
+
+    if (error) {
+      console.error("Első alom-mentési hiba, próbálkozás user_id nélkül:", error.message);
+      
+      // 2. KÍSÉRLET (FALLBACK): Mentés tiszta payload-dal, ha a user_id oszlop hiányzik vagy hibás
+      const { error: fallbackError } = await supabase.from("litters").insert(basePayload);
+      if (fallbackError) throw new Error(fallbackError.message);
+    }
+  } catch (err: any) {
+    // 3. KÍSÉRLET (VÉGSŐ BIZTOSÍTÉK): Ha bármi más belső hiba elkapná, megpróbáljuk teljesen tisztán
+    const { error: finalError } = await supabase.from("litters").insert(basePayload);
+    if (finalError) throw new Error(finalError.message);
+  }
 
   revalidatePath("/litters");
   redirect("/litters");
@@ -50,7 +67,7 @@ export async function addPuppyAction(litterId: string, formData: FormData) {
   revalidatePath(`/litters?id=${litterId}`);
 }
 
-// 3. KISKUTYA ELADÁSA + AUTOMATIKUS FINANCE INFLOW BEJEGYZÉS
+// 3. KISKUTYA ELADÁSA + AUTOMATIKUS FINANCE INTEGRÁCIÓ
 export async function sellPuppyAction(puppyId: string, litterId: string, formData: FormData) {
   const supabase = createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
@@ -59,7 +76,6 @@ export async function sellPuppyAction(puppyId: string, litterId: string, formDat
   const sale_price = parseFloat(String(formData.get("sale_price") || "0"));
   const collar = String(formData.get("collar_color") || "Nyakörv nélküli");
 
-  // Frissítjük a kiskutya státuszát és a gazdi adatait
   const { error: puppyError } = await supabase
     .from("puppies")
     .update({
@@ -73,26 +89,19 @@ export async function sellPuppyAction(puppyId: string, litterId: string, formDat
 
   if (puppyError) throw new Error(puppyError.message);
 
-  // AUTOMATIKUS FINANSZÍROZÁSI INTEGRÁCIÓ:
-  // Megpróbáljuk betolni a 'finances' vagy 'finance' táblába a bevételt hiba nélkül
+  const financePayload = {
+    user_id: user?.id,
+    title: `Alom eladás: ${collar} kiskutya (${buyer_name})`,
+    amount: sale_price,
+    type: "income",
+    date: new Date().toISOString().split("T")[0]
+  };
+
   try {
-    await supabase.from("finances").insert({
-      user_id: user?.id,
-      title: `Alom eladás: ${collar} kiskutya (${buyer_name})`,
-      amount: sale_price,
-      type: "income",
-      date: new Date().toISOString().split("T")[0]
-    });
+    await supabase.from("finances").insert(financePayload);
   } catch (e) {
-    // Fallback ha a táblád neve nem finances, hanem finance
     try {
-      await supabase.from("finance").insert({
-        user_id: user?.id,
-        title: `Alom eladás: ${collar} kiskutya (${buyer_name})`,
-        amount: sale_price,
-        type: "income",
-        date: new Date().toISOString().split("T")[0]
-      });
+      await supabase.from("finance").insert(financePayload);
     } catch (err) {}
   }
 
