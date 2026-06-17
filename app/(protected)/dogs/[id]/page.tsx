@@ -17,7 +17,7 @@ export default async function DogProfilePage({
   params,
   searchParams,
 }: any) {
-  // ✅ NEXT 16 ASZINKRON PARAMS JAVÍTÁS
+  // NEXT 16 ASZINKRON PARAMS JAVÍTÁS
   const resolvedParams = await params;
   const resolvedSearchParams = await searchParams;
   
@@ -25,7 +25,7 @@ export default async function DogProfilePage({
   const activeTab = resolvedSearchParams.tab || "overview";
   const isEditing = resolvedSearchParams.edit === "true";
 
-  // ✅ NEXT 16 ASZINKRON COOKIES JAVÍTÁS
+  // NEXT 16 ASZINKRON COOKIES JAVÍTÁS
   const cookieStore = await cookies();
 
   const supabase = createServerClient(
@@ -51,7 +51,7 @@ export default async function DogProfilePage({
 
   if (!user) redirect("/login");
 
-  // ✅ KUTYA ALAPADATOK LEKÉRÉSE ID ALAPJÁN (A hibás user_id szűrés eltávolítva)
+  // KUTYA ALAPADATOK LEKÉRÉSE ID ALAPJÁN
   const { data: dog } = await supabase
     .from("dogs")
     .select("*")
@@ -66,7 +66,7 @@ export default async function DogProfilePage({
     );
   }
 
-  // ✅ PONTOS ADATKAPCSOLATOK A KIOLVASOTT SÉMÁD ALAPJÁN
+  // ADATKAPCSOLATOK LEKÉRÉSE
   const { data: heatCycles } = await supabase
     .from("heat_cycles")
     .select("*")
@@ -84,14 +84,12 @@ export default async function DogProfilePage({
     .eq("female_id", id)
     .order("date", { ascending: false });
 
-  // Orvosi adatok a dog_events táblából
   const { data: dogEvents } = await supabase
     .from("dog_events")
     .select("*")
     .eq("dog_id", id)
     .order("date", { ascending: false });
 
-  // Kiállítási adatok a dog_shows táblából
   const { data: shows } = await supabase
     .from("dog_shows")
     .select("*")
@@ -123,27 +121,79 @@ export default async function DogProfilePage({
         {isFemale && <Link href={`/dogs/${id}?tab=breeding`} className={`px-4 py-2 text-xs font-black uppercase border-b-2 transition ${activeTab === "breeding" ? "border-amber-500 text-amber-400" : "border-transparent text-zinc-500"}`}>🐾 Breeding Logs</Link>}
       </div>
 
-      {/* OVERVIEW FÜL */}
+      {/* OVERVIEW FÜL NÉZET + EDIT MECHANIZMUS */}
       {activeTab === "overview" && (
-        <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-xl space-y-4">
-          <div className="grid md:grid-cols-2 gap-4">
-            <div className="bg-black/40 border border-zinc-800 p-4 rounded-xl">
-              <div className="text-zinc-500 text-xs font-bold uppercase">Color Markings</div>
-              <div className="text-sm font-semibold mt-1 text-white">{dog.color || dog.color_markings || "brindle / no record"}</div>
-            </div>
-            <div className="bg-black/40 border border-zinc-800 p-4 rounded-xl">
-              <div className="text-zinc-500 text-xs font-bold uppercase">Microchip ID</div>
-              <div className="text-sm font-semibold mt-1 text-white">{dog.microchip_number || dog.microchip_id || "Not recorded"}</div>
-            </div>
-            <div className="bg-black/40 border border-zinc-800 p-4 rounded-xl">
-              <div className="text-zinc-500 text-xs font-bold uppercase">Passport Number</div>
-              <div className="text-sm font-semibold mt-1 text-white">{dog.passport_number || "Not recorded"}</div>
-            </div>
-            <div className="bg-black/40 border border-zinc-800 p-4 rounded-xl">
-              <div className="text-zinc-500 text-xs font-bold uppercase">Pedigree Registration</div>
-              <div className="text-sm font-semibold mt-1 text-white">{dog.registration_number || dog.pedigree_number || "Not recorded"}</div>
-            </div>
+        <div className="space-y-4">
+          <div className="flex justify-end">
+            {isEditing ? (
+              <Link href={`/dogs/${id}?tab=overview`} className="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-bold px-4 py-2 rounded-lg border border-zinc-700 transition">
+                Cancel Edit
+              </Link>
+            ) : (
+              <Link href={`/dogs/${id}?tab=overview&edit=true`} className="bg-amber-500 hover:bg-amber-600 text-black text-xs font-black uppercase px-4 py-2 rounded-lg transition shadow-lg shadow-amber-500/5">
+                📝 Edit Specifications
+              </Link>
+            )}
           </div>
+
+          {isEditing ? (
+            /* MODULÁRIS SZERKESZTŐ FORM */
+            <form action={updateDogProfileAction.bind(null, id)} className="bg-zinc-900 border border-zinc-800 p-6 rounded-xl grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider">Dog Name</label>
+                <input name="name" defaultValue={dog.name || ""} required className="w-full p-2.5 bg-black border border-zinc-800 rounded-lg text-sm text-white focus:border-amber-500 outline-none transition" />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider">Breed</label>
+                <input name="breed" defaultValue={dog.breed || ""} className="w-full p-2.5 bg-black border border-zinc-800 rounded-lg text-sm text-white focus:border-amber-500 outline-none transition" />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider">Color Markings</label>
+                <input name="color" defaultValue={dog.color || dog.color_markings || ""} className="w-full p-2.5 bg-black border border-zinc-800 rounded-lg text-sm text-white focus:border-amber-500 outline-none transition" />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider">Birth Date</label>
+                <input name="birth_date" type="date" defaultValue={dog.birth_date || ""} className="w-full p-2.5 bg-black border border-zinc-800 rounded-lg text-sm text-white focus:border-amber-500 outline-none transition" />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider">Microchip ID</label>
+                <input name="microchip_number" defaultValue={dog.microchip_number || dog.microchip_id || ""} className="w-full p-2.5 bg-black border border-zinc-800 rounded-lg text-sm text-white focus:border-amber-500 outline-none transition" />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider">Passport Number</label>
+                <input name="passport_number" defaultValue={dog.passport_number || ""} className="w-full p-2.5 bg-black border border-zinc-800 rounded-lg text-sm text-white focus:border-amber-500 outline-none transition" />
+              </div>
+              <div className="space-y-1.5 md:col-span-2">
+                <label className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider">Pedigree / Törzskönyv Number</label>
+                <input name="registration_number" defaultValue={dog.registration_number || dog.pedigree_number || ""} className="w-full p-2.5 bg-black border border-zinc-800 rounded-lg text-sm text-white focus:border-amber-500 outline-none transition" />
+              </div>
+              <button type="submit" className="bg-emerald-500 hover:bg-emerald-600 text-black font-black uppercase text-xs p-3.5 rounded-lg md:col-span-2 mt-2 transition shadow-lg shadow-emerald-500/5">
+                Save Specifications & Sync Storage
+              </button>
+            </form>
+          ) : (
+            /* STATIKUS KIJELZŐ KÁRTYÁK */
+            <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-xl space-y-4">
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="bg-black/40 border border-zinc-800 p-4 rounded-xl">
+                  <div className="text-zinc-500 text-xs font-bold uppercase">Color Markings</div>
+                  <div className="text-sm font-semibold mt-1 text-white">{dog.color || dog.color_markings || "brindle / no record"}</div>
+                </div>
+                <div className="bg-black/40 border border-zinc-800 p-4 rounded-xl">
+                  <div className="text-zinc-500 text-xs font-bold uppercase">Microchip ID</div>
+                  <div className="text-sm font-semibold mt-1 text-white">{dog.microchip_number || dog.microchip_id || "Not recorded"}</div>
+                </div>
+                <div className="bg-black/40 border border-zinc-800 p-4 rounded-xl">
+                  <div className="text-zinc-500 text-xs font-bold uppercase">Passport Number</div>
+                  <div className="text-sm font-semibold mt-1 text-white">{dog.passport_number || "Not recorded"}</div>
+                </div>
+                <div className="bg-black/40 border border-zinc-800 p-4 rounded-xl">
+                  <div className="text-zinc-500 text-xs font-bold uppercase">Pedigree Registration</div>
+                  <div className="text-sm font-semibold mt-1 text-white">{dog.registration_number || dog.pedigree_number || "Not recorded"}</div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -164,7 +214,7 @@ export default async function DogProfilePage({
         </div>
       )}
 
-      {/* MEDICAL FÜL (DOG_EVENTS TÁBLÁBÓL) */}
+      {/* MEDICAL FÜL */}
       {activeTab === "medical" && (
         <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-xl space-y-4">
           <h3 className="text-sm font-black uppercase tracking-wider text-amber-400">Medical History & Events</h3>
