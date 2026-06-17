@@ -28,24 +28,35 @@ export default async function HeatsPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  // 1. Lekérjük az összes kutyát a név-párosításhoz és a lenyílóhoz
-  const { data: allDogs } = await supabase
-    .from("dogs")
-    .select("id, name, sex")
-    .order("name", { ascending: true });
+  let allDogs: any[] = [];
+  let rawHeatCycles: any[] = [];
 
-  // 2. Lekérjük a tüzelési ciklusokat a heat_cycles táblából
-  const { data: rawHeatCycles } = await supabase
-    .from("heat_cycles")
-    .select("id, start_date, notes, dog_id")
-    .order("start_date", { ascending: false });
+  try {
+    // 1. Kutyák lekérése biztonságosan
+    const { data: dogsData } = await supabase
+      .from("dogs")
+      .select("id, name, sex")
+      .order("name", { ascending: true });
+    
+    if (dogsData) allDogs = dogsData;
 
-  // Kiszűrjük a szuka kutyákat a lenyíló menühöz (csak Female)
-  const femaleDogs = allDogs?.filter((d: any) => d.sex === "Female") || [];
+    // 2. Tüzelések lekérése biztonságosan
+    const { data: heatsData } = await supabase
+      .from("heat_cycles")
+      .select("id, start_date, notes, dog_id")
+      .order("start_date", { ascending: false });
+    
+    if (heatsData) rawHeatCycles = heatsData;
+  } catch (e) {
+    console.error("Hiba az adatok lekérése közben:", e);
+  }
 
-  // Összepárosítjuk a tüzeléseket a kutyák neveivel a memóriában (így nincs SQL JOIN hiba!)
-  const heatCycles = (rawHeatCycles || []).map((heat: any) => {
-    const foundDog = (allDogs || []).find((d: any) => d.id === heat.dog_id);
+  // Kizárólag a szukák (Female) szűrése a lenyílóhoz
+  const femaleDogs = allDogs.filter((d: any) => d.sex === "Female");
+
+  // Összepárosítás
+  const heatCycles = rawHeatCycles.map((heat: any) => {
+    const foundDog = allDogs.find((d: any) => d.id === heat.dog_id);
     return {
       ...heat,
       dog_name: foundDog ? foundDog.name : "Unknown Female"
