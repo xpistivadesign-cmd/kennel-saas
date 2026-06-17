@@ -73,27 +73,21 @@ export async function updatePuppyProfileAction(puppyId: string, data: any) {
   revalidatePath("/litters", "page");
 }
 
-// MODOSÍTOTT TREATMENT/VACCINATION MENTÉS TÍPUSSAL
 export async function addVaccinationAction(data: { vaccine_name: string; date: string; treatment_type: string; litter_id?: string; puppy_id?: string }) {
   const supabase = createSupabaseServer();
   if (data.litter_id) {
     const { data: pups } = await supabase.from("puppies").select("id").eq("litter_id", data.litter_id);
     if (pups && pups.length > 0) {
       const inserts = pups.map(p => ({ 
-        litter_id: data.litter_id, 
-        puppy_id: p.id, 
-        vaccine_name: data.vaccine_name, 
-        date_administered: data.date,
-        treatment_type: data.treatment_type
+        litter_id: data.litter_id, puppy_id: p.id, vaccine_name: data.vaccine_name, 
+        date_administered: data.date, treatment_type: data.treatment_type
       }));
       await supabase.from("puppy_vaccinations").insert(inserts);
     }
   } else if (data.puppy_id) {
     await supabase.from("puppy_vaccinations").insert({ 
-      puppy_id: data.puppy_id, 
-      vaccine_name: data.vaccine_name, 
-      date_administered: data.date,
-      treatment_type: data.treatment_type
+      puppy_id: data.puppy_id, vaccine_name: data.vaccine_name, 
+      date_administered: data.date, treatment_type: data.treatment_type
     });
   }
   revalidatePath("/litters", "page");
@@ -106,16 +100,15 @@ export async function deleteVaccinationAction(id: string) {
   revalidatePath("/litters", "page");
 }
 
-// BIZTONSÁGOS FINANCES SZINKRONIZÁCIÓ VALÓDI HIBADOBÁSSAL
+// ATOMBIZTOS HIBAKILÖVŐ: Tiszta szöveges választ adunk, amit nem tilt le a Vercel!
 export async function sellPuppyAction(puppyId: string, litterId: string, formData: FormData) {
   const supabase = createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
   const buyer_name = String(formData.get("buyer_name"));
   const sale_price = parseFloat(String(formData.get("sale_price") || "0"));
 
-  // 1. Kutya státusz frissítése eladottra
   const { error: pErr } = await supabase.from("puppies").update({ buyer_name, sale_price, status: "Sold" }).eq("id", puppyId);
-  if (pErr) throw new Error("Kiskutya státusz frissítési hiba: " + pErr.message);
+  if (pErr) return { success: false, error: "Kiskutya tábla hiba: " + pErr.message };
   
   const finData = {
     user_id: user?.id, 
@@ -123,19 +116,23 @@ export async function sellPuppyAction(puppyId: string, litterId: string, formDat
     amount: sale_price, 
     type: "income", 
     date: new Date().toISOString().split("T")[0],
-    category: "Eladás" // Megpróbáljuk alapértelmezett kategóriával hátha ezt hiányolja a séma
+    category: "Eladás" 
   };
 
-  // 2. Mentés a pénzügyekbe - Ha hibára fut, a throw new Error fel fogja dobni kliens oldalon alert ablakban!
+  // Megpróbáljuk a 'finances' táblát
   const { error: fErr } = await supabase.from("finances").insert(finData);
-  
   if (fErr) {
-    // Megpróbáljuk az egyes számú finance táblát is hátha az a jó
+    // Ha nem sikerült, megpróbáljuk a 'finance' táblát is
     const { error: fErr2 } = await supabase.from("finance").insert(finData);
     if (fErr2) {
-      throw new Error(`Pénzügy mentési hiba! A 'finances' hiba: ${fErr.message}. A 'finance' hiba: ${fErr2.message}`);
+      // Ha ez sem sikerült, tiszta adatszerkezetben küldjük vissza a hiba okát!
+      return { 
+        success: false, 
+        error: `Supabase elutasította a mentést! 'finances' hiba: ${fErr.message} | 'finance' hiba: ${fErr2.message}` 
+      };
     }
   }
   
   revalidatePath("/litters", "page");
+  return { success: true };
 }
