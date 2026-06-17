@@ -85,10 +85,10 @@ export default function LittersClient({ litters, puppies, potentialSires, potent
       
       {/* ALMENÜ NAVIGÁCIÓ */}
       <div className="flex border-b border-zinc-800 gap-2 overflow-x-auto">
-        <button onClick={() => { setActiveTab("directory"); setDbError(null); }} className={`px-4 py-2 text-xs font-black uppercase border-b-2 transition ${activeTab === "directory" ? "border-amber-500 text-amber-400" : "border-transparent text-zinc-500"}`}>📂 Litters Directory</button>
-        <button onClick={() => setActiveTab("planner")} className={`px-4 py-2 text-xs font-black uppercase border-b-2 transition ${activeTab === "planner" ? "border-amber-500 text-amber-400" : "border-transparent text-zinc-500"}`}>🎯 Mating Planner</button>
+        <button type="button" onClick={() => { setActiveTab("directory"); setDbError(null); }} className={`px-4 py-2 text-xs font-black uppercase border-b-2 transition ${activeTab === "directory" ? "border-amber-500 text-amber-400" : "border-transparent text-zinc-500"}`}>📂 Litters Directory</button>
+        <button type="button" onClick={() => { setActiveTab("planner"); setDbError(null); }} className={`px-4 py-2 text-xs font-black uppercase border-b-2 transition ${activeTab === "planner" ? "border-amber-500 text-amber-400" : "border-transparent text-zinc-500"}`}>🎯 Mating Planner</button>
         {selectedLitter && (
-          <button onClick={() => { setActiveTab("litter-profile"); setDbError(null); }} className={`px-4 py-2 text-xs font-black uppercase border-b-2 transition ${activeTab === "litter-profile" ? "border-amber-500 text-amber-400" : "border-transparent text-zinc-500"}`}>🐶 {selectedLitter.letter} Litter Manager</button>
+          <button type="button" onClick={() => { setActiveTab("litter-profile"); setDbError(null); }} className={`px-4 py-2 text-xs font-black uppercase border-b-2 transition ${activeTab === "litter-profile" ? "border-amber-500 text-amber-400" : "border-transparent text-zinc-500"}`}>🐶 {selectedLitter.letter} Litter Manager</button>
         )}
       </div>
 
@@ -111,6 +111,7 @@ export default function LittersClient({ litters, puppies, potentialSires, potent
                 className="bg-zinc-900/40 border border-zinc-800 p-5 rounded-xl flex flex-col justify-between hover:border-zinc-700 transition"
               >
                 <button 
+                  type="button"
                   onClick={() => { setSelectedLitterId(l.id); setActiveTab("litter-profile"); }}
                   className="text-left w-full block focus:outline-none"
                 >
@@ -126,42 +127,13 @@ export default function LittersClient({ litters, puppies, potentialSires, potent
                   <div className="mt-3 pt-3 border-t border-zinc-800/60 font-mono text-xs space-y-1">
                     {isPlanned ? (
                       <>
-                        <p className="text-zinc-400"><span className="text-zinc-500 uppercase font-bold text-[10px] block">Fedeztetés időpontja:</span> {l.birth_date || "Nincs megadva"}</p>
-                        <p className="text-blue-400 font-bold"><span className="text-blue-500 uppercase text-[10px] block mt-1">Várható ellés időpontja (+63 nap):</span> {calculateWhelpingDate(l.birth_date)}</p>
+                        <div className="text-zinc-400"><span className="text-zinc-500 uppercase font-bold text-[10px] block">Fedeztetés időpontja:</span> {l.birth_date || "Nincs megadva"}</div>
+                        <div className="text-blue-400 font-bold"><span className="text-blue-500 uppercase text-[10px] block mt-1">Várható ellés időpontja (+63 nap):</span> {calculateWhelpingDate(l.birth_date)}</div>
                       </>
                     ) : (
-                      <p className="text-emerald-400"><span className="text-zinc-500 uppercase font-bold text-[10px] block">Ellés időpontja:</span> {l.birth_date || "Nincs megadva"}</p>
+                      <div className="text-emerald-400"><span className="text-zinc-500 uppercase font-bold text-[10px] block">Ellés időpontja:</span> {l.birth_date || "Nincs megadva"}</div>
                     )}
                   </div>
                 </button>
 
-                {/* Akciógombok a kártya alján */}
-                <div className="flex gap-2 mt-4 pt-3 border-t border-zinc-800 justify-end">
-                  {isPlanned && (
-                    <button
-                      disabled={isPending}
-                      onClick={() => handleMarkAsBorn(l.id)}
-                      className="px-3 py-1.5 text-[10px] font-black uppercase bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition disabled:opacity-50"
-                    >
-                      🎉 Megszületett
-                    </button>
-                  )}
-                  <button
-                    disabled={isPending}
-                    onClick={() => handleDeleteLitter(l.id, l.letter)}
-                    className="px-3 py-1.5 text-[10px] font-black uppercase bg-zinc-800 border border-zinc-700 text-red-400 rounded-lg hover:bg-red-950/40 hover:border-red-900 transition disabled:opacity-50"
-                  >
-                    🗑️ Törlés
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* B FÜL: MATING PLANNER FORMA */}
-      {activeTab === "planner" && (
-        <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-2xl max-w-2xl">
-          <h2 className="text-lg font-black uppercase text-amber-400 mb-4">Plan & Register New Mating / Litter</h2>
-          <form action={createLitterAction} className="space-y-4 text-xs">
+                {
