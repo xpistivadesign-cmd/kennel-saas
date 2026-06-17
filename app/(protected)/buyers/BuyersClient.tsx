@@ -27,15 +27,37 @@ export default function BuyersClient({ buyers, puppies }: any) {
     if (!name.trim()) return;
     setLoad(true);
     try {
-      await addBuyerAction({
-        name: name.trim(), email, phone, address,
-        id_card_number: idCard, status, preferred_gender: genderPref, notes
+      // Meghívjuk a szerver oldali actiont
+      const res = await addBuyerAction({
+        name: name.trim(), 
+        email, 
+        phone, 
+        address,
+        id_card_number: idCard, 
+        status, 
+        preferred_gender: genderPref, 
+        notes
       });
+
+      // Ha az új, objektum-alapú hibakezelést használjuk az actions.ts-ben
+      if (res && typeof res === "object" && "success" in res && !res.success) {
+        alert("Supabase adatbázis hiba: " + res.error);
+        return;
+      }
+
       alert("Sikeresen hozzáadva! 🎉");
-      setName(""); setEmail(""); setPhone(""); setAddress(""); setIdCard(""); setNotes("");
-      startTransition(() => { router.refresh(); });
+      setName(""); 
+      setEmail(""); 
+      setPhone(""); 
+      setAddress(""); 
+      setIdCard(""); 
+      setNotes("");
+      
+      startTransition(() => { 
+        router.refresh(); 
+      });
     } catch (err: any) { 
-      alert("Mentési hiba: " + err.message); 
+      alert("Hálózati / Szerver hiba: " + err.message); 
     } finally { 
       setLoad(false); 
     }
@@ -43,17 +65,29 @@ export default function BuyersClient({ buyers, puppies }: any) {
 
   const onChangeStatus = async (id: string, newStatus: string) => {
     try {
-      await updateBuyerStatusAction(id, newStatus);
+      const res = await updateBuyerStatusAction(id, newStatus);
+      if (res && typeof res === "object" && "success" in res && !res.success) {
+        alert("Státuszmódosítási hiba: " + res.error);
+        return;
+      }
       startTransition(() => { router.refresh(); });
-    } catch (err: any) { alert(err.message); }
+    } catch (err: any) { 
+      alert("Hiba: " + err.message); 
+    }
   };
 
   const onDelete = async (id: string) => {
     if (!confirm("Biztosan törlöd ezt a személyt?")) return;
     try {
-      await deleteBuyerAction(id);
+      const res = await deleteBuyerAction(id);
+      if (res && typeof res === "object" && "success" in res && !res.success) {
+        alert("Törlési hiba: " + res.error);
+        return;
+      }
       startTransition(() => { router.refresh(); });
-    } catch (err: any) { alert(err.message); }
+    } catch (err: any) { 
+      alert("Hiba: " + err.message); 
+    }
   };
 
   const generateContract = () => {
@@ -83,7 +117,7 @@ export default function BuyersClient({ buyers, puppies }: any) {
         </head>
         <body>
           <h1>EB ADÁSVÉTELI SZERZŐDÉS</h1>
-          <p>Amely létrejött egyfelől a <strong>Tenyésztő / Eladó</strong>, másfelől alulírott vevő között:</p>
+          <p>Amely létrejott egyfelől a <strong>Tenyésztő / Eladó</strong>, másfelől alulírott vevő között:</p>
           
           <div class="grid">
             <div>
