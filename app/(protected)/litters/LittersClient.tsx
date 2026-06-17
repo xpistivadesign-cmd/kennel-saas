@@ -14,14 +14,10 @@ export default function LittersClient({ litters, puppies, potentialSires, potent
   const [pugs, setPugs] = useState<any[]>(puppies || []);
   const [vaccs, setVaccs] = useState<any[]>(vaccinations || []);
 
-  // Kiválasztott kiskutya a részletes profilhoz
   const [selPuppy, setSelPuppy] = useState<any | null>(null);
-
-  // Alomszintű oltás űrlap
   const [vName, setVName] = useState("");
   const [vDate, setVDate] = useState(new Date().toISOString().split("T")[0]);
 
-  // Új kiskutya mezők
   const [fname, setFname] = useState("");
   const [fc, setFc] = useState("");
   const [fg, setGender] = useState("Male");
@@ -35,6 +31,22 @@ export default function LittersClient({ litters, puppies, potentialSires, potent
   const litter = litters.find((l: any) => l.id === selId);
   const currentPuppies = pugs.filter((p) => p.litter_id === selId);
 
+  const onBorn = async (id: string) => {
+    const d = prompt("Dátum (ÉÉÉÉ-HH-NN):", new Date().toISOString().split("T")[0]);
+    if (d) { 
+      await markLitterAsBornAction(id, d); 
+      alert("Kész! 🎉"); 
+    }
+  };
+
+  const onDel = async (id: string, n: string) => {
+    if (confirm(`Törlöd ezt az almot: ${n}?`)) { 
+      await deleteLitterAction(id); 
+      setSelId(null); 
+      setTab("directory"); 
+    }
+  };
+
   const onAddPuppy = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selId || !fc.trim() || !fname.trim()) return;
@@ -45,7 +57,9 @@ export default function LittersClient({ litters, puppies, potentialSires, potent
         gender: fg, weight_unit: fw, birth_weight: parseInt(fb || "0", 10)
       });
       if (nP) setPugs(prev => [...prev, nP]);
-      setFname(""); setFc(""); setFb("");
+      setFname(""); 
+      setFc(""); 
+      setBirthWeight(""); // FIX: setFb helyett a jó state setter függvényt hívjuk!
     } catch (e: any) { alert(e.message); } finally { setLoad(false); }
   };
 
@@ -91,13 +105,59 @@ export default function LittersClient({ litters, puppies, potentialSires, potent
         </div>
       )}
 
+      {tab === "planner" && (
+        <form action={createLitterAction} className="bg-zinc-900 p-4 rounded border border-zinc-800 max-w-md space-y-3">
+          <h2 className="text-sm font-bold text-amber-400 uppercase">Plan New Litter</h2>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-zinc-500 block mb-1">Alom Betűje</label>
+              <input name="letter" required placeholder="Pl. B" className="w-full p-2 bg-black border border-zinc-800 rounded text-white" />
+            </div>
+            <div>
+              <label className="text-zinc-500 block mb-1">Date</label>
+              <input name="birth_date" type="date" className="w-full p-2 bg-black border border-zinc-800 rounded text-white" />
+            </div>
+          </div>
+          <div>
+            <label className="text-blue-400 block mb-1">Sire (Father)</label>
+            <select name="sire_id" onChange={(e) => setSireType(e.target.value)} className="w-full p-2 bg-black border border-zinc-800 rounded text-white">
+              <option value="null">-- Select --</option>
+              {potentialSires.map((s: any) => (<option key={s.id} value={s.id}>{s.name}</option>))}
+              <option value="other">Other...</option>
+            </select>
+            {sireType === "other" && (
+              <input name="sire_name" placeholder="External sire name" className="w-full p-2 bg-zinc-950 border border-zinc-800 rounded mt-1 text-white" />
+            )}
+          </div>
+          <div>
+            <label className="text-pink-400 block mb-1">Dam (Mother)</label>
+            <select name="dam_id" onChange={(e) => setDamType(e.target.value)} className="w-full p-2 bg-black border border-zinc-800 rounded text-white">
+              <option value="null">-- Select --</option>
+              {potentialDams.map((d: any) => (<option key={d.id} value={d.id}>{d.name}</option>))}
+              <option value="other">Other...</option>
+            </select>
+            {damType === "other" && (
+              <input name="dam_name" placeholder="External dam name" className="w-full p-2 bg-zinc-950 border border-zinc-800 rounded mt-1 text-white" />
+            )}
+          </div>
+          <div>
+            <label className="text-zinc-500 block mb-1">Státusz</label>
+            <select name="status" className="w-full p-2 bg-black border border-zinc-800 rounded text-white">
+              <option value="Tervezett">Planning</option>
+              <option value="Ellés">Born</option>
+            </select>
+          </div>
+          <button type="submit" className="w-full bg-amber-500 text-black font-bold p-2 rounded uppercase">Save Litter</button>
+        </form>
+      )}
+
       {tab === "litter-profile" && litter && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <div className="lg:col-span-2 space-y-4">
             <div className="bg-zinc-900 p-4 rounded border border-zinc-800">
-              <h2 className="text-base font-bold text-amber-400">Alomszintű Oltási Napló (Minden kiskutyának)</h2>
+              <h2 className="text-base font-bold text-amber-400">Alomszintű Oltási Napló</h2>
               <form onSubmit={onLitterVaccine} className="flex gap-2 mt-2">
-                <input value={vName} onChange={e => setVName(e.target.value)} required placeholder="Oltás neve (pl. Parvo, Kombinált)" className="bg-black p-2 rounded border border-zinc-800 flex-1 text-white" />
+                <input value={vName} onChange={e => setVName(e.target.value)} required placeholder="Oltás neve (pl. Parvo)" className="bg-black p-2 rounded border border-zinc-800 flex-1 text-white" />
                 <input type="date" value={vDate} onChange={e => setVDate(e.target.value)} className="bg-black p-2 rounded border border-zinc-800 text-white" />
                 <button type="submit" className="bg-amber-500 text-black px-4 py-2 rounded font-bold">Oltás beadása</button>
               </form>
@@ -114,9 +174,9 @@ export default function LittersClient({ litters, puppies, potentialSires, potent
                       <span className="text-zinc-500 font-mono text-[10px]">Súly: {p.birth_weight}{p.weight_unit}</span>
                     </button>
                     {p.status !== "Sold" ? (
-                      <form action={sellPuppyAction.bind(null, p.id, litter.id)} className="flex gap-1 bg-zinc-900 p-1.5 rounded border border-zinc-800">
-                        <input name="buyer_name" required placeholder="Gazdi" className="p-1 bg-black rounded border border-zinc-800 w-24" />
-                        <input name="sale_price" type="number" required placeholder="EUR" className="w-16 p-1 bg-black rounded border border-zinc-800" />
+                      <form action={sellPuppyAction.bind(null, p.id, litter.id)} className="flex gap-1 bg-zinc-900 p-1.5 rounded border border-zinc-800 text-white">
+                        <input name="buyer_name" required placeholder="Gazdi" className="p-1 bg-black rounded border border-zinc-800 w-24 text-white" />
+                        <input name="sale_price" type="number" required placeholder="EUR" className="w-16 p-1 bg-black rounded border border-zinc-800 text-white" />
                         <button type="submit" className="bg-emerald-500 text-black px-2 py-1 font-bold rounded">SELL</button>
                       </form>
                     ) : <span className="text-emerald-400 font-bold bg-emerald-950/40 border border-emerald-900 px-2 py-1 rounded">SOLD & SYNCED</span>}
@@ -131,10 +191,10 @@ export default function LittersClient({ litters, puppies, potentialSires, potent
                 <div className="grid grid-cols-2 gap-2">
                   <div><label className="text-zinc-500 block mb-1">Név</label><input value={selPuppy.name || ""} onChange={e => setSelPuppy({...selPuppy, name: e.target.value})} className="w-full bg-black p-2 border border-zinc-800 rounded text-white" /></div>
                   <div><label className="text-zinc-500 block mb-1">Nyakörv / Jelölés</label><input value={selPuppy.collar_color || ""} onChange={e => setSelPuppy({...selPuppy, collar_color: e.target.value})} className="w-full bg-black p-2 border border-zinc-800 rounded text-white" /></div>
-                  <div><label className="text-zinc-500 block mb-1">Törzskönyvi szám (Pedigree)</label><input value={selPuppy.pedigree_number || ""} onChange={e => setSelPuppy({...selPuppy, pedigree_number: e.target.value})} placeholder="Pl. MET.Whip.124/26" className="w-full bg-black p-2 border border-zinc-800 rounded text-white" /></div>
+                  <div><label className="text-zinc-500 block mb-1">Törzskönyvi szám</label><input value={selPuppy.pedigree_number || ""} onChange={e => setSelPuppy({...selPuppy, pedigree_number: e.target.value})} placeholder="Pl. MET.Whip.124/26" className="w-full bg-black p-2 border border-zinc-800 rounded text-white" /></div>
                   <div><label className="text-zinc-500 block mb-1">Microchip szám</label><input value={selPuppy.microchip_number || ""} onChange={e => setSelPuppy({...selPuppy, microchip_number: e.target.value})} placeholder="Pl. 900182000123456" className="w-full bg-black p-2 border border-zinc-800 rounded text-white" /></div>
-                  <div><label className="text-zinc-500 block mb-1">Útlevél szám (Passport)</label><input value={selPuppy.passport_number || ""} onChange={e => setSelPuppy({...selPuppy, passport_number: e.target.value})} placeholder="Pl. HU123456" className="w-full bg-black p-2 border border-zinc-800 rounded text-white" /></div>
-                  <div><label className="text-zinc-500 block mb-1">Megjegyzés / Egyéb</label><input value={selPuppy.notes || ""} onChange={e => setSelPuppy({...selPuppy, notes: e.target.value})} className="w-full bg-black p-2 border border-zinc-800 rounded text-white" /></div>
+                  <div><label className="text-zinc-500 block mb-1">Útlevél szám</label><input value={selPuppy.passport_number || ""} onChange={e => setSelPuppy({...selPuppy, passport_number: e.target.value})} placeholder="Pl. HU123456" className="w-full bg-black p-2 border border-zinc-800 rounded text-white" /></div>
+                  <div><label className="text-zinc-500 block mb-1">Megjegyzés</label><input value={selPuppy.notes || ""} onChange={e => setSelPuppy({...selPuppy, notes: e.target.value})} className="w-full bg-black p-2 border border-zinc-800 rounded text-white" /></div>
                 </div>
                 <button type="submit" className="w-full bg-emerald-600 text-white font-bold p-2.5 rounded uppercase">Kiskutya adatlap mentése</button>
               </form>
@@ -147,7 +207,7 @@ export default function LittersClient({ litters, puppies, potentialSires, potent
             <div><label className="text-zinc-500 block mb-0.5">Collar / Markings</label><input value={fc} onChange={e => setFc(e.target.value)} required placeholder="Kék nyakörv" className="w-full p-1.5 bg-black border border-zinc-800 rounded text-white" /></div>
             <div><label className="text-zinc-500 block mb-0.5">Gender</label><select value={fg} onChange={e => setGender(e.target.value)} className="w-full p-1.5 bg-black border border-zinc-800 rounded text-white"><option value="Male">Kan</option><option value="Female">Szuka</option></select></div>
             <div><label className="text-zinc-500 block mb-0.5">Unit</label><select value={fw} onChange={e => setWeightUnit(e.target.value)} className="w-full p-1.5 bg-black border border-zinc-800 rounded text-white"><option value="g">Gramm (g)</option><option value="oz">Uncia (oz)</option></select></div>
-            <div><label className="text-zinc-500 block mb-0.5">Weight</label><input value={fb} onChange={e => setFb(e.target.value)} type="number" placeholder="450" className="w-full p-1.5 bg-black border border-zinc-800 rounded text-white" /></div>
+            <div><label className="text-zinc-500 block mb-0.5">Weight</label><input value={fb} onChange={e => setBirthWeight(e.target.value)} type="number" placeholder="450" className="w-full p-1.5 bg-black border border-zinc-800 rounded text-white" /></div>
             <button type="submit" disabled={load} className="w-full bg-amber-500 text-black font-bold py-1.5 rounded uppercase">{load ? "Saving..." : "Add Puppy"}</button>
           </form>
         </div>
