@@ -6,14 +6,13 @@ import { createSupabaseServer } from "@/lib/db/supabase-server";
 
 export async function createLitterAction(formData: FormData) {
   const supabase = createSupabaseServer();
-  
   const { data: { user } } = await supabase.auth.getUser();
 
   const rawSireId = formData.get("sire_id") ? String(formData.get("sire_id")) : "null";
   const rawDamId = formData.get("dam_id") ? String(formData.get("dam_id")) : "null";
 
-  // Alapadatok felépítése
-  const basePayload: any = {
+  // Összerakjuk a maximális lehetséges payloadot
+  let basePayload: any = {
     letter: String(formData.get("letter") || "").trim(),
     birth_date: formData.get("birth_date") ? String(formData.get("birth_date")) : null,
     sire_name: formData.get("sire_name") ? String(formData.get("sire_name")) : null,
@@ -23,37 +22,51 @@ export async function createLitterAction(formData: FormData) {
     user_id: user?.id || null
   };
 
-  // DINAMIKUS HOZZÁADÁS: Csak akkor küldjük be ezeket az oszlopokat, ha valóban belső kutyát választottál ki
-  // Ezzel kivédjük, ha a táblában nem létezik a 'dam_id' vagy 'sire_id' oszlop!
   if (rawSireId !== "null" && rawSireId !== "other" && rawSireId.trim() !== "") {
     basePayload.sire_id = rawSireId;
   }
-  
   if (rawDamId !== "null" && rawDamId !== "other" && rawDamId.trim() !== "") {
     basePayload.dam_id = rawDamId;
   }
 
   let success = false;
-  let errorMessage = "";
+  let finalErrorMessage = "";
+  
+  // Maximum 10-szer próbálkozunk, minden körben eldobva a hibás oszlopot, amit a Supabase hiányol
+  for (let attempt = 0; attempt < 10; attempt++) {
+    try {
+      const { error } = await supabase.from("litters").insert(basePayload);
+      
+      if (!error) {
+        success = true;
+        break; // Sikerült a mentés, kilépünk a ciklusból!
+      }
 
-  try {
-    const { error } = await supabase.from("litters").insert(basePayload);
-    if (error) {
-      errorMessage = error.message;
-    } else {
-      success = true;
+      finalErrorMessage = error.message;
+      console.error(`Mentési próbálkozás #${attempt} hiba:`, error.message);
+
+      // Megnézzük, hogy oszlophiány miatt szállt-e el a Supabase (pl. "Could not find the 'xxx' column")
+      const columnMatch = error.message.match(/column "([^"]+)"/i) || error.message.match(/column '([^']+)'/i);
+      
+      if (columnMatch && columnMatch[1]) {
+        const missingColumn = columnMatch[1];
+        console.log(`=> Automatikusan eltávolítjuk a hiányzó '${missingColumn}' oszlopot a kérésből.`);
+        delete basePayload[missingColumn]; // Töröljük a nem létező oszlopot a mentési csomagból
+      } else {
+        // Ha nem oszlophiány a hiba, hanem valami más, akkor nem tudjuk tovább szűrni
+        break;
+      }
+    } catch (err: any) {
+      finalErrorMessage = err?.message || "Ismeretlen hiba";
+      break;
     }
-  } catch (err: any) {
-    errorMessage = err?.message || "Ismeretlen hiba történt a mentés során.";
   }
 
-  // Ha nem sikerült, visszadobjuk a hibaüzenettel a felületre
+  // Ha minden kötél szakad és egyetlen variáció sem ment át
   if (!success) {
-    console.error("Supabase mentési hiba:", errorMessage);
-    return redirect(`/litters?error=${encodeURIComponent(errorMessage || "Database insert failed")}`);
+    return redirect(`/litters?error=${encodeURIComponent(finalErrorMessage || "Séma hiba")}`);
   }
 
-  // Sikeres mentés esetén tisztítjuk a cache-t és frissítünk
   revalidatePath("/litters");
   return redirect("/litters");
 }
