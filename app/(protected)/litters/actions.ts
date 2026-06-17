@@ -56,24 +56,26 @@ export async function addPuppyAction(data: {
   }).select().single();
   
   if (error) throw new Error(error.message);
-  
-  // Kényszerítjük a Next.js-t, hogy törölje a cache-t ehhez a porthoz!
   revalidatePath("/litters", "page");
   return newPuppy;
 }
 
+// FRISSÍTETT KISKUTYA PROFIL MENTÉS (ELHULLÁSSAL EGYÜTT)
 export async function updatePuppyProfileAction(puppyId: string, data: any) {
   const supabase = createSupabaseServer();
   const { error } = await supabase.from("puppies").update({
     name: data.name, collar_color: data.collar_color, gender: data.gender,
     birth_weight: data.birth_weight, weight_unit: data.weight_unit,
     pedigree_number: data.pedigree_number || null, microchip_number: data.microchip_number || null,
-    passport_number: data.passport_number || null, notes: data.notes || null
+    passport_number: data.passport_number || null, notes: data.notes || null,
+    status: data.status,
+    death_reason: data.status === "Deceased" ? data.death_reason : null
   }).eq("id", puppyId);
   if (error) throw new Error(error.message);
   revalidatePath("/litters", "page");
 }
 
+// OLTÁS / ORVOSI ADAT HOZZÁADÁSA
 export async function addVaccinationAction(data: { vaccine_name: string; date: string; litter_id?: string; puppy_id?: string }) {
   const supabase = createSupabaseServer();
   if (data.litter_id) {
@@ -85,6 +87,14 @@ export async function addVaccinationAction(data: { vaccine_name: string; date: s
   } else if (data.puppy_id) {
     await supabase.from("puppy_vaccinations").insert({ puppy_id: data.puppy_id, vaccine_name: data.vaccine_name, date_administered: data.date });
   }
+  revalidatePath("/litters", "page");
+}
+
+// ÚJ: OLTÁS / ORVOSI ADAT TÖRLÉSE
+export async function deleteVaccinationAction(id: string) {
+  const supabase = createSupabaseServer();
+  const { error } = await supabase.from("puppy_vaccinations").delete().eq("id", id);
+  if (error) throw new Error(error.message);
   revalidatePath("/litters", "page");
 }
 
