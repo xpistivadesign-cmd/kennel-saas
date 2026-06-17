@@ -19,7 +19,7 @@ export default function LittersClient({ litters, puppies, potentialSires, potent
   const [dbError, setDbError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  // URL-ből kiolvassuk, ha van error vagy id paraméter, hogy megtartsuk a fület
+  // URL paraméterek figyelése a fül megtartásához
   useEffect(() => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
@@ -31,7 +31,7 @@ export default function LittersClient({ litters, puppies, potentialSires, potent
       }
       if (urlId) {
         setSelectedLitterId(urlId);
-        setActiveTab("litter-profile"); // Ha van ID az URL-ben, kényszerítsük a profilt!
+        setActiveTab("litter-profile");
       }
     }
   }, [litters]);
@@ -39,7 +39,6 @@ export default function LittersClient({ litters, puppies, potentialSires, potent
   const selectedLitter = litters.find((l) => l.id === selectedLitterId);
   const currentPuppies = puppies.filter((p) => p.litter_id === selectedLitterId);
 
-  // Segédfüggvény a +63 napos várható ellés kiszámításához
   const calculateWhelpingDate = (dateString: string) => {
     if (!dateString) return "Nincs megadva";
     const date = new Date(dateString);
@@ -48,7 +47,6 @@ export default function LittersClient({ litters, puppies, potentialSires, potent
     return date.toISOString().split("T")[0];
   };
 
-  // Kezelő a státusz "Ellés"-re váltásához
   const handleMarkAsBorn = async (litterId: string) => {
     const today = new Date().toISOString().split("T")[0];
     const actualDate = prompt("Kérlek, add meg a tényleges ellés dátumát (ÉÉÉÉ-HH-NN):", today);
@@ -66,7 +64,6 @@ export default function LittersClient({ litters, puppies, potentialSires, potent
     }
   };
 
-  // Kezelő az alom törléséhez
   const handleDeleteLitter = async (litterId: string, letter: string) => {
     if (confirm(`Biztosan törölni szeretnéd a(z) "${letter}" almot és minden adatát a listából?`)) {
       startTransition(async () => {
@@ -85,7 +82,6 @@ export default function LittersClient({ litters, puppies, potentialSires, potent
     }
   };
 
-  // Külön kiszervezett kártya-renderelő függvény
   const renderLitterCard = (l: any) => {
     const isPlanned = l.status === "Tervezett" || l.status === "Planning" || l.status === "Pregnant";
     return (
@@ -304,18 +300,16 @@ export default function LittersClient({ litters, puppies, potentialSires, potent
               </div>
             </div>
 
-            {/* MÓDOSÍTOTT KLIENS OLDALI BIZTOSÍTÁSÚ ADD PUPPY FORM */}
+            {/* VÉGLEGESÍTETT FORM REJTETT INPUT MEZŐVEL A GOLYÓÁLLÓ LITTER_ID SZÁLLÍTÁSHOZ */}
             <div className="bg-zinc-900 border border-zinc-800 p-5 rounded-xl h-fit space-y-3">
               <h3 className="text-xs font-black uppercase text-zinc-400">Add Puppy to Litter</h3>
               <form 
-                onSubmit={() => {
-                  // Kis csalás: a gombnyomás pillanatában elmentjük az aktív fület a memóriába,
-                  // így a redirect után az useEffect azonnal visszaugrik ide, nem veszik el a nézet!
-                  localStorage.setItem("last_active_tab", "litter-profile");
-                }}
-                action={addPuppyAction.bind(null, selectedLitter.id)} 
+                action={addPuppyAction} 
                 className="space-y-3 text-xs"
               >
+                {/* EZ A LÉNYEG: Rejtett mezőben küldjük be az alom ID-ját, így garantáltan nem veszik el a szerveren! */}
+                <input type="hidden" name="litter_id" value={selectedLitter.id} />
+
                 <div>
                   <label className="text-zinc-500 uppercase block mb-1">Collar Color / Markings / Name</label>
                   <input name="collar_color" required placeholder="e.g., Kék nyakörv / 'Kis foltos'" className="w-full p-2 bg-black border border-zinc-800 rounded-lg text-white" />
