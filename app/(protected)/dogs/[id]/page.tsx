@@ -1,12 +1,10 @@
-"use client";
-
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { useState, useEffect } from "react";
 
 import DogBreedingSection from "./DogBreedingSection";
+import DogPedigreeSection from "./DogPedigreeSection";
 
 import {
   updateDogProfileAction,
@@ -16,91 +14,64 @@ import {
 
 export const dynamic = "force-dynamic";
 
-export default function DogProfilePage({
+export default async function DogProfilePage({
   params,
   searchParams,
 }: any) {
-  // Állapotok a dinamikus "Other" opció kezeléséhez
-  const [sireSelection, setSireSelection] = useState<string>("null");
-  const [damSelection, setDamSelection] = useState<string>("null");
-  const [initialDataLoaded, setInitialDataLoaded] = useState(false);
+  // NEXT 16 ASZINKRON PARAMS FELOLDÁS (SZERVEROLDALON)
+  const resolvedParams = await params;
+  const resolvedSearchParams = await searchParams;
+  
+  const id = resolvedParams.id;
+  const activeTab = resolvedSearchParams.tab || "overview";
+  const isEditing = resolvedSearchParams.edit === "true";
 
-  // Next 16 Aszinkron adatok feloldása kliens környezetben wrapperként szimulálva
-  const [id, setId] = useState<string>("");
-  const [activeTab, setActiveTab] = useState<string>("overview");
-  const [isEditing, setIsEditing] = useState<boolean>(false);
-  const [dog, setDog] = useState<any>(null);
-  const [potentialSires, setPotentialSires] = useState<any[]>([]);
-  const [potentialDams, setPotentialDams] = useState<any[]>([]);
-  const [sireNameDisplay, setSireNameDisplay] = useState("Unknown Stud");
-  const [damNameDisplay, setDamNameDisplay] = useState("Unknown Female");
-  const [heatCycles, setHeatCycles] = useState<any[]>([]);
-  const [progesterone, setProgesterone] = useState<any[]>([]);
-  const [matings, setMatings] = useState<any[]>([]);
-  const [dogEvents, setDogEvents] = useState<any[]>([]);
-  const [shows, setShows] = useState<any[]>([]);
-  const [isFemale, setIsFemale] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const cookieStore = await cookies();
 
-  useEffect(() => {
-    async function init() {
-      const resolvedParams = await params;
-      const resolvedSearchParams = await searchParams;
-      
-      const currentId = resolvedParams.id;
-      setId(currentId);
-      setActiveTab(resolvedSearchParams.tab || "overview");
-      setIsEditing(resolvedSearchParams.edit === "true");
-
-      const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        { cookies: { getAll() { return []; }, setAll() {} } }
-      );
-
-      const { data: currentDog } = await supabase.from("dogs").select("*").eq("id", currentId).single();
-      if (!currentDog) {
-        setLoading(false);
-        return;
-      }
-      setDog(currentDog);
-      setIsFemale(currentDog.sex === "Female");
-
-      // Set initial selection logic
-      if (currentDog.sire_id) setSireSelection(currentDog.sire_id);
-      else if (currentDog.sire_name || currentDog.sire) setSireSelection("other");
-
-      if (currentDog.dam_id) setDamSelection(currentDog.dam_id);
-      else if (currentDog.dam_name || currentDog.dam) setDamSelection("other");
-
-      const { data: allDogs } = await supabase.from("dogs").select("id, name, sex");
-      setPotentialSires(allDogs?.filter((d: any) => d.sex === "Male" && d.id !== currentId) || []);
-      setPotentialDams(allDogs?.filter((d: any) => d.sex === "Female" && d.id !== currentId) || []);
-
-      const dbSire = currentDog.sire_id ? allDogs?.find((d: any) => d.id === currentDog.sire_id) : null;
-      const dbDam = currentDog.dam_id ? allDogs?.find((d: any) => d.id === currentDog.dam_id) : null;
-
-      setSireNameDisplay(dbSire?.name || currentDog.sire_name || currentDog.sire || "Unknown Stud");
-      setDamNameDisplay(dbDam?.name || currentDog.dam_name || currentDog.dam || "Unknown Female");
-
-      const { data: hc } = await supabase.from("heat_cycles").select("*").eq("dog_id", currentId).order("start_date", { ascending: false });
-      const { data: pt } = await supabase.from("progesterone_tests").select("*").eq("dog_id", currentId).order("date", { ascending: false });
-      const { data: mt } = await supabase.from("matings").select("*").eq("female_id", currentId).order("date", { ascending: false });
-      const { data: de } = await supabase.from("dog_events").select("*").eq("dog_id", currentId).order("date", { ascending: false });
-      const { data: sh } = await supabase.from("dog_shows").select("*").eq("dog_id", currentId).order("date", { ascending: false });
-
-      setHeatCycles(hc || []);
-      setProgesterone(pt || []);
-      setMatings(mt || []);
-      setDogEvents(de || []);
-      setShows(sh || []);
-      setLoading(false);
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll(cookiesToSet: any[]) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            cookieStore.set(name, value, options);
+          });
+        },
+      },
     }
-    init();
-  }, [params, searchParams]);
+  );
 
-  if (loading) return <div className="p-10 text-zinc-500 bg-black min-h-screen font-mono text-xs">Syncing Kennel Core Data Layer...</div>;
-  if (!dog) return <div className="p-10 text-red-400 bg-black min-h-screen font-bold">Profile not found.</div>;
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  // KUTYA LEKÉRÉSE
+  const { data: dog } = await supabase.from("dogs").select("*").eq("id", id).single();
+  if (!dog) return <div className="p-10 text-red-400 bg-black min-h-screen">Profile not found.</div>;
+
+  // POTENCIÁLIS SZÜLŐK LISTÁJA A LEÖRDÜLŐHÖZ
+  const { data: allDogs } = await supabase.from("dogs").select("id, name, sex");
+  const potentialSires = allDogs?.filter((d: any) => d.sex === "Male" && d.id !== id) || [];
+  const potentialDams = allDogs?.filter((d: any) => d.sex === "Female" && d.id !== id) || [];
+
+  // CSALÁDFA SZÖVEGES MEGJELENÍTÉSE
+  const dbSire = dog.sire_id ? allDogs?.find((d: any) => d.id === dog.sire_id) : null;
+  const dbDam = dog.dam_id ? allDogs?.find((d: any) => d.id === dog.dam_id) : null;
+
+  const sireNameDisplay = dbSire?.name || dog.sire_name || dog.sire || "Unknown Stud";
+  const damNameDisplay = dbDam?.name || dog.dam_name || dog.dam || "Unknown Female";
+
+  // RENDERSZINTŰ ADATOK
+  const { data: heatCycles } = await supabase.from("heat_cycles").select("*").eq("dog_id", id).order("start_date", { ascending: false });
+  const { data: progesterone } = await supabase.from("progesterone_tests").select("*").eq("dog_id", id).order("date", { ascending: false });
+  const { data: matings } = await supabase.from("matings").select("*").eq("female_id", id).order("date", { ascending: false });
+  const { data: dogEvents } = await supabase.from("dog_events").select("*").eq("dog_id", id).order("date", { ascending: false });
+  const { data: shows } = await supabase.from("dog_shows").select("*").eq("dog_id", id).order("date", { ascending: false });
+
+  const isFemale = dog.sex === "Female";
 
   return (
     <div className="min-h-screen bg-black text-white p-6 space-y-6">
@@ -155,102 +126,20 @@ export default function DogProfilePage({
         </div>
       )}
 
-      {/* PEDIGREE TAB + INTELLIGENS HYBRID SZŰRŐ */}
+      {/* PEDIGREE TAB -> KISZERVEZVE A DINAMIKUS KLIENS KOMPONENSBE! */}
       {activeTab === "pedigree" && (
-        <div className="space-y-4">
-          <div className="flex justify-end">
-            <Link href={isEditing ? `/dogs/${id}?tab=pedigree` : `/dogs/${id}?tab=pedigree&edit=true`} className="bg-amber-500 hover:bg-amber-600 text-black text-xs font-black uppercase px-4 py-2 rounded-lg transition">
-              {isEditing ? "Cancel Edit" : "📝 Edit Pedigree"}
-            </Link>
-          </div>
-
-          {isEditing ? (
-            <form action={updateDogProfileAction.bind(null, id, "pedigree")} className="bg-zinc-900 border border-zinc-800 p-6 rounded-xl space-y-4">
-              <div className="grid md:grid-cols-2 gap-6">
-                
-                {/* SIRE SECTION */}
-                <div className="space-y-2 bg-black/30 border border-zinc-800 p-4 rounded-xl">
-                  <label className="text-[10px] uppercase font-black text-blue-400 tracking-wider block">Sire (Father) Selection</label>
-                  <select 
-                    name="sire_id" 
-                    value={sireSelection}
-                    onChange={(e) => setSireSelection(e.target.value)}
-                    className="w-full p-2.5 bg-black border border-zinc-800 rounded-lg text-sm text-white outline-none focus:border-blue-500 transition"
-                  >
-                    <option value="null">-- Unknown / Not Recorded --</option>
-                    {potentialSires.map((s: any) => (
-                      <option key={s.id} value={s.id}>🐾 {s.name}</option>
-                    ))}
-                    <option value="other">➕ Other (Type manually)...</option>
-                  </select>
-
-                  {/* Dinamikus Manuális Mező - Csak akkor ugrik fel, ha az "Other"-re kattintott! */}
-                  {sireSelection === "other" && (
-                    <div className="pt-2 animate-fadeIn">
-                      <label className="text-[9px] text-zinc-400 uppercase font-bold">Type External Stud's Complete Name:</label>
-                      <input 
-                        name="sire_name" 
-                        defaultValue={dog.sire_id ? "" : (dog.sire_name || dog.sire || "")} 
-                        required
-                        placeholder="e.g., El Toro Grande of Kennel" 
-                        className="w-full p-2.5 bg-zinc-950 border border-zinc-800 rounded-lg text-xs text-white mt-1 outline-none focus:border-amber-400"
-                      />
-                    </div>
-                  )}
-                </div>
-
-                {/* DAM SECTION */}
-                <div className="space-y-2 bg-black/30 border border-zinc-800 p-4 rounded-xl">
-                  <label className="text-[10px] uppercase font-black text-pink-400 tracking-wider block">Dam (Mother) Selection</label>
-                  <select 
-                    name="dam_id" 
-                    value={damSelection}
-                    onChange={(e) => setDamSelection(e.target.value)}
-                    className="w-full p-2.5 bg-black border border-zinc-800 rounded-lg text-sm text-white outline-none focus:border-pink-500 transition"
-                  >
-                    <option value="null">-- Unknown / Not Recorded --</option>
-                    {potentialDams.map((d: any) => (
-                      <option key={d.id} value={d.id}>🐾 {d.name}</option>
-                    ))}
-                    <option value="other">➕ Other (Type manually)...</option>
-                  </select>
-
-                  {/* Dinamikus Manuális Mező - Csak akkor ugrik fel, ha az "Other"-re kattintott! */}
-                  {damSelection === "other" && (
-                    <div className="pt-2 animate-fadeIn">
-                      <label className="text-[9px] text-zinc-400 uppercase font-bold">Type External Female's Complete Name:</label>
-                      <input 
-                        name="dam_name" 
-                        defaultValue={dog.dam_id ? "" : (dog.dam_name || dog.dam || "")} 
-                        required
-                        placeholder="e.g., Bella Donna of Spain" 
-                        className="w-full p-2.5 bg-zinc-950 border border-zinc-800 rounded-lg text-xs text-white mt-1 outline-none focus:border-amber-400"
-                      />
-                    </div>
-                  )}
-                </div>
-
-              </div>
-              <button type="submit" className="w-full bg-emerald-500 hover:bg-emerald-600 text-black font-black uppercase text-xs p-3.5 rounded-lg transition mt-2 shadow-lg shadow-emerald-500/5">
-                Save Lineage Connection & Sync Pedigree
-              </button>
-            </form>
-          ) : (
-            <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-xl">
-              <h3 className="text-sm font-black uppercase tracking-wider text-zinc-400 mb-4">Lineage Family Tree</h3>
-              <div className="grid grid-cols-2 gap-4 text-xs font-mono">
-                <div className="bg-black/40 p-4 rounded-xl border border-zinc-800">
-                  <span className="text-blue-400 font-bold block text-[10px]">Sire (Father)</span>
-                  <span className="text-white font-bold text-sm mt-1 block">{sireNameDisplay}</span>
-                </div>
-                <div className="bg-black/40 p-4 rounded-xl border border-zinc-800">
-                  <span className="text-pink-400 font-bold block text-[10px]">Dam (Mother)</span>
-                  <span className="text-white font-bold text-sm mt-1 block">{damNameDisplay}</span>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
+        <DogPedigreeSection
+          dogId={id}
+          isEditing={isEditing}
+          sireNameDisplay={sireNameDisplay}
+          damNameDisplay={damNameDisplay}
+          potentialSires={potentialSires}
+          potentialDams={potentialDams}
+          currentSireId={dog.sire_id}
+          currentDamId={dog.dam_id}
+          currentSireName={dog.sire_name || dog.sire}
+          currentDamName={dog.dam_name || dog.dam}
+        />
       )}
 
       {/* MEDICAL TAB */}
