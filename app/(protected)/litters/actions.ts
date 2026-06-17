@@ -10,37 +10,37 @@ export async function createLitterAction(formData: FormData) {
 
   const letter = String(formData.get("letter") || "").trim();
   const birthDate = formData.get("birth_date") ? String(formData.get("birth_date")) : null;
-  const status = String(formData.get("status") || "Planning");
+  const rawStatus = String(formData.get("status") || "Planning");
   const formNotes = String(formData.get("notes") || "");
+
+  // TŰPONTOS STÁTUSZ FORDÍTÁS AZ ADATBÁZISODHOZ:
+  // Ha az űrlap 'Planning'-et küld, azt 'Tervezett'-ként mentjük.
+  // Ha 'Born'-t vagy bármi mást, azt az adatbázisod szerinti 'Éllés'-ként mentjük.
+  let dbStatus = "Éllés"; 
+  if (rawStatus === "Planning" || rawStatus === "Tervezett" || rawStatus.toLowerCase() === "planning") {
+    dbStatus = "Tervezett";
+  } else if (rawStatus === "Born" || rawStatus === "Born/Active" || rawStatus === "Megszületett") {
+    dbStatus = "Éllés";
+  }
 
   // Mivel nincs külön letter oszlop a sémádban, a notes mezőbe mentjük el a jelet
   const combinedNotes = letter 
     ? `[Alom jele/betűje: ${letter}] ${formNotes}`.trim() 
     : formNotes;
 
-  // Első próbálkozás az űrlapról jövő státusszal
-  let payload: any = {
+  const payload: any = {
     birth_date: birthDate || null,
-    status: status,
+    status: dbStatus, // Most már a pontos, validált magyar szót küldjük be!
     notes: combinedNotes,
     user_id: user?.id || null,
     female_count: 0,
     male_count: 0
   };
 
-  let { error } = await supabase.from("litters").insert(payload);
-
-  // Ha a "litters_status_check" szabály megsérül, megpróbáljuk státusz mező nélkül beküldeni!
-  if (error && (error.message.includes("litters_status_check") || error.message.includes("constraint"))) {
-    console.log("Státusz constraint hiba észlelve, próbálkozás státusz mező nélkül...");
-    
-    delete payload.status; // Kitöröljük a státuszt, hogy a Supabase a saját default értékét adja neki
-    const retry = await supabase.from("litters").insert(payload);
-    error = retry.error;
-  }
+  const { error } = await supabase.from("litters").insert(payload);
 
   if (error) {
-    console.error("Végső Supabase mentési hiba:", error.message);
+    console.error("Supabase mentési hiba:", error.message);
     return redirect(`/litters?error=${encodeURIComponent(error.message)}`);
   }
 
