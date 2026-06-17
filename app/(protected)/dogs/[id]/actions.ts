@@ -1,131 +1,109 @@
 "use server";
 
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
+import { revalidatePath } from "next/cache";
+import { createSupabaseServer } from "@/lib/db/supabase-server";
 
-async function supabase() {
-  const cookieStore = await cookies();
-
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-        setAll(cookiesToSet: any[]) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            cookieStore.set(name, value, options);
-          });
-        },
-      },
-    }
-  );
+async function requireUser() {
+  const supabase = createSupabaseServer();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized access denied.");
+  return { supabase, user };
 }
 
-/* =========================
-   DOG PROFILE UPDATE
-========================= */
-
+/** 1. KUTYA ADATOK MÓDOSÍTÁSA */
 export async function updateDogProfileAction(dogId: string, formData: FormData) {
-  const sb = await supabase();
+  const { supabase } = await requireUser();
 
-  await sb
+  const payload = {
+    name: String(formData.get("name") ?? ""),
+    breed: String(formData.get("breed") ?? ""),
+    color: String(formData.get("color") ?? ""),
+    birth_date: String(formData.get("birth_date") ?? "") || null,
+    microchip_number: String(formData.get("microchip_number") ?? "") || null,
+    passport_number: String(formData.get("passport_number") ?? "") || null,
+    registration_number: String(formData.get("registration_number") ?? "") || null,
+  };
+
+  const { error } = await supabase
     .from("dogs")
-    .update({
-      name: formData.get("name"),
-      breed: formData.get("breed"),
-      color: formData.get("color"),
-      birth_date: formData.get("birth_date"),
-      microchip_number: formData.get("microchip_number"),
-      passport_number: formData.get("passport_number"),
-      registration_number: formData.get("registration_number"),
-    })
+    .update(payload)
     .eq("id", dogId);
+
+  if (error) throw new Error(error.message);
+  revalidatePath(`/dogs/${dogId}`);
 }
 
-/* =========================
-   IMAGE UPLOAD (SAFE PLACEHOLDER)
-========================= */
-
-export async function uploadDogImageAction(dogId: string, formData: FormData) {
-  const sb = await supabase();
-
-  // TODO: ide jön Supabase Storage később
-  const file = formData.get("file");
-
-  await sb
-    .from("dogs")
-    .update({
-      image_url: "uploaded-image-placeholder.jpg",
-    })
-    .eq("id", dogId);
-}
-
-/* =========================
-   MEDICAL RECORD
-========================= */
-
+/** 2. ORVOSI ADAT HOZZÁADÁSA (DOG_EVENTS TÁBLA) */
 export async function addMedicalRecordAction(dogId: string, formData: FormData) {
-  const sb = await supabase();
+  const { supabase } = await requireUser();
 
-  await sb.from("medical_records").insert({
+  const { error } = await supabase.from("dog_events").insert({
     dog_id: dogId,
-    date: formData.get("date"),
-    type: formData.get("type"),
-    notes: formData.get("notes"),
+    date: String(formData.get("date")),
+    event_type: String(formData.get("type")),
+    notes: String(formData.get("notes") ?? ""),
   });
+
+  if (error) throw new Error(error.message);
+  revalidatePath(`/dogs/${dogId}`);
 }
 
-/* =========================
-   SHOW RESULT
-========================= */
-
+/** 3. KIÁLLÍTÁSI EREDMÉNY HOZZÁADÁSA (DOG_SHOWS TÁBLA) */
 export async function addShowResultAction(dogId: string, formData: FormData) {
-  const sb = await supabase();
+  const { supabase } = await requireUser();
 
-  await sb.from("dog_shows").insert({
+  const { error } = await supabase.from("dog_shows").insert({
     dog_id: dogId,
-    show_name: formData.get("show_name"),
-    date: formData.get("date"),
-    location: formData.get("location"),
-    placement: formData.get("placement"),
+    show_name: String(formData.get("show_name")),
+    date: String(formData.get("date")),
+    location: String(formData.get("location") ?? ""),
+    placement: String(formData.get("placement") ?? ""),
   });
+
+  if (error) throw new Error(error.message);
+  revalidatePath(`/dogs/${dogId}`);
 }
 
-/* =========================
-   BREEDING (KÜLÖN MODUL)
-========================= */
+/** 4. TÜZELÉSI CIKLUS HOZZÁADÁSA (HEAT_CYCLES TÁBLA) */
+export async function addHeatAction(dogId: string, formData: FormData) {
+  const { supabase } = await requireUser();
 
-export async function addHeatCycleAction(dogId: string, formData: FormData) {
-  const sb = await supabase();
-
-  await sb.from("heat_cycles").insert({
+  const { error } = await supabase.from("heat_cycles").insert({
     dog_id: dogId,
-    start_date: formData.get("start_date"),
-    notes: formData.get("notes"),
+    start_date: String(formData.get("start_date")),
+    notes: String(formData.get("notes") ?? ""),
   });
+
+  if (error) throw new Error(error.message);
+  revalidatePath(`/dogs/${dogId}`);
 }
 
-export async function addProgesteroneTestAction(dogId: string, formData: FormData) {
-  const sb = await supabase();
+/** 5. PROGESZTERON TESZT HOZZÁADÁSA (PROGESTERONE_TESTS TÁBLA) */
+export async function addProgesteroneAction(dogId: string, formData: FormData) {
+  const { supabase } = await requireUser();
 
-  await sb.from("progesterone_tests").insert({
+  const { error } = await supabase.from("progesterone_tests").insert({
     dog_id: dogId,
-    date: formData.get("date"),
-    value: formData.get("value"),
-    notes: formData.get("notes"),
+    date: String(formData.get("date")),
+    progesterone: parseFloat(String(formData.get("progesterone") ?? "0")),
+    notes: String(formData.get("notes") ?? ""),
   });
+
+  if (error) throw new Error(error.message);
+  revalidatePath(`/dogs/${dogId}`);
 }
 
+/** 6. FEDEZTETÉS HOZZÁADÁSA (MATINGS TÁBLA) */
 export async function addMatingAction(dogId: string, formData: FormData) {
-  const sb = await supabase();
+  const { supabase } = await requireUser();
 
-  await sb.from("matings").insert({
+  const { error } = await supabase.from("matings").insert({
     female_id: dogId,
-    male_name: formData.get("male_name"),
-    date: formData.get("date"),
-    notes: formData.get("notes"),
+    male_name: String(formData.get("male_name")),
+    date: String(formData.get("mating_date")),
+    notes: String(formData.get("notes") ?? ""),
   });
+
+  if (error) throw new Error(error.message);
+  revalidatePath(`/dogs/${dogId}`);
 }
