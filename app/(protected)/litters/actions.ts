@@ -79,29 +79,37 @@ export async function deleteLitterAction(litterId: string) {
 export async function addPuppyAction(litterId: string, formData: FormData) {
   const supabase = createSupabaseServer();
   
-  const rawStatus = formData.get("status") ? String(formData.get("status")).trim() : "Elérhető";
-  const dbStatus = rawStatus === "Available" ? "Elérhető" : rawStatus;
+  const collarColor = String(formData.get("collar_color") || "").trim();
+  const gender = String(formData.get("gender") || "Male").trim();
+  const weightUnit = String(formData.get("weight_unit") || "g").trim();
+  const birthWeightRaw = String(formData.get("birth_weight") || "0");
+  const birthWeight = parseInt(birthWeightRaw, 10) || 0;
 
-  // Kivesszük a súly mértékegységét a formról (pl. 'g' vagy 'oz'), ha nincs megadva, alapértelmezetten 'g' (gramm)
-  const weightUnit = formData.get("weight_unit") ? String(formData.get("weight_unit")).trim() : "g";
+  // Kényszerített alapértelmezett státusz, ami nem ütközik az adatbázis korlátaival
+  const dbStatus = "Elérhető";
 
   const payload = {
     litter_id: litterId,
-    collar_color: String(formData.get("collar_color") || "").trim(), // Ide jöhet a nyakörv szín vagy egyedi jelölés neve is
-    gender: String(formData.get("gender") || "").trim(),             // Mentjük a kiválasztott nemet (Kan/Szuka)
-    birth_weight: parseInt(String(formData.get("birth_weight") || "0")),
-    weight_unit: weightUnit,                                         // Elmentjük, hogy amerikai vagy európai súlyt használsz-e
+    collar_color: collarColor,
+    gender: gender,
+    birth_weight: birthWeight,
+    weight_unit: weightUnit,
     status: dbStatus
   };
+
+  console.log("Kiskutya mentése elindult, adatok:", payload);
 
   const { error } = await supabase.from("puppies").insert(payload);
   
   if (error) {
-    console.error("Kiskutya mentési hiba részletei:", error.message);
+    console.error("KRITIKUS - Kiskutya mentési hiba a szerveren:", error.message);
+    // Visszairányítjuk az oldalra a hibaüzenettel együtt, hogy látszódjon a piros sávban
     return redirect(`/litters?id=${litterId}&error=${encodeURIComponent(error.message)}`);
   }
 
-  revalidatePath(`/litters?id=${litterId}`);
+  console.log("Kiskutya sikeresen elmentve!");
+  revalidatePath(`/litters`);
+  return redirect(`/litters?id=${litterId}`);
 }
 
 export async function sellPuppyAction(puppyId: string, litterId: string, formData: FormData) {
