@@ -29,8 +29,9 @@ export default function LittersClient({
   const [fb, setFb] = useState("");
   const [load, setLoad] = useState(false);
 
+  // Amikor a szerverről új adatok jönnek (pl. sell vagy delete után)
   useEffect(() => { 
-    setPugs(puppies); 
+    if (puppies) setPugs(puppies); 
   }, [puppies]);
 
   useEffect(() => {
@@ -86,22 +87,32 @@ export default function LittersClient({
       birth_weight: parseInt(fb || "0", 10) 
     };
     
+    const tempId = "t-" + Date.now();
     const temp = { 
       ...pData, 
-      id: "t-" + Date.now(), 
+      id: tempId, 
       status: "Elérhető" 
     };
     
-    setPugs((p) => [...p, temp]);
+    // Először betesszük az ideiglenes elemet (Optimistic UI)
+    setPugs((prev) => [...prev, temp]);
     
     try {
-      await addPuppyAction(pData);
+      const savedPuppy = await addPuppyAction(pData);
+      
+      // Ha sikeres, kicseréljük az ideiglenes elemet a szervertől kapottra
+      if (savedPuppy) {
+        setPugs((prev) => 
+          prev.map((p) => p.id === tempId ? savedPuppy : p)
+        );
+      }
       setFc(""); 
       setFb("");
     } catch (e: any) {
       alert("HIBA: " + (e.message || "Hiba!"));
       setErr(e.message);
-      setPugs((p) => p.filter((x) => x.id !== temp.id));
+      // Hiba esetén kiszedjük az ideiglenes elemet a listából
+      setPugs((prev) => prev.filter((x) => x.id !== tempId));
     } finally { 
       setLoad(false); 
     }
