@@ -4,7 +4,7 @@ import LittersClient from "./LittersClient";
 export default async function LittersPage() {
   const supabase = createSupabaseServer();
 
-  // Csak azokat az oszlopokat kérjük le, amik 100%, hogy léteznek nálad az adatbázisban!
+  // Kizárólag a nálad 100%-ban létező oszlopokat kérjük le az adatbázisból
   const { data: littersData } = await supabase
     .from("litters")
     .select("id, birth_date, notes, status, user_id, female_count, male_count")
@@ -14,15 +14,15 @@ export default async function LittersPage() {
     .from("dogs")
     .select("id, name, sex");
 
-  // Átformázzuk az adatokat a kliens komponens számára, hogy ne hiányolja a 'letter'-t
+  // Átformázzuk a rekordokat, hogy a felület ne hiányolja a hiányzó adatbázis mezőket
   const safeLitters = (littersData || []).map((litter) => {
-    // Megpróbáljuk kibányászni a mentett nevet/jelet a notes-ból, ha létezik
+    // Megpróbáljuk kiszedni a nevet/betűt a notes-ból, ha ott van
     const match = litter.notes?.match(/\[Alom jele\/betűje:\s*([^\]]+)\]/);
     const extractedLetter = match ? match[1] : `Alom (${litter.birth_date || "Tervezett"})`;
 
     return {
       ...litter,
-      letter: extractedLetter, // ezt fogja megjeleníteni névként a táblázatban
+      letter: extractedLetter, 
       sire_id: null,
       dam_id: null,
       sire_name: "N/A",
@@ -35,7 +35,7 @@ export default async function LittersPage() {
 
   return (
     <LittersClient 
-      initialLitters={safeLitters} 
+      litters={safeLitters} // Átírva initialLitters-ről sima litters-re, hogy a TypeScript boldog legyen!
       sires={sires} 
       dams={dams} 
     />
