@@ -20,9 +20,9 @@ export default function HeatsClient({ heatCycles, femaleDogs }: Props) {
               <div key={heat.id} className="bg-zinc-900/40 border border-zinc-800/80 p-5 rounded-xl block">
                 <div className="flex justify-between items-center">
                   <div>
-                    {/* ✅ KUTYA VALÓDI NEVE AZ UUID HELYETT */}
+                    {/* ✅ BIZTOSAN A KUTYA NEVE JELENIK MEG */}
                     <h2 className="text-lg font-bold text-white">
-                      🐾 {heat.dogs?.name || "Unknown Female"}
+                      🐾 {heat.dog_name}
                     </h2>
                     <p className="text-xs text-zinc-500 mt-1">
                       Ciklus kezdete: <span className="text-pink-400 font-mono font-bold">{heat.start_date}</span>
@@ -42,12 +42,12 @@ export default function HeatsClient({ heatCycles, femaleDogs }: Props) {
         </div>
       </div>
 
-      {/* JOBB OLDAL: SZŰRT ADD HEAT FORM */}
+      {/* JOBB OLDAL: PROFI FORM */}
       <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-xl h-fit space-y-4">
         <h2 className="text-base font-black uppercase tracking-wider text-zinc-300">Log New Heat</h2>
         
         <form action={addGlobalHeatAction} className="space-y-4 text-xs">
-          {/* Szuka választó - Csak Female kutyák! */}
+          {/* Szuka választó - Kizárólag Female kutyák! */}
           <div className="space-y-1">
             <label className="text-[10px] uppercase font-bold text-zinc-500">Select Female Dog</label>
             <select 
