@@ -76,34 +76,33 @@ export async function deleteLitterAction(litterId: string) {
   revalidatePath("/litters");
 }
 
-export async function addPuppyAction(litterId: string, formData: FormData) {
+export async function addPuppyAction(formData: FormData) {
   const supabase = createSupabaseServer();
   
+  // Közvetlenül a form-ból olvassuk ki az alom ID-t, nincs több paraméter-elcsúszás!
+  const litterId = String(formData.get("litter_id") || "").trim();
   const collarColor = String(formData.get("collar_color") || "").trim();
   const gender = String(formData.get("gender") || "Male").trim();
   const weightUnit = String(formData.get("weight_unit") || "g").trim();
   const birthWeightRaw = String(formData.get("birth_weight") || "0");
   const birthWeight = parseInt(birthWeightRaw, 10) || 0;
 
-  // Teljesen üresen hagyjuk a státuszt a beszúráskor, hogy a Supabase DEFAULT 'Elérhető' értéke lépjen életbe,
-  // így garantáltan átmegy minden ellenőrzésen!
   const payload = {
     litter_id: litterId,
     collar_color: collarColor,
     gender: gender,
     birth_weight: birthWeight,
-    weight_unit: weightUnit
+    weight_unit: weightUnit,
+    status: "Elérhető"
   };
 
   const { error } = await supabase.from("puppies").insert(payload);
   
   if (error) {
-    console.error("KRITIKUS - Kiskutya mentési hiba:", error.message);
-    // Visszairányítás pontosan az adott alom profil fülére hibaüzenettel
+    console.error("Kiskutya mentési hiba:", error.message);
     return redirect(`/litters?id=${litterId}&error=${encodeURIComponent(error.message)}`);
   }
 
-  // Frissítjük az útvonalat, és visszairányítunk úgy, hogy az aktív alom ID-ja megmaradjon az URL-ben!
   revalidatePath("/litters");
   return redirect(`/litters?id=${litterId}`);
 }
