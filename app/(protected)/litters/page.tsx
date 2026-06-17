@@ -1,59 +1,43 @@
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
+import { createSupabaseServer } from "@/lib/db/supabase-server";
 import LittersClient from "./LittersClient";
 
-export const dynamic = "force-dynamic";
+export default async function LittersPage() {
+  const supabase = createSupabaseServer();
 
-export default async function LittersPage({ searchParams }: any) {
-  const cookieStore = await cookies();
-  const resolvedSearchParams = await searchParams;
-  const activeLitterId = resolvedSearchParams.id || null;
-
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-        setAll(cookiesToSet: any[]) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            cookieStore.set(name, value, options);
-          });
-        },
-      },
-    }
-  );
-
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-
-  // 1. Almok lekérése
-  const { data: litters } = await supabase
+  // Csak azokat az oszlopokat kérjük le, amik 100%, hogy léteznek nálad az adatbázisban!
+  const { data: littersData } = await supabase
     .from("litters")
-    .select("*")
+    .select("id, birth_date, notes, status, user_id, female_count, male_count")
     .order("created_at", { ascending: false });
 
-  // 2. Kiskutyák lekérése
-  const { data: puppies } = await supabase
-    .from("puppies")
-    .select("*")
-    .order("created_at", { ascending: true });
+  const { data: dogs } = await supabase
+    .from("dogs")
+    .select("id, name, sex");
 
-  // 3. Potenciális szülők listája a legördülőhöz
-  const { data: allDogs } = await supabase.from("dogs").select("id, name, sex");
-  const potentialSires = allDogs?.filter((d: any) => d.sex === "Male") || [];
-  const potentialDams = allDogs?.filter((d: any) => d.sex === "Female") || [];
+  // Átformázzuk az adatokat a kliens komponens számára, hogy ne hiányolja a 'letter'-t
+  const safeLitters = (littersData || []).map((litter) => {
+    // Megpróbáljuk kibányászni a mentett nevet/jelet a notes-ból, ha létezik
+    const match = litter.notes?.match(/\[Alom jele\/betűje:\s*([^\]]+)\]/);
+    const extractedLetter = match ? match[1] : `Alom (${litter.birth_date || "Tervezett"})`;
+
+    return {
+      ...litter,
+      letter: extractedLetter, // ezt fogja megjeleníteni névként a táblázatban
+      sire_id: null,
+      dam_id: null,
+      sire_name: "N/A",
+      dam_name: "N/A"
+    };
+  });
+
+  const sires = (dogs || []).filter((d) => d.sex === "Male" || d.sex === "male");
+  const dams = (dogs || []).filter((d) => d.sex === "Female" || d.sex === "female");
 
   return (
     <LittersClient 
-      litters={litters || []} 
-      puppies={puppies || []} 
-      potentialSires={potentialSires} 
-      potentialDams={potentialDams}
-      activeLitterId={activeLitterId}
+      initialLitters={safeLitters} 
+      sires={sires} 
+      dams={dams} 
     />
   );
 }
