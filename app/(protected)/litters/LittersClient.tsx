@@ -19,16 +19,22 @@ export default function LittersClient({ litters, puppies, potentialSires, potent
   const [dbError, setDbError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  // URL-ből kiolvassuk, ha van error paraméter
+  // URL-ből kiolvassuk, ha van error vagy id paraméter, hogy megtartsuk a fület
   useEffect(() => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       const err = params.get("error");
+      const urlId = params.get("id");
+      
       if (err) {
         setDbError(decodeURIComponent(err));
       }
+      if (urlId) {
+        setSelectedLitterId(urlId);
+        setActiveTab("litter-profile"); // Ha van ID az URL-ben, kényszerítsük a profilt!
+      }
     }
-  }, []);
+  }, [litters]);
 
   const selectedLitter = litters.find((l) => l.id === selectedLitterId);
   const currentPuppies = puppies.filter((p) => p.litter_id === selectedLitterId);
@@ -298,10 +304,18 @@ export default function LittersClient({ litters, puppies, potentialSires, potent
               </div>
             </div>
 
-            {/* MÓDOSÍTOTT ADD PUPPY FORM JELÖLÉSSEL ÉS AMERIKAI/EURÓPAI SÚLLYAL */}
+            {/* MÓDOSÍTOTT KLIENS OLDALI BIZTOSÍTÁSÚ ADD PUPPY FORM */}
             <div className="bg-zinc-900 border border-zinc-800 p-5 rounded-xl h-fit space-y-3">
               <h3 className="text-xs font-black uppercase text-zinc-400">Add Puppy to Litter</h3>
-              <form action={addPuppyAction.bind(null, selectedLitter.id)} className="space-y-3 text-xs">
+              <form 
+                onSubmit={() => {
+                  // Kis csalás: a gombnyomás pillanatában elmentjük az aktív fület a memóriába,
+                  // így a redirect után az useEffect azonnal visszaugrik ide, nem veszik el a nézet!
+                  localStorage.setItem("last_active_tab", "litter-profile");
+                }}
+                action={addPuppyAction.bind(null, selectedLitter.id)} 
+                className="space-y-3 text-xs"
+              >
                 <div>
                   <label className="text-zinc-500 uppercase block mb-1">Collar Color / Markings / Name</label>
                   <input name="collar_color" required placeholder="e.g., Kék nyakörv / 'Kis foltos'" className="w-full p-2 bg-black border border-zinc-800 rounded-lg text-white" />
