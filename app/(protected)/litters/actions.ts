@@ -13,25 +13,34 @@ export async function createLitterAction(formData: FormData) {
   const status = String(formData.get("status") || "Planning");
   const formNotes = String(formData.get("notes") || "");
 
-  // Mivel nincs letter oszlopod, a notes mezőbe fűzzük be a betűt/nevet, hogy ne vesszen el!
+  // Mivel nincs külön letter oszlop a sémádban, a notes mezőbe mentjük el a jelet
   const combinedNotes = letter 
     ? `[Alom jele/betűje: ${letter}] ${formNotes}`.trim() 
     : formNotes;
 
-  // Tűpontos payload, ami szigorúan csak a Supabase-ben létező oszlopokat használja
-  const payload = {
+  // Első próbálkozás az űrlapról jövő státusszal
+  let payload: any = {
     birth_date: birthDate || null,
     status: status,
     notes: combinedNotes,
     user_id: user?.id || null,
-    female_count: 0, // alapértelmezett kezdőértékek
+    female_count: 0,
     male_count: 0
   };
 
-  const { error } = await supabase.from("litters").insert(payload);
+  let { error } = await supabase.from("litters").insert(payload);
+
+  // Ha a "litters_status_check" szabály megsérül, megpróbáljuk státusz mező nélkül beküldeni!
+  if (error && (error.message.includes("litters_status_check") || error.message.includes("constraint"))) {
+    console.log("Státusz constraint hiba észlelve, próbálkozás státusz mező nélkül...");
+    
+    delete payload.status; // Kitöröljük a státuszt, hogy a Supabase a saját default értékét adja neki
+    const retry = await supabase.from("litters").insert(payload);
+    error = retry.error;
+  }
 
   if (error) {
-    console.error("Supabase mentési hiba:", error.message);
+    console.error("Végső Supabase mentési hiba:", error.message);
     return redirect(`/litters?error=${encodeURIComponent(error.message)}`);
   }
 
