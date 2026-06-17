@@ -22,9 +22,10 @@ export default function LittersClient({
   const [sireType, setSireType] = useState("");
   const [damType, setDamType] = useState("");
   const [err, setErr] = useState<string | null>(null);
-  const [pugs, setPugs] = useState<any[]>(puppies || []);
   
-  // Kutya űrlap mezők
+  // Ezt a belső listát fogjuk manuálisan és stabilan frissíteni!
+  const [pugs, setPugs] = useState<any[]>(() => puppies || []);
+  
   const [fname, setFname] = useState("");
   const [fc, setFc] = useState("");
   const [fg, setFg] = useState("Male");
@@ -32,9 +33,9 @@ export default function LittersClient({
   const [fb, setFb] = useState("");
   const [load, setLoad] = useState(false);
 
-  // Szerver oldali adatok szinkronizációja (de óvatosan, nem ürítjük ki)
+  // Csak akkor frissítjük a szerverről, ha az valóban megváltozott és nem üres
   useEffect(() => { 
-    if (puppies) {
+    if (puppies && puppies.length > 0) {
       setPugs(puppies);
     }
   }, [puppies]);
@@ -45,12 +46,8 @@ export default function LittersClient({
       if (p.get("error")) {
         setErr(decodeURIComponent(p.get("error")!));
       }
-      if (p.get("id")) { 
-        setSelId(p.get("id")); 
-        setTab("litter-profile"); 
-      }
     }
-  }, [litters]);
+  }, []);
 
   const litter = litters.find((l: any) => l.id === selId);
   const currentPuppies = pugs.filter((p) => p.litter_id === selId);
@@ -73,13 +70,13 @@ export default function LittersClient({
 
   const onAddPuppy = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selId || !fc.trim()) return;
+    if (!selId || !fc.trim() || !fname.trim()) return;
     setLoad(true); 
     setErr(null);
     
     const pData = { 
       litter_id: selId, 
-      name: fname.trim() || "Kiskutya",
+      name: fname.trim(),
       collar_color: fc.trim(), 
       gender: fg, 
       weight_unit: fw, 
@@ -87,17 +84,24 @@ export default function LittersClient({
     };
     
     try {
-      // Megvárjuk a szerver válaszát, nincs korai felvillanás!
+      // Beküldjük a szervernek a hátterben
       const savedPuppy = await addPuppyAction(pData);
       
+      // FIX: Belekényszerítjük a lokális listába, így garantáltan NEM tűnik el!
       if (savedPuppy) {
-        setPugs((prev) => [...prev, savedPuppy]);
+        setPugs((prev) => {
+          const exists = prev.some(p => p.id === savedPuppy.id);
+          if (exists) return prev;
+          return [...prev, savedPuppy];
+        });
       }
+      
+      // Űrlap kiürítése sikeres mentés után
       setFname("");
       setFc(""); 
       setFb("");
     } catch (e: any) {
-      alert("Mentési hiba: " + (e.message || "Hiba!"));
+      alert("Mentési hiba: " + (e.message || "Ismeretlen hiba"));
       setErr(e.message);
     } finally { 
       setLoad(false); 
@@ -227,8 +231,8 @@ export default function LittersClient({
               {currentPuppies.map((p) => (
                 <div key={p.id} className="bg-zinc-950 border border-zinc-900 p-3 rounded flex justify-between items-center">
                   <div>
-                    <span className="font-bold block text-sm">🐶 {p.name}</span>
-                    <span className="text-zinc-400 block font-medium">🎀 Jelölés: {p.collar_color} ({p.gender === "Male" ? "Kan" : "Szuka"})</span>
+                    <span className="font-bold block text-sm text-amber-400">🐶 Name: {p.name}</span>
+                    <span className="text-zinc-300 block font-medium">🎀 Markings: {p.collar_color} ({p.gender === "Male" ? "Kan" : "Szuka"})</span>
                     <span className="text-zinc-500 font-mono text-[10px]">Súly: {p.birth_weight}{p.weight_unit}</span>
                   </div>
                   {p.status !== "Sold" ? (
@@ -243,7 +247,7 @@ export default function LittersClient({
                 </div>
               ))}
               {currentPuppies.length === 0 && (
-                <p className="text-zinc-600 italic">Nincs még kiskutya felvéve ebbe az alomba.</p>
+                <p className="text-zinc-600 italic p-2">Nincs még kiskutya felvéve ebbe az alomba.</p>
               )}
             </div>
           </div>
@@ -252,29 +256,29 @@ export default function LittersClient({
             <h3 className="font-bold text-zinc-400 uppercase">Add Puppy</h3>
             <div>
               <label className="text-zinc-500 block mb-0.5">Puppy Name</label>
-              <input value={fname} onChange={(e) => setFname(e.target.value)} required placeholder="Pl. Fuego, Zeus" className="w-full p-1.5 bg-black border border-zinc-800 rounded" />
+              <input value={fname} onChange={(e) => setFname(e.target.value)} required placeholder="Pl. Fuego, Zeus" className="w-full p-1.5 bg-black border border-zinc-800 rounded text-white" />
             </div>
             <div>
               <label className="text-zinc-500 block mb-0.5">Collar / Markings</label>
-              <input value={fc} onChange={(e) => setFc(e.target.value)} required placeholder="Pl. Kék nyakörv" className="w-full p-1.5 bg-black border border-zinc-800 rounded" />
+              <input value={fc} onChange={(e) => setFc(e.target.value)} required placeholder="Pl. Kék nyakörv" className="w-full p-1.5 bg-black border border-zinc-800 rounded text-white" />
             </div>
             <div>
               <label className="text-zinc-500 block mb-0.5">Gender</label>
-              <select value={fg} onChange={(e) => setFg(e.target.value)} className="w-full p-1.5 bg-black border border-zinc-800 rounded">
+              <select value={fg} onChange={(e) => setFg(e.target.value)} className="w-full p-1.5 bg-black border border-zinc-800 rounded text-white">
                 <option value="Male">Kan</option>
                 <option value="Female">Szuka</option>
               </select>
             </div>
             <div>
               <label className="text-zinc-500 block mb-0.5">Unit</label>
-              <select value={fw} onChange={(e) => setFw(e.target.value)} className="w-full p-1.5 bg-black border border-zinc-800 rounded">
+              <select value={fw} onChange={(e) => setFw(e.target.value)} className="w-full p-1.5 bg-black border border-zinc-800 rounded text-white">
                 <option value="g">Gramm (g)</option>
                 <option value="oz">Uncia (oz)</option>
               </select>
             </div>
             <div>
               <label className="text-zinc-500 block mb-0.5">Weight</label>
-              <input value={fb} onChange={(e) => setFb(e.target.value)} type="number" placeholder="450" className="w-full p-1.5 bg-black border border-zinc-800 rounded" />
+              <input value={fb} onChange={(e) => setFb(e.target.value)} type="number" placeholder="450" className="w-full p-1.5 bg-black border border-zinc-800 rounded text-white" />
             </div>
             <button type="submit" disabled={load} className="w-full bg-amber-500 text-black font-bold py-1.5 rounded uppercase disabled:opacity-50">
               {load ? "Saving..." : "Add Puppy"}
