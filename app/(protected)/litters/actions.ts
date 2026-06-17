@@ -2,10 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createSupabaseServer } from "@/lib/db/supabase-server";
+import { createServerSupabase } from "@/lib/supabase/server";
 
 export async function createLitterAction(formData: FormData) {
-  const supabase = createSupabaseServer();
+  const supabase = createServerSupabase();
   const { data: { user } } = await supabase.auth.getUser();
   const letter = String(formData.get("letter") || "").trim();
   const birthDate = formData.get("birth_date") ? String(formData.get("birth_date")) : null;
@@ -35,13 +35,13 @@ export async function createLitterAction(formData: FormData) {
 }
 
 export async function markLitterAsBornAction(litterId: string, actualBirthDate: string) {
-  const supabase = createSupabaseServer();
+  const supabase = createServerSupabase();
   await supabase.from("litters").update({ status: "Ellés", birth_date: actualBirthDate }).eq("id", litterId);
   revalidatePath("/litters", "page");
 }
 
 export async function deleteLitterAction(litterId: string) {
-  const supabase = createSupabaseServer();
+  const supabase = createServerSupabase();
   await supabase.from("litters").delete().eq("id", litterId);
   revalidatePath("/litters", "page");
 }
@@ -49,7 +49,7 @@ export async function deleteLitterAction(litterId: string) {
 export async function addPuppyAction(data: { 
   litter_id: string; name: string; collar_color: string; gender: string; weight_unit: string; birth_weight: number 
 }) {
-  const supabase = createSupabaseServer();
+  const supabase = createServerSupabase();
   const { data: newPuppy, error } = await supabase.from("puppies").insert({
     litter_id: data.litter_id, name: data.name, collar_color: data.collar_color,
     gender: data.gender, birth_weight: data.birth_weight, weight_unit: data.weight_unit, status: "Elérhető"
@@ -61,7 +61,7 @@ export async function addPuppyAction(data: {
 }
 
 export async function updatePuppyProfileAction(puppyId: string, data: any) {
-  const supabase = createSupabaseServer();
+  const supabase = createServerSupabase();
   const { error } = await supabase.from("puppies").update({
     name: data.name, collar_color: data.collar_color, gender: data.gender,
     birth_weight: data.birth_weight, weight_unit: data.weight_unit,
@@ -74,7 +74,7 @@ export async function updatePuppyProfileAction(puppyId: string, data: any) {
 }
 
 export async function addVaccinationAction(data: { vaccine_name: string; date: string; treatment_type: string; litter_id?: string; puppy_id?: string }) {
-  const supabase = createSupabaseServer();
+  const supabase = createServerSupabase();
   if (data.litter_id) {
     const { data: pups } = await supabase.from("puppies").select("id").eq("litter_id", data.litter_id);
     if (pups && pups.length > 0) {
@@ -94,48 +94,47 @@ export async function addVaccinationAction(data: { vaccine_name: string; date: s
 }
 
 export async function deleteVaccinationAction(id: string) {
-  const supabase = createSupabaseServer();
+  const supabase = createServerSupabase();
   const { error } = await supabase.from("puppy_vaccinations").delete().eq("id", id);
   if (error) throw new Error(error.message);
   revalidatePath("/litters", "page");
 }
 
-// GOLYÓÁLLÓ INCOME MENTÉS USER_ID SZINKRONNAL
+// JAVÍTOTT, A TE TÁBLASZERKEZETEDHEZ IGAZÍTOTT ELADÁS
 export async function sellPuppyAction(puppyId: string, litterId: string, formData: FormData) {
-  const supabase = createSupabaseServer();
+  const supabase = createServerSupabase();
   const { data: { user } } = await supabase.auth.getUser();
   
   const buyer_name = String(formData.get("buyer_name")).trim();
   const sale_price = parseFloat(String(formData.get("sale_price") || "0"));
 
-  // 1. Frissítjük a kiskutyát eladottra, elmentve a vevőt és az árat is
+  // 1. Kiskutya adatainak frissítése
   const { error: pErr } = await supabase
     .from("puppies")
     .update({ buyer_name, sale_price, status: "Sold" })
     .eq("id", puppyId);
     
-  if (pErr) return { success: false, error: pErr.message };
+  if (pErr) return { success: false, error: "Kiskutya tábla frissítési hiba: " + pErr.message };
   
-  // 2. Összekészítjük a pénzügyi adatot a bejelentkezett felhasználó azonosítójával
+  // 2. Összerakjuk az adatot PONTOSAN a te Supabase sémád szerint
   const finData = {
     user_id: user?.id || null, 
-    title: `Kiskutya eladás: ${buyer_name}`,
-    amount: sale_price, 
     type: "income", 
-    date: new Date().toISOString().split("T")[0],
-    category: "Eladás"
+    category: "Puppy Sale", 
+    amount: sale_price, 
+    currency: "EUR", 
+    description: `Kiskutya eladás: ${buyer_name}`,
+    date: new Date().toISOString().split("T")[0]
   };
 
-  // 3. Mentés a pénzügyi táblákba (kipróbálja mindkét lehetséges variációt)
+  // 3. Beszúrás a finances táblába
   const { error: fErr } = await supabase.from("finances").insert(finData);
+  
   if (fErr) {
-    const { error: fErr2 } = await supabase.from("finance").insert(finData);
-    if (fErr2) {
-      return { 
-        success: false, 
-        error: `Pénzügy tábla hiba! finances: ${fErr.message} | finance: ${fErr2.message}` 
-      };
-    }
+    return { 
+      success: false, 
+      error: `Nem sikerült a pénzügyekbe írni. Supabase hiba: ${fErr.message}` 
+    };
   }
   
   revalidatePath("/litters", "page");
