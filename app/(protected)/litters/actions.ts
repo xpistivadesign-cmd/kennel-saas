@@ -45,9 +45,10 @@ export async function deleteLitterAction(litterId: string) {
   revalidatePath("/litters");
 }
 
-// STABIL KISKUTYA MENTŐ (NINCS REDIRECT, CSAK REVALIDATE)
+// BIZTONSÁGOS KISKUTYA MENTŐ NÉV MEZŐVEL
 export async function addPuppyAction(data: { 
   litter_id: string; 
+  name: string;
   collar_color: string; 
   gender: string; 
   weight_unit: string; 
@@ -55,11 +56,15 @@ export async function addPuppyAction(data: {
 }) {
   const supabase = createSupabaseServer();
   
+  // Ha az adatbázisodban nincs 'name' oszlop, összefűzzük a nyakörvvel, 
+  // így nem dob hibát a Supabase, de a név is megmarad!
+  const displayName = data.name ? `${data.name} (${data.collar_color})` : data.collar_color;
+
   const { data: newPuppy, error } = await supabase
     .from("puppies")
     .insert({
       litter_id: data.litter_id,
-      collar_color: data.collar_color,
+      collar_color: displayName, // Itt mentjük el a nevet és a jelölést egyben
       gender: data.gender,
       birth_weight: data.birth_weight,
       weight_unit: data.weight_unit,
@@ -73,7 +78,7 @@ export async function addPuppyAction(data: {
   }
 
   revalidatePath("/litters");
-  return newPuppy; // Visszaadjuk a mentett kiskutyát az ID-jával együtt!
+  return newPuppy;
 }
 
 export async function sellPuppyAction(puppyId: string, litterId: string, formData: FormData) {
