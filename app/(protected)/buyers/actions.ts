@@ -17,16 +17,16 @@ export async function addBuyerAction(data: {
     const supabase = createServerSupabase();
     const { data: { user } } = await supabase.auth.getUser();
 
-    // Beszúrás a Supabase-be a te táblád pontos oszlopneveivel
+    // Itt a kulcs: data.name megy a full_name oszlopba!
     const { data: newBuyer, error } = await supabase.from("buyers").insert({
       user_id: user?.id || null,
-      name: data.name,
+      full_name: data.name, 
       email: data.email || null,
       phone: data.phone || null,
       address: data.address || null,
       id_card_number: data.id_card_number || null,
-      status: data.status,
-      preferred_gender: data.preferred_gender,
+      status: data.status || "Waiting",
+      preferred_gender: data.preferred_gender || "Mindegy",
       notes: data.notes || null
     }).select().single();
 
@@ -45,9 +45,7 @@ export async function updateBuyerStatusAction(buyerId: string, status: string) {
   try {
     const supabase = createServerSupabase();
     const { error } = await supabase.from("buyers").update({ status }).eq("id", buyerId);
-    
     if (error) return { success: false, error: error.message };
-    
     revalidatePath("/buyers");
     return { success: true };
   } catch (err: any) {
@@ -59,9 +57,7 @@ export async function deleteBuyerAction(buyerId: string) {
   try {
     const supabase = createServerSupabase();
     const { error } = await supabase.from("buyers").delete().eq("id", buyerId);
-    
     if (error) return { success: false, error: error.message };
-    
     revalidatePath("/buyers");
     return { success: true };
   } catch (err: any) {
