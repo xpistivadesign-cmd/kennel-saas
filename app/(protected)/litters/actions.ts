@@ -10,21 +10,8 @@ export async function createLitterAction(formData: FormData) {
 
   const letter = String(formData.get("letter") || "").trim();
   const birthDate = formData.get("birth_date") ? String(formData.get("birth_date")) : null;
-  const rawStatus = String(formData.get("status") || "").trim();
+  const rawStatus = String(formData.get("status") || "Tervezett").trim();
   const formNotes = String(formData.get("notes") || "");
-
-  // TŰPONTOS STÁTUSZ MEGHATÁROZÁS
-  let dbStatus = "Tervezett";
-  if (
-    rawStatus === "Born" || 
-    rawStatus === "Megszületett" || 
-    rawStatus === "Ellés" || 
-    rawStatus.toLowerCase().includes("born") ||
-    rawStatus.toLowerCase().includes("szület") ||
-    rawStatus.toLowerCase().includes("ell")
-  ) {
-    dbStatus = "Ellés";
-  }
 
   const sireName = formData.get("sire_name") ? String(formData.get("sire_name")).trim() : "";
   const damName = formData.get("dam_name") ? String(formData.get("dam_name")).trim() : "";
@@ -42,7 +29,7 @@ export async function createLitterAction(formData: FormData) {
   const payload: any = {
     letter: letter || null,
     birth_date: birthDate || null,
-    status: dbStatus,
+    status: rawStatus, // Pontosan azt küldjük be, amit a formról kaptunk
     notes: combinedNotes || null,
     user_id: user?.id || null,
     female_count: 0,
