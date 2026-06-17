@@ -45,21 +45,35 @@ export async function deleteLitterAction(litterId: string) {
   revalidatePath("/litters");
 }
 
-// AZ ÚJ, ULTRA-KOMPAKT KISKUTYA MENTŐ
-export async function addPuppyAction(data: { litter_id: string; collar_color: string; gender: string; weight_unit: string; birth_weight: number }) {
+// STABIL KISKUTYA MENTŐ (NINCS REDIRECT, CSAK REVALIDATE)
+export async function addPuppyAction(data: { 
+  litter_id: string; 
+  collar_color: string; 
+  gender: string; 
+  weight_unit: string; 
+  birth_weight: number 
+}) {
   const supabase = createSupabaseServer();
   
-  const { error } = await supabase.from("puppies").insert({
-    litter_id: data.litter_id,
-    collar_color: data.collar_color,
-    gender: data.gender,
-    birth_weight: data.birth_weight,
-    weight_unit: data.weight_unit,
-    status: "Elérhető"
-  });
+  const { data: newPuppy, error } = await supabase
+    .from("puppies")
+    .insert({
+      litter_id: data.litter_id,
+      collar_color: data.collar_color,
+      gender: data.gender,
+      birth_weight: data.birth_weight,
+      weight_unit: data.weight_unit,
+      status: "Elérhető"
+    })
+    .select()
+    .single();
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    throw new Error(error.message);
+  }
+
   revalidatePath("/litters");
+  return newPuppy; // Visszaadjuk a mentett kiskutyát az ID-jával együtt!
 }
 
 export async function sellPuppyAction(puppyId: string, litterId: string, formData: FormData) {
