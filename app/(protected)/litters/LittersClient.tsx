@@ -18,12 +18,14 @@ export default function LittersClient({ litters, puppies, potentialSires, potent
 
   const [selPuppy, setSelPuppy] = useState<any | null>(null);
   
-  // Alomszintű oltás állapota
+  // Alomszintű kezelés állapota
   const [vName, setVName] = useState("");
+  const [vType, setVType] = useState("Vaccination");
   const [vDate, setVDate] = useState(new Date().toISOString().split("T")[0]);
 
-  // Egyedi kiskutya oltás állapota
+  // Egyedi kiskutya kezelés állapota
   const [pMedName, setPMedName] = useState("");
+  const [pMedType, setPMedType] = useState("Vaccination");
   const [pMedDate, setPMedDate] = useState(new Date().toISOString().split("T")[0]);
 
   const [fname, setFname] = useState("");
@@ -39,7 +41,6 @@ export default function LittersClient({ litters, puppies, potentialSires, potent
   const litter = litters.find((l: any) => l.id === selId);
   const currentPuppies = pugs.filter((p) => p.litter_id === selId);
 
-  // Kiválasztott kiskutya egyedi orvosi bejegyzései
   const puppyMedicalRecords = selPuppy ? vaccs.filter((v: any) => v.puppy_id === selPuppy.id) : [];
 
   const onAddPuppy = async (e: React.FormEvent) => {
@@ -70,31 +71,42 @@ export default function LittersClient({ litters, puppies, potentialSires, potent
     e.preventDefault();
     if (!selId || !vName.trim()) return;
     try {
-      await addVaccinationAction({ vaccine_name: vName.trim(), date: vDate, litter_id: selId });
+      await addVaccinationAction({ vaccine_name: vName.trim(), date: vDate, treatment_type: vType, litter_id: selId });
       startTransition(() => { router.refresh(); });
-      alert("Oltás rögzítve az egész alomnak! 💉");
+      alert("Bejegyzés rögzítve az egész alomnak! 🎉");
       setVName("");
     } catch (e: any) { alert(e.message); }
   };
 
-  // EGYEDI ORVOSI BEJEGYZÉS HOZZÁADÁSA
   const onPuppyMedicalSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selPuppy || !pMedName.trim()) return;
     try {
-      await addVaccinationAction({ vaccine_name: pMedName.trim(), date: pMedDate, puppy_id: selPuppy.id });
+      await addVaccinationAction({ vaccine_name: pMedName.trim(), date: pMedDate, treatment_type: pMedType, puppy_id: selPuppy.id });
       startTransition(() => { router.refresh(); });
       setPMedName("");
     } catch (e: any) { alert(e.message); }
   };
 
-  // BEJEGYZÉS TÖRLÉSE
   const onDeleteMedical = async (id: string) => {
-    if (!confirm("Biztosan törlöd ezt az egészségügyi bejegyzést?")) return;
+    if (!confirm("Biztosan törlöd ezt a bejegyzést?")) return;
     try {
       await deleteVaccinationAction(id);
       startTransition(() => { router.refresh(); });
     } catch (e: any) { alert(e.message); }
+  };
+
+  // Kliens oldali eladási kezelő hiba visszacsatolással
+  const handleSellFormSubmit = async (puppyId: string, e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    try {
+      await sellPuppyAction(puppyId, selId!, formData);
+      startTransition(() => { router.refresh(); });
+      alert("Sikeres eladás és mentés! 💰");
+    } catch (err: any) {
+      alert(err.message || "Hiba történt az eladás során.");
+    }
   };
 
   return (
@@ -134,25 +146,19 @@ export default function LittersClient({ litters, puppies, potentialSires, potent
           </div>
           <div>
             <label className="text-blue-400 block mb-1">Sire (Father)</label>
-            <select name="sire_id" onChange={(e) => setSireType(e.target.value)} className="w-full p-2 bg-black border border-zinc-800 rounded text-white">
+            <select name="sire_id" className="w-full p-2 bg-black border border-zinc-800 rounded text-white">
               <option value="null">-- Select --</option>
               {potentialSires.map((s: any) => (<option key={s.id} value={s.id}>{s.name}</option>))}
               <option value="other">Other...</option>
             </select>
-            {sireType === "other" && (
-              <input name="sire_name" placeholder="External sire name" className="w-full p-2 bg-zinc-950 border border-zinc-800 rounded mt-1 text-white" />
-            )}
           </div>
           <div>
             <label className="text-pink-400 block mb-1">Dam (Mother)</label>
-            <select name="dam_id" onChange={(e) => setDamType(e.target.value)} className="w-full p-2 bg-black border border-zinc-800 rounded text-white">
+            <select name="dam_id" className="w-full p-2 bg-black border border-zinc-800 rounded text-white">
               <option value="null">-- Select --</option>
               {potentialDams.map((d: any) => (<option key={d.id} value={d.id}>{d.name}</option>))}
               <option value="other">Other...</option>
             </select>
-            {damType === "other" && (
-              <input name="dam_name" placeholder="External dam name" className="w-full p-2 bg-zinc-950 border border-zinc-800 rounded mt-1 text-white" />
-            )}
           </div>
           <div>
             <label className="text-zinc-500 block mb-1">Státusz</label>
@@ -169,11 +175,15 @@ export default function LittersClient({ litters, puppies, potentialSires, potent
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <div className="lg:col-span-2 space-y-4">
             <div className="bg-zinc-900 p-4 rounded border border-zinc-800">
-              <h2 className="text-base font-bold text-amber-400">Alomszintű Oltási Napló</h2>
-              <form onSubmit={onLitterVaccine} className="flex gap-2 mt-2">
-                <input value={vName} onChange={e => setVName(e.target.value)} required placeholder="Oltás neve (pl. Parvo)" className="bg-black p-2 rounded border border-zinc-800 flex-1 text-white" />
+              <h2 className="text-base font-bold text-amber-400">Alomszintű Egészségügyi Napló (Minden kiskutyának)</h2>
+              <form onSubmit={onLitterVaccine} className="flex gap-2 mt-2 items-center">
+                <select value={vType} onChange={e => setVType(e.target.value)} className="bg-black p-2 rounded border border-zinc-800 text-white font-bold">
+                  <option value="Vaccination">💉 Oltás</option>
+                  <option value="Deworming">💊 Féreghajtás</option>
+                </select>
+                <input value={vName} onChange={e => setVName(e.target.value)} required placeholder="Megnevezés (pl. Parvo, Flubenol paszta)" className="bg-black p-2 rounded border border-zinc-800 flex-1 text-white" />
                 <input type="date" value={vDate} onChange={e => setVDate(e.target.value)} className="bg-black p-2 rounded border border-zinc-800 text-white" />
-                <button type="submit" className="bg-amber-500 text-black px-4 py-2 rounded font-bold">Oltás beadása</button>
+                <button type="submit" className="bg-amber-500 text-black px-4 py-2 rounded font-bold">Rögzítés</button>
               </form>
             </div>
 
@@ -189,10 +199,9 @@ export default function LittersClient({ litters, puppies, potentialSires, potent
                       </span>
                       <span className="text-zinc-300 block">🎀 Nyakörv/Jelölés: {p.collar_color} ({p.gender === "Male" ? "Kan" : "Szuka"})</span>
                       <span className="text-zinc-500 font-mono text-[10px]">Súly: {p.birth_weight}{p.weight_unit}</span>
-                      {p.death_reason && <p className="text-red-400 text-[11px] mt-1 italic">Ok: {p.death_reason}</p>}
                     </button>
                     {p.status !== "Sold" && p.status !== "Deceased" ? (
-                      <form action={sellPuppyAction.bind(null, p.id, litter.id)} className="flex gap-1 bg-zinc-900 p-1.5 rounded border border-zinc-800 text-white">
+                      <form onSubmit={(e) => handleSellFormSubmit(p.id, e)} className="flex gap-1 bg-zinc-900 p-1.5 rounded border border-zinc-800 text-white">
                         <input name="buyer_name" required placeholder="Gazdi" className="p-1 bg-black rounded border border-zinc-800 w-24 text-white" />
                         <input name="sale_price" type="number" required placeholder="EUR" className="w-16 p-1 bg-black rounded border border-zinc-800 text-white" />
                         <button type="submit" className="bg-emerald-500 text-black px-2 py-1 font-bold rounded">SELL</button>
@@ -203,9 +212,6 @@ export default function LittersClient({ litters, puppies, potentialSires, potent
                   </div>
                 </div>
               ))}
-              {currentPuppies.length === 0 && (
-                <p className="text-zinc-600 italic p-2">Nincs még kiskutya felvéve ebbe az alomba.</p>
-              )}
             </div>
 
             {selPuppy && (
@@ -233,37 +239,40 @@ export default function LittersClient({ litters, puppies, potentialSires, potent
 
                   {selPuppy.status === "Deceased" && (
                     <div className="bg-red-950/30 border border-red-900/50 p-3 rounded">
-                      <label className="text-red-400 block mb-1 font-bold">Elhullás oka (Statisztikához)</label>
-                      <input value={selPuppy.death_reason || ""} onChange={e => setSelPuppy({...selPuppy, death_reason: e.target.value})} placeholder="Pl. Parvo, születési rendellenesség, herpesz..." className="w-full bg-black p-2 border border-red-900 rounded text-white text-xs" />
+                      <label className="text-red-400 block mb-1 font-bold">Elhullás oka</label>
+                      <input value={selPuppy.death_reason || ""} onChange={e => setSelPuppy({...selPuppy, death_reason: e.target.value})} placeholder="Pl. Parvo, herpesz..." className="w-full bg-black p-2 border border-red-900 rounded text-white text-xs" />
                     </div>
                   )}
 
                   <div><label className="text-zinc-500 block mb-1">Megjegyzés</label><input value={selPuppy.notes || ""} onChange={e => setSelPuppy({...selPuppy, notes: e.target.value})} className="w-full bg-black p-2 border border-zinc-800 rounded text-white" /></div>
-                  <button type="submit" className="w-full bg-emerald-600 text-white font-bold p-2.5 rounded uppercase hover:bg-emerald-500">Kiskutya adatlap mentése</button>
+                  <button type="submit" className="w-full bg-emerald-600 text-white font-bold p-2.5 rounded uppercase">Kiskutya adatlap mentése</button>
                 </form>
 
                 <hr className="border-zinc-800 my-4" />
 
-                {/* EGYEDI ORVOSI NAPLÓ RÉSZ */}
                 <div className="space-y-3">
                   <h3 className="text-sm font-bold text-amber-400 uppercase tracking-wider">🏥 Egyedi Egészségügyi sáv ({selPuppy.name || "Kiskutya"})</h3>
                   
-                  <form onSubmit={onPuppyMedicalSubmit} className="flex gap-2 bg-black p-2 rounded border border-zinc-800">
-                    <input value={pMedName} onChange={e => setPMedName(e.target.value)} required placeholder="Beavatkozás / Oltás / Féreghajtás" className="bg-zinc-900 p-2 rounded border border-zinc-800 flex-1 text-white" />
-                    <input type="date" value={pMedDate} onChange={e => setPMedDate(e.target.value)} className="bg-zinc-900 p-2 rounded border border-zinc-800 text-white" />
-                    <button type="submit" className="bg-blue-600 text-white px-3 py-2 rounded font-bold hover:bg-blue-500">Hozzáadás</button>
+                  <form onSubmit={onPuppyMedicalSubmit} className="flex gap-2 bg-black p-2 rounded border border-zinc-800 items-center">
+                    <select value={pMedType} onChange={e => setPMedType(e.target.value)} className="bg-zinc-900 p-2 rounded border border-zinc-800 text-white text-xs font-bold">
+                      <option value="Vaccination">💉 Oltás</option>
+                      <option value="Deworming">💊 Féreghajtás</option>
+                    </select>
+                    <input value={pMedName} onChange={e => setPMedName(e.target.value)} required placeholder="Pl. Nobivac, Drontal" className="bg-zinc-900 p-2 rounded border border-zinc-800 flex-1 text-white text-xs" />
+                    <input type="date" value={pMedDate} onChange={e => setPMedDate(e.target.value)} className="bg-zinc-900 p-2 rounded border border-zinc-800 text-white text-xs" />
+                    <button type="submit" className="bg-blue-600 text-white px-3 py-2 rounded font-bold">Hozzáadás</button>
                   </form>
 
                   <div className="space-y-1">
                     {puppyMedicalRecords.map((m: any) => (
                       <div key={m.id} className="flex justify-between items-center bg-zinc-950 p-2 border border-zinc-900 rounded">
-                        <span className="text-zinc-300 font-medium">💉 {m.vaccine_name} <span className="text-zinc-500 font-mono text-[10px] ml-2">({m.date_administered})</span></span>
-                        <button type="button" onClick={() => onDeleteMedical(m.id)} className="text-red-500 hover:text-red-400 font-bold px-2 py-0.5 border border-red-950 hover:border-red-600 rounded bg-red-950/20 text-[10px]">TÖRLÉS</button>
+                        <span className="text-zinc-300 font-medium">
+                          {m.treatment_type === 'Deworming' ? '💊 [FÉREGHAJTÁS]' : '💉 [OLTÁS]'} {m.vaccine_name} 
+                          <span className="text-zinc-500 font-mono text-[10px] ml-2">({m.date_administered})</span>
+                        </span>
+                        <button type="button" onClick={() => onDeleteMedical(m.id)} className="text-red-500 hover:text-red-400 font-bold px-2 py-0.5 border border-red-950 rounded bg-red-950/20 text-[10px]">TÖRLÉS</button>
                       </div>
                     ))}
-                    {puppyMedicalRecords.length === 0 && (
-                      <p className="text-zinc-600 italic text-[11px] p-1">Nincs még egyedi orvosi bejegyzés ehhez a kiskutyához.</p>
-                    )}
                   </div>
                 </div>
               </div>
