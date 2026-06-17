@@ -43,6 +43,7 @@ export default function LittersClient({ litters, puppies, potentialSires, potent
     e.preventDefault();
     if (!selectedLitterId || !formCollar.trim()) return;
     setLoading(true);
+    setDbError(null);
 
     const puppyData = {
       litter_id: selectedLitterId,
@@ -52,16 +53,23 @@ export default function LittersClient({ litters, puppies, potentialSires, potent
       birth_weight: parseInt(formBirthWeight || "0", 10)
     };
 
-    // Azonnali helyi frissítés a képernyőn
+    // Azonnali helyi frissítés a képernyőn (Optimistic UI)
     const tempObj = { ...puppyData, id: "temp-" + Date.now(), status: "Elérhető" };
     setLocalPuppies((prev) => [...prev, tempObj]);
 
     try {
+      // Beküldés a háttérbe (Server Action)
       await addPuppyAction(puppyData);
       setFormCollar("");
       setFormBirthWeight("");
     } catch (err: any) {
+      console.error("Hiba a mentés során:", err);
+      
+      // HA ELTŰNIK A KUTYA, EZ A POPUP FOGJA KIÍRNI A PONTOS ADATBÁZIS HIBÁT:
+      alert("ADATBÁZIS MENTÉSI HIBA:\n" + (err.message || "A szerver visszadobta a kérést ismeretlen okból. Ellenőrizd az RLS szabályokat vagy az actions.ts-t!"));
+      
       setDbError(err.message || "Hiba a mentés során.");
+      // Ha elhasalt a szerveren a mentés, töröljük a lokális listából a hibás elemet
       setLocalPuppies((prev) => prev.filter((p) => p.id !== tempObj.id));
     } finally { setLoading(false); }
   };
@@ -86,81 +94,4 @@ export default function LittersClient({ litters, puppies, potentialSires, potent
                 <p className="text-xs text-zinc-500 font-mono mt-1">Dátum: {l.birth_date || "Nincs megadva"}</p>
               </button>
               <div className="flex gap-2 mt-4 justify-end">
-                {(l.status === "Tervezett" || l.status === "Planning") && <button type="button" onClick={() => handleMarkAsBorn(l.id)} className="px-3 py-1.5 text-[10px] font-black bg-emerald-600 rounded-lg">🎉 Megszületett</button>}
-                <button type="button" onClick={() => handleDeleteLitter(l.id, l.letter)} className="px-3 py-1.5 text-[10px] font-black bg-zinc-800 text-red-400 rounded-lg">🗑️ Törlés</button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {activeTab === "planner" && (
-        <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-2xl max-w-2xl">
-          <h2 className="text-lg font-black uppercase text-amber-400 mb-4">Plan New Litter</h2>
-          <form action={createLitterAction} className="space-y-4 text-xs">
-            <div className="grid grid-cols-2 gap-4">
-              <div><label className="text-zinc-500 uppercase font-bold block mb-1">Litter Letter</label><input name="letter" required placeholder="e.g., A" className="w-full p-2.5 bg-black border border-zinc-800 rounded-xl text-white" /></div>
-              <div><label className="text-zinc-500 uppercase font-bold block mb-1">Date</label><input name="birth_date" type="date" className="w-full p-2.5 bg-black border border-zinc-800 rounded-xl text-white" /></div>
-            </div>
-            <div>
-              <label className="text-blue-400 font-bold block mb-1">Sire (Father)</label>
-              <select name="sire_id" onChange={(e) => setSireType(e.target.value)} className="w-full p-2.5 bg-black border border-zinc-800 rounded-xl text-white">
-                <option value="null">-- Select --</option>
-                {potentialSires.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                <option value="other">Other...</option>
-              </select>
-              {sireType === "other" && <input name="sire_name" placeholder="External sire name" className="w-full p-2 bg-zinc-950 border border-zinc-800 rounded-lg mt-1 text-white" />}
-            </div>
-            <div>
-              <label className="text-pink-400 font-bold block mb-1">Dam (Mother)</label>
-              <select name="dam_id" onChange={(e) => setDamType(e.target.value)} className="w-full p-2.5 bg-black border border-zinc-800 rounded-xl text-white">
-                <option value="null">-- Select --</option>
-                {potentialDams.map((d: any) => <option key={d.id} value={d.id}>{d.name}</option>)}
-                <option value="other">Other...</option>
-              </select>
-              {damType === "other" && <input name="dam_name" placeholder="External dam name" className="w-full p-2 bg-zinc-950 border border-zinc-800 rounded-lg mt-1 text-white" />}
-            </div>
-            <div><label className="text-zinc-500 font-bold block mb-1">Státusz</label><select name="status" className="w-full p-2.5 bg-black border border-zinc-800 rounded-xl text-white"><option value="Tervezett">Planning (Tervezett)</option><option value="Ellés">Born (Megszületett)</option></select></div>
-            <button type="submit" className="w-full bg-amber-500 text-black font-black uppercase p-3 rounded-xl">Save Litter</button>
-          </form>
-        </div>
-      )}
-
-      {activeTab === "litter-profile" && selectedLitter && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-4">
-            <h1 className="text-2xl font-black text-amber-400">"{selectedLitter.letter}" Litter Manager</h1>
-            <div className="space-y-2">
-              {currentPuppies.map((p) => (
-                <div key={p.id} className="bg-zinc-950 border border-zinc-900 p-4 rounded-xl flex justify-between items-center text-xs">
-                  <div>
-                    <span className="font-bold text-white block">🎀 {p.collar_color} ({p.gender === "Male" ? "Kan" : "Szuka"})</span>
-                    <span className="text-[10px] text-zinc-500 font-mono">Súly: {p.birth_weight}{p.weight_unit}</span>
-                  </div>
-                  {p.status !== "Sold" ? (
-                    <form action={sellPuppyAction.bind(null, p.id, selectedLitter.id)} className="flex gap-2">
-                      <input name="buyer_name" required placeholder="Gazdi" className="p-1 bg-black rounded border border-zinc-800 text-[11px] w-24" />
-                      <input name="sale_price" type="number" required placeholder="EUR" className="w-16 p-1 bg-black rounded border border-zinc-800 text-[11px]" />
-                      <button type="submit" className="bg-emerald-500 text-black px-2 py-1 font-bold rounded text-[10px]">SELL</button>
-                    </form>
-                  ) : <span className="text-zinc-500 font-bold uppercase text-[10px]">SOLD</span>}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="bg-zinc-900 border border-zinc-800 p-5 rounded-xl h-fit space-y-3">
-            <h3 className="text-xs font-black uppercase text-zinc-400">Add Puppy</h3>
-            <form onSubmit={handleAddPuppyForm} className="space-y-3 text-xs">
-              <div><label className="text-zinc-500 uppercase block mb-1">Collar / Markings</label><input value={formCollar} onChange={(e) => setFormCollar(e.target.value)} required placeholder="e.g., Kék nyakörv" className="w-full p-2 bg-black border border-zinc-800 rounded-lg text-white" /></div>
-              <div><label className="text-zinc-500 uppercase block mb-1">Gender</label><select value={formGender} onChange={(e) => setFormGender(e.target.value)} className="w-full p-2 bg-black border border-zinc-800 rounded-lg text-white"><option value="Male">Male (Kan)</option><option value="Female">Female (Szuka)</option></select></div>
-              <div><label className="text-zinc-500 uppercase block mb-1">Unit</label><select value={formWeightUnit} onChange={(e) => setFormWeightUnit(e.target.value)} className="w-full p-2 bg-black border border-zinc-800 rounded-lg text-white"><option value="g">Gramm (g)</option><option value="oz">Uncia (oz)</option></select></div>
-              <div><label className="text-zinc-500 uppercase block mb-1">Weight</label><input value={formBirthWeight} onChange={(e) => setFormBirthWeight(e.target.value)} type="number" placeholder="450" className="w-full p-2 bg-black border border-zinc-800 rounded-lg text-white" /></div>
-              <button type="submit" disabled={loading} className="w-full bg-amber-500 text-black font-bold uppercase py-2 rounded-lg disabled:opacity-50">{loading ? "Saving..." : "Add Puppy"}</button>
-            </form>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
+                {(l.status === "Tervezett" || l.
