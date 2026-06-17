@@ -1,20 +1,21 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, startTransition } from "react";
+import { useRouter } from "next/navigation";
 import { 
   createLitterAction, addPuppyAction, sellPuppyAction, 
   markLitterAsBornAction, deleteLitterAction, updatePuppyProfileAction, addVaccinationAction 
 } from "./actions";
 
 export default function LittersClient({ litters, puppies, potentialSires, potentialDams, activeLitterId, vaccinations }: any) {
+  const router = useRouter();
   const [tab, setTab] = useState("directory");
   const [selId, setSelId] = useState<string | null>(activeLitterId || litters[0]?.id || null);
   const [sireType, setSireType] = useState("");
   const [damType, setDamType] = useState("");
-  const [err, setErr] = useState<string | null>(null);
   
-  // FIX: Csak az első induláskor vesszük át a szerveroldali listát, utána SOHA nem engedjük felülírni!
-  const [pugs, setPugs] = useState<any[]>(() => puppies || []);
-  const [vaccs, setVaccs] = useState<any[]>(() => vaccinations || []);
+  // A kiskutyák és oltások listája szigorúan szinkronban lesz a szerverről jövő adatokkal
+  const [pugs, setPugs] = useState<any[]>(puppies || []);
+  const [vaccs, setVaccs] = useState<any[]>(vaccinations || []);
 
   const [selPuppy, setSelPuppy] = useState<any | null>(null);
   const [vName, setVName] = useState("");
@@ -27,7 +28,14 @@ export default function LittersClient({ litters, puppies, potentialSires, potent
   const [fb, setBirthWeight] = useState("");
   const [load, setLoad] = useState(false);
 
-  // FIX: Kivágtuk az eddigi hibás useEffect-et, ami letörölte a listát!
+  // Ez a hatás felel azért, hogy ha visszalépsz egy másik menüpontból, a legfrissebb adatokat lásd!
+  useEffect(() => {
+    if (puppies) setPugs(puppies);
+  }, [puppies]);
+
+  useEffect(() => {
+    if (vaccinations) setVaccs(vaccinations);
+  }, [vaccinations]);
 
   const litter = litters.find((l: any) => l.id === selId);
   const currentPuppies = pugs.filter((p) => p.litter_id === selId);
@@ -36,6 +44,7 @@ export default function LittersClient({ litters, puppies, potentialSires, potent
     const d = prompt("Dátum (ÉÉÉÉ-HH-NN):", new Date().toISOString().split("T")[0]);
     if (d) { 
       await markLitterAsBornAction(id, d); 
+      startTransition(() => { router.refresh(); });
       alert("Kész! 🎉"); 
     }
   };
@@ -44,7 +53,8 @@ export default function LittersClient({ litters, puppies, potentialSires, potent
     if (confirm(`Törlöd ezt az almot: ${n}?`)) { 
       await deleteLitterAction(id); 
       setSelId(null); 
-      setTab("directory"); 
+      setTab("directory");
+      startTransition(() => { router.refresh(); });
     }
   };
 
@@ -58,19 +68,19 @@ export default function LittersClient({ litters, puppies, potentialSires, potent
         gender: fg, weight_unit: fw, birth_weight: parseInt(fb || "0", 10)
       });
       
-      // Fixen beleerőltetjük a listába kliens oldalon, és mivel nincs useEffect ami felülbírálja, itt is MARAD!
-      if (nP) {
-        setPugs(prev => {
-          if (prev.some(p => p.id === nP.id)) return prev;
-          return [...prev, nP];
-        });
-      }
+      // Kényszerített szerveroldali adatkikérés (Router cache megkerülése)
+      startTransition(() => {
+        router.refresh();
+      });
+
       setFname(""); 
       setFc(""); 
       setBirthWeight("");
     } catch (e: any) { 
       alert(e.message); 
-    } { setLoad(false); }
+    } finally { 
+      setLoad(false); 
+    }
   };
 
   const onSaveProfile = async (e: React.FormEvent) => {
@@ -78,7 +88,7 @@ export default function LittersClient({ litters, puppies, potentialSires, potent
     if (!selPuppy) return;
     try {
       await updatePuppyProfileAction(selPuppy.id, selPuppy);
-      setPugs(prev => prev.map(p => p.id === selPuppy.id ? selPuppy : p));
+      startTransition(() => { router.refresh(); });
       alert("Profil sikeresen mentve! 💾");
     } catch (e: any) { alert(e.message); }
   };
@@ -88,6 +98,7 @@ export default function LittersClient({ litters, puppies, potentialSires, potent
     if (!selId || !vName.trim()) return;
     try {
       await addVaccinationAction({ vaccine_name: vName.trim(), date: vDate, litter_id: selId });
+      startTransition(() => { router.refresh(); });
       alert("Oltás rögzítve az egész alomnak! 💉");
       setVName("");
     } catch (e: any) { alert(e.message); }
