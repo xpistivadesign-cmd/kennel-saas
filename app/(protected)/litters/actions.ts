@@ -11,14 +11,14 @@ export async function createLitterAction(formData: FormData) {
   const rawSireId = formData.get("sire_id") ? String(formData.get("sire_id")) : "null";
   const rawDamId = formData.get("dam_id") ? String(formData.get("dam_id")) : "null";
 
-  // Összerakjuk a kötelező alapmezőket, amik biztosan benne vannak a táblában
+  // Alapmezők, amik garantáltan léteznek minden struktúrában
   let basePayload: any = {
     letter: String(formData.get("letter") || "").trim(),
     status: String(formData.get("status") || "Planning"),
   };
 
-  // Opcionális mezők listája – ezeket egyenként fogjuk letesztelni!
-  const optionalFields: any = {
+  // Opcionális mezők, amiket egyesével letesztelünk a Supabase-szel
+  const optionalFields: Record<string, any> = {
     birth_date: formData.get("birth_date") ? String(formData.get("birth_date")) : null,
     notes: String(formData.get("notes") || ""),
     user_id: user?.id || null,
@@ -33,29 +33,28 @@ export async function createLitterAction(formData: FormData) {
     optionalFields.dam_id = rawDamId;
   }
 
-  // Megnézzük a biztonság kedvéért, melyik opcionális mezőt eszi meg a Supabase
+  // Dinamikus oszlopellenőrzés
   for (const [key, value] of Object.entries(optionalFields)) {
     if (value !== null && value !== "") {
       try {
-        // Próba-beszúrás, hogy létezik-e az oszlop
         const testPayload = { ...basePayload, [key]: value };
+        // Teszteljük, hogy a Supabase elfogadja-e ezt az oszlopot
         const { error } = await supabase.from("litters").insert(testPayload).select("id");
         
         if (!error) {
-          // Ha nem dobott hibát, akkor ez az oszlop létezik! Hozzáadjuk az alapcsomaghoz.
+          // Ha nincs hiba, az oszlop létezik!
           basePayload[key] = value;
           
-          // Mivel a próba sikeresen beszúrta a teszt rekordot, gyorsan töröljük is ki a tesztet,
-          // hogy ne szemeteljük tele az adatbázist
-          await supabase.from("litters").delete().is([key], value).eq("letter", basePayload.letter);
+          // Azonnal kiürítjük a teszt adatot, javított, érvényes TypeScript szintaxissal (.eq használatával)
+          await supabase.from("litters").delete().eq(key, value).eq("letter", basePayload.letter);
         }
       } catch (e) {
-        // Ha elszállt, akkor az az oszlop nem létezik, simán kihagyjuk
+        // Ha az oszlop nem létezik, a catch blokk csendben elkapja, és átugorja
       }
     }
   }
 
-  // MOST JÖN A VÉGLEGES, GARANTÁLT MENTÉS
+  // VÉGLEGES, GARANTÁLT MENTÉS
   let success = false;
   let finalErrorMessage = "";
 
@@ -67,10 +66,10 @@ export async function createLitterAction(formData: FormData) {
       finalErrorMessage = error.message;
     }
   } catch (err: any) {
-    finalErrorMessage = err?.message || "Ismeretlen hiba";
+    finalErrorMessage = err?.message || "Ismeretlen adatbázis hiba";
   }
 
-  // Ha még így is gond lenne (pl. RLS miatt)
+  // Ha valamiért mégis elhasalna (pl. hiányzó RLS jogosultság)
   if (!success) {
     return redirect(`/litters?error=${encodeURIComponent(finalErrorMessage || "Database insert failed")}`);
   }
