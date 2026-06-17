@@ -100,35 +100,40 @@ export async function deleteVaccinationAction(id: string) {
   revalidatePath("/litters", "page");
 }
 
-// ATOMBIZTOS HIBAKILÖVŐ: Tiszta szöveges választ adunk, amit nem tilt le a Vercel!
+// GOLYÓÁLLÓ INCOME MENTÉS USER_ID SZINKRONNAL
 export async function sellPuppyAction(puppyId: string, litterId: string, formData: FormData) {
   const supabase = createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
-  const buyer_name = String(formData.get("buyer_name"));
+  
+  const buyer_name = String(formData.get("buyer_name")).trim();
   const sale_price = parseFloat(String(formData.get("sale_price") || "0"));
 
-  const { error: pErr } = await supabase.from("puppies").update({ buyer_name, sale_price, status: "Sold" }).eq("id", puppyId);
-  if (pErr) return { success: false, error: "Kiskutya tábla hiba: " + pErr.message };
+  // 1. Frissítjük a kiskutyát eladottra, elmentve a vevőt és az árat is
+  const { error: pErr } = await supabase
+    .from("puppies")
+    .update({ buyer_name, sale_price, status: "Sold" })
+    .eq("id", puppyId);
+    
+  if (pErr) return { success: false, error: pErr.message };
   
+  // 2. Összekészítjük a pénzügyi adatot a bejelentkezett felhasználó azonosítójával
   const finData = {
-    user_id: user?.id, 
-    title: `Kiskutya eladás (${buyer_name})`,
+    user_id: user?.id || null, 
+    title: `Kiskutya eladás: ${buyer_name}`,
     amount: sale_price, 
     type: "income", 
     date: new Date().toISOString().split("T")[0],
-    category: "Eladás" 
+    category: "Eladás"
   };
 
-  // Megpróbáljuk a 'finances' táblát
+  // 3. Mentés a pénzügyi táblákba (kipróbálja mindkét lehetséges variációt)
   const { error: fErr } = await supabase.from("finances").insert(finData);
   if (fErr) {
-    // Ha nem sikerült, megpróbáljuk a 'finance' táblát is
     const { error: fErr2 } = await supabase.from("finance").insert(finData);
     if (fErr2) {
-      // Ha ez sem sikerült, tiszta adatszerkezetben küldjük vissza a hiba okát!
       return { 
         success: false, 
-        error: `Supabase elutasította a mentést! 'finances' hiba: ${fErr.message} | 'finance' hiba: ${fErr2.message}` 
+        error: `Pénzügy tábla hiba! finances: ${fErr.message} | finance: ${fErr2.message}` 
       };
     }
   }
