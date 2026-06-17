@@ -4,7 +4,6 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createSupabaseServer } from "@/lib/db/supabase-server";
 
-// Alom létrehozása
 export async function createLitterAction(formData: FormData) {
   const supabase = createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
@@ -14,6 +13,7 @@ export async function createLitterAction(formData: FormData) {
   const rawStatus = String(formData.get("status") || "").trim();
   const formNotes = String(formData.get("notes") || "");
 
+  // TŰPONTOS STÁTUSZ MEGHATÁROZÁS
   let dbStatus = "Tervezett";
   if (
     rawStatus === "Born" || 
@@ -40,12 +40,15 @@ export async function createLitterAction(formData: FormData) {
   combinedNotes = combinedNotes.trim();
 
   const payload: any = {
+    letter: letter || null,
     birth_date: birthDate || null,
     status: dbStatus,
     notes: combinedNotes || null,
     user_id: user?.id || null,
     female_count: 0,
-    male_count: 0
+    male_count: 0,
+    sire_name: sireName || null,
+    dam_name: damName || null
   };
 
   const { error } = await supabase.from("litters").insert(payload);
@@ -59,7 +62,6 @@ export async function createLitterAction(formData: FormData) {
   return redirect("/litters");
 }
 
-// ÚJ: Alom státuszának frissítése "Ellés"-re (Amikor rányomsz, hogy Megszületett)
 export async function markLitterAsBornAction(litterId: string, actualBirthDate: string) {
   const supabase = createSupabaseServer();
   
@@ -75,7 +77,6 @@ export async function markLitterAsBornAction(litterId: string, actualBirthDate: 
   revalidatePath("/litters");
 }
 
-// ÚJ: Alom törlése (Eltávolítás a listából)
 export async function deleteLitterAction(litterId: string) {
   const supabase = createSupabaseServer();
   
@@ -95,7 +96,7 @@ export async function addPuppyAction(litterId: string, formData: FormData) {
     collar_color: String(formData.get("collar_color") || ""),
     gender: String(formData.get("gender")),
     birth_weight: parseInt(String(formData.get("birth_weight") || "0")),
-    current_status: "Available"
+    status: "Available"
   };
   const { error } = await supabase.from("puppies").insert(payload);
   if (error) throw new Error(error.message);
@@ -115,7 +116,7 @@ export async function sellPuppyAction(puppyId: string, litterId: string, formDat
     buyer_email: String(formData.get("buyer_email") || ""),
     buyer_phone: String(formData.get("buyer_phone") || ""),
     sale_price,
-    current_status: "Sold"
+    status: "Sold"
   }).eq("id", puppyId);
 
   const financePayload = {
