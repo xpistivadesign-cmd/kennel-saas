@@ -19,29 +19,21 @@ export default function LittersClient({ litters, puppies, potentialSires, potent
   const [dbError, setDbError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  // Kliens oldali lokális kiskutya lista az azonnali reakcióhoz
   const [localPuppies, setLocalPuppies] = useState<any[]>(puppies);
-
-  // Form inputok állapota
   const [formCollar, setFormCollar] = useState("");
   const [formGender, setFormGender] = useState("Male");
   const [formWeightUnit, setFormWeightUnit] = useState("g");
   const [formBirthWeight, setFormBirthWeight] = useState("");
   const [isAddingPuppy, setIsAddingPuppy] = useState(false);
 
-  useEffect(() => {
-    setLocalPuppies(puppies);
-  }, [puppies]);
+  useEffect(() => { setLocalPuppies(puppies); }, [puppies]);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       const err = params.get("error");
       const urlId = params.get("id");
-      
-      if (err) {
-        setDbError(decodeURIComponent(err));
-      }
+      if (err) setDbError(decodeURIComponent(err));
       if (urlId) {
         setSelectedLitterId(urlId);
         setActiveTab("litter-profile");
@@ -63,22 +55,19 @@ export default function LittersClient({ litters, puppies, potentialSires, potent
   const handleMarkAsBorn = async (litterId: string) => {
     const today = new Date().toISOString().split("T")[0];
     const actualDate = prompt("Kérlek, add meg a tényleges ellés dátumát (ÉÉÉÉ-HH-NN):", today);
-    
     if (actualDate && actualDate.trim() !== "") {
       startTransition(async () => {
         try {
           await markLitterAsBornAction(litterId, actualDate.trim());
           setDbError(null);
           alert("Alom státusza sikeresen frissítve Ellés-re! 🎉");
-        } catch (err: any) {
-          setDbError(err.message);
-        }
+        } catch (err: any) { setDbError(err.message); }
       });
     }
   };
 
   const handleDeleteLitter = async (litterId: string, letter: string) => {
-    if (confirm(`Biztosan törölni szeretnéd a(z) "${letter}" almot és minden adatát a listából?`)) {
+    if (confirm(`Biztosan törölni szeretnéd a(z) "${letter}" almot?`)) {
       startTransition(async () => {
         try {
           await deleteLitterAction(litterId);
@@ -87,10 +76,8 @@ export default function LittersClient({ litters, puppies, potentialSires, potent
             setActiveTab("directory");
           }
           setDbError(null);
-          alert("Alom sikeresen törölve a rendszerből. 🗑️");
-        } catch (err: any) {
-          setDbError(err.message);
-        }
+          alert("Alom sikeresen törölve. 🗑️");
+        } catch (err: any) { setDbError(err.message); }
       });
     }
   };
@@ -104,15 +91,4 @@ export default function LittersClient({ litters, puppies, potentialSires, potent
 
     const formData = new FormData();
     formData.append("litter_id", selectedLitterId);
-    formData.append("collar_color", formCollar.trim());
-    formData.append("gender", formGender);
-    formData.append("weight_unit", formWeightUnit);
-    formData.append("birth_weight", formBirthWeight || "0");
-
-    const tempId = "temp-" + Date.now();
-    const mockPuppy = {
-      id: tempId,
-      litter_id: selectedLitterId,
-      collar_color: formCollar.trim(),
-      gender: formGender,
-      weight_
+    formData.append("collar
