@@ -30,20 +30,20 @@ export async function createLitterAction(formData: FormData) {
   });
 
   if (error) return redirect(`/litters?error=${encodeURIComponent(error.message)}`);
-  revalidatePath("/litters");
+  revalidatePath("/litters", "page");
   return redirect("/litters");
 }
 
 export async function markLitterAsBornAction(litterId: string, actualBirthDate: string) {
   const supabase = createSupabaseServer();
   await supabase.from("litters").update({ status: "Ellés", birth_date: actualBirthDate }).eq("id", litterId);
-  revalidatePath("/litters");
+  revalidatePath("/litters", "page");
 }
 
 export async function deleteLitterAction(litterId: string) {
   const supabase = createSupabaseServer();
   await supabase.from("litters").delete().eq("id", litterId);
-  revalidatePath("/litters");
+  revalidatePath("/litters", "page");
 }
 
 export async function addPuppyAction(data: { 
@@ -54,12 +54,14 @@ export async function addPuppyAction(data: {
     litter_id: data.litter_id, name: data.name, collar_color: data.collar_color,
     gender: data.gender, birth_weight: data.birth_weight, weight_unit: data.weight_unit, status: "Elérhető"
   }).select().single();
+  
   if (error) throw new Error(error.message);
-  revalidatePath("/litters");
+  
+  // Kényszerítjük a Next.js-t, hogy törölje a cache-t ehhez a porthoz!
+  revalidatePath("/litters", "page");
   return newPuppy;
 }
 
-// KISKUTYA PROFIL MENTÉSE
 export async function updatePuppyProfileAction(puppyId: string, data: any) {
   const supabase = createSupabaseServer();
   const { error } = await supabase.from("puppies").update({
@@ -69,10 +71,9 @@ export async function updatePuppyProfileAction(puppyId: string, data: any) {
     passport_number: data.passport_number || null, notes: data.notes || null
   }).eq("id", puppyId);
   if (error) throw new Error(error.message);
-  revalidatePath("/litters");
+  revalidatePath("/litters", "page");
 }
 
-// OLTÁS HOZZÁADÁSA (AKÁR TELJES ALOMRA IS)
 export async function addVaccinationAction(data: { vaccine_name: string; date: string; litter_id?: string; puppy_id?: string }) {
   const supabase = createSupabaseServer();
   if (data.litter_id) {
@@ -84,10 +85,9 @@ export async function addVaccinationAction(data: { vaccine_name: string; date: s
   } else if (data.puppy_id) {
     await supabase.from("puppy_vaccinations").insert({ puppy_id: data.puppy_id, vaccine_name: data.vaccine_name, date_administered: data.date });
   }
-  revalidatePath("/litters");
+  revalidatePath("/litters", "page");
 }
 
-// JAVÍTOTT FINANCES SZINKRONIZÁCIÓ (.CATCH ELTÁVOLÍTVA)
 export async function sellPuppyAction(puppyId: string, litterId: string, formData: FormData) {
   const supabase = createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
@@ -103,7 +103,6 @@ export async function sellPuppyAction(puppyId: string, litterId: string, formDat
 
   const { error: fErr } = await supabase.from("finances").insert(finData);
   
-  // Ha a fő tábla hibát ad, megpróbáljuk az egyes számú verziót egy tiszta try-catch blokkban
   if (fErr) {
     try {
       await supabase.from("finance").insert(finData);
@@ -112,5 +111,5 @@ export async function sellPuppyAction(puppyId: string, litterId: string, formDat
     }
   }
   
-  revalidatePath("/litters");
+  revalidatePath("/litters", "page");
 }
