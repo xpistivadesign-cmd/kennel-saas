@@ -4,19 +4,15 @@ import LittersClient from "./LittersClient";
 export default async function LittersPage() {
   const supabase = createSupabaseServer();
 
-  // Kizárólag a nálad 100%-ban létező oszlopokat kérjük le az adatbázisból
+  // Csak a nálad garantáltan létező oszlopokat kérjük le
   const { data: littersData } = await supabase
     .from("litters")
     .select("id, birth_date, notes, status, user_id, female_count, male_count")
     .order("created_at", { ascending: false });
 
-  const { data: dogs } = await supabase
-    .from("dogs")
-    .select("id, name, sex");
-
-  // Átformázzuk a rekordokat, hogy a felület ne hiányolja a hiányzó adatbázis mezőket
+  // Biztonságos adat-átalakítás a hiányzó adatbázis oszlopok kompenzálására
   const safeLitters = (littersData || []).map((litter) => {
-    // Megpróbáljuk kiszedni a nevet/betűt a notes-ból, ha ott van
+    // Kinyerjük az alom nevét/jelét a notes mezőből, ha korábban oda mentettük
     const match = litter.notes?.match(/\[Alom jele\/betűje:\s*([^\]]+)\]/);
     const extractedLetter = match ? match[1] : `Alom (${litter.birth_date || "Tervezett"})`;
 
@@ -30,14 +26,10 @@ export default async function LittersPage() {
     };
   });
 
-  const sires = (dogs || []).filter((d) => d.sex === "Male" || d.sex === "male");
-  const dams = (dogs || []).filter((d) => d.sex === "Female" || d.sex === "female");
-
+  // CSAK azt adjuk át a kliensnek, amit a hibaüzenet alapján biztosan vár és elfogad (a litters-t)
   return (
     <LittersClient 
-      litters={safeLitters} // Átírva initialLitters-ről sima litters-re, hogy a TypeScript boldog legyen!
-      sires={sires} 
-      dams={dams} 
+      litters={safeLitters} 
     />
   );
 }
