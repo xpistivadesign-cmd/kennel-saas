@@ -59,7 +59,7 @@ export async function addPuppyAction(data: {
   return newPuppy;
 }
 
-// ÚJ: KISKUTYA PROFIL MENTÉSE
+// KISKUTYA PROFIL MENTÉSE
 export async function updatePuppyProfileAction(puppyId: string, data: any) {
   const supabase = createSupabaseServer();
   const { error } = await supabase.from("puppies").update({
@@ -72,7 +72,7 @@ export async function updatePuppyProfileAction(puppyId: string, data: any) {
   revalidatePath("/litters");
 }
 
-// ÚJ: OLTÁS HOZZÁADÁSA (AKÁR TELJES ALOMRA IS)
+// OLTÁS HOZZÁADÁSA (AKÁR TELJES ALOMRA IS)
 export async function addVaccinationAction(data: { vaccine_name: string; date: string; litter_id?: string; puppy_id?: string }) {
   const supabase = createSupabaseServer();
   if (data.litter_id) {
@@ -87,7 +87,7 @@ export async function addVaccinationAction(data: { vaccine_name: string; date: s
   revalidatePath("/litters");
 }
 
-// JAVÍTOTT FINANCES SZINKRONIZÁCIÓ
+// JAVÍTOTT FINANCES SZINKRONIZÁCIÓ (.CATCH ELTÁVOLÍTVA)
 export async function sellPuppyAction(puppyId: string, litterId: string, formData: FormData) {
   const supabase = createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
@@ -102,9 +102,15 @@ export async function sellPuppyAction(puppyId: string, litterId: string, formDat
   };
 
   const { error: fErr } = await supabase.from("finances").insert(finData);
+  
+  // Ha a fő tábla hibát ad, megpróbáljuk az egyes számú verziót egy tiszta try-catch blokkban
   if (fErr) {
-    // Ha a tábla neve finance (egyes számban)
-    await supabase.from("finance").insert(finData).catch(() => {});
+    try {
+      await supabase.from("finance").insert(finData);
+    } catch (e) {
+      console.error("Nem sikerült a pénzügyi táblákba menteni:", e);
+    }
   }
+  
   revalidatePath("/litters");
 }
