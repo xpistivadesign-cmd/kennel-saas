@@ -8,70 +8,31 @@ export async function createLitterAction(formData: FormData) {
   const supabase = createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
 
-  const rawSireId = formData.get("sire_id") ? String(formData.get("sire_id")) : "null";
-  const rawDamId = formData.get("dam_id") ? String(formData.get("dam_id")) : "null";
+  const letter = String(formData.get("letter") || "").trim();
+  const birthDate = formData.get("birth_date") ? String(formData.get("birth_date")) : null;
+  const status = String(formData.get("status") || "Planning");
+  const formNotes = String(formData.get("notes") || "");
 
-  // Alapmezők, amik garantáltan léteznek minden struktúrában
-  let basePayload: any = {
-    letter: String(formData.get("letter") || "").trim(),
-    status: String(formData.get("status") || "Planning"),
-  };
+  // Mivel nincs letter oszlopod, a notes mezőbe fűzzük be a betűt/nevet, hogy ne vesszen el!
+  const combinedNotes = letter 
+    ? `[Alom jele/betűje: ${letter}] ${formNotes}`.trim() 
+    : formNotes;
 
-  // Opcionális mezők, amiket egyesével letesztelünk a Supabase-szel
-  const optionalFields: Record<string, any> = {
-    birth_date: formData.get("birth_date") ? String(formData.get("birth_date")) : null,
-    notes: String(formData.get("notes") || ""),
+  // Tűpontos payload, ami szigorúan csak a Supabase-ben létező oszlopokat használja
+  const payload = {
+    birth_date: birthDate || null,
+    status: status,
+    notes: combinedNotes,
     user_id: user?.id || null,
-    sire_name: formData.get("sire_name") ? String(formData.get("sire_name")) : null,
-    dam_name: formData.get("dam_name") ? String(formData.get("dam_name")) : null
+    female_count: 0, // alapértelmezett kezdőértékek
+    male_count: 0
   };
 
-  if (rawSireId !== "null" && rawSireId !== "other" && rawSireId.trim() !== "") {
-    optionalFields.sire_id = rawSireId;
-  }
-  if (rawDamId !== "null" && rawDamId !== "other" && rawDamId.trim() !== "") {
-    optionalFields.dam_id = rawDamId;
-  }
+  const { error } = await supabase.from("litters").insert(payload);
 
-  // Dinamikus oszlopellenőrzés
-  for (const [key, value] of Object.entries(optionalFields)) {
-    if (value !== null && value !== "") {
-      try {
-        const testPayload = { ...basePayload, [key]: value };
-        // Teszteljük, hogy a Supabase elfogadja-e ezt az oszlopot
-        const { error } = await supabase.from("litters").insert(testPayload).select("id");
-        
-        if (!error) {
-          // Ha nincs hiba, az oszlop létezik!
-          basePayload[key] = value;
-          
-          // Azonnal kiürítjük a teszt adatot, javított, érvényes TypeScript szintaxissal (.eq használatával)
-          await supabase.from("litters").delete().eq(key, value).eq("letter", basePayload.letter);
-        }
-      } catch (e) {
-        // Ha az oszlop nem létezik, a catch blokk csendben elkapja, és átugorja
-      }
-    }
-  }
-
-  // VÉGLEGES, GARANTÁLT MENTÉS
-  let success = false;
-  let finalErrorMessage = "";
-
-  try {
-    const { error } = await supabase.from("litters").insert(basePayload);
-    if (!error) {
-      success = true;
-    } else {
-      finalErrorMessage = error.message;
-    }
-  } catch (err: any) {
-    finalErrorMessage = err?.message || "Ismeretlen adatbázis hiba";
-  }
-
-  // Ha valamiért mégis elhasalna (pl. hiányzó RLS jogosultság)
-  if (!success) {
-    return redirect(`/litters?error=${encodeURIComponent(finalErrorMessage || "Database insert failed")}`);
+  if (error) {
+    console.error("Supabase mentési hiba:", error.message);
+    return redirect(`/litters?error=${encodeURIComponent(error.message)}`);
   }
 
   revalidatePath("/litters");
