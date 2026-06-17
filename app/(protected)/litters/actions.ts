@@ -29,7 +29,7 @@ export async function createLitterAction(formData: FormData) {
   const payload: any = {
     letter: letter || null,
     birth_date: birthDate || null,
-    status: rawStatus,
+    status: rawStatus, 
     notes: combinedNotes || null,
     user_id: user?.id || null,
     female_count: 0,
@@ -79,10 +79,7 @@ export async function deleteLitterAction(litterId: string) {
 export async function addPuppyAction(litterId: string, formData: FormData) {
   const supabase = createSupabaseServer();
   
-  // Megnézzük mit küldött a felület, ha üres, alapértelmezetten 'Elérhető' lesz
   const rawStatus = formData.get("status") ? String(formData.get("status")).trim() : "Elérhető";
-  
-  // Ha az űrlap véletlenül angolul küldené, átkonvertáljuk magyarra a biztonság kedvéért
   const dbStatus = rawStatus === "Available" ? "Elérhető" : rawStatus;
 
   const payload = {
@@ -97,7 +94,6 @@ export async function addPuppyAction(litterId: string, formData: FormData) {
   
   if (error) {
     console.error("Kiskutya mentési hiba részletei:", error.message);
-    // Visszairányítjuk hibaüzenettel a felületre, hogy ne omoljon össze a Next.js hibaoldallal
     return redirect(`/litters?id=${litterId}&error=${encodeURIComponent(error.message)}`);
   }
 
