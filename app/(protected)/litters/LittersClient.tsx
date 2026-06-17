@@ -22,14 +22,17 @@ export default function LittersClient({
   const [sireType, setSireType] = useState("");
   const [damType, setDamType] = useState("");
   const [err, setErr] = useState<string | null>(null);
-  const [pugs, setPugs] = useState<any[]>(puppies);
+  const [pugs, setPugs] = useState<any[]>(puppies || []);
+  
+  // Új mezők a kutyának
+  const [fname, setFname] = useState("");
   const [fc, setFc] = useState("");
   const [fg, setFg] = useState("Male");
   const [fw, setFw] = useState("g");
   const [fb, setFb] = useState("");
   const [load, setLoad] = useState(false);
 
-  // Amikor a szerverről új adatok jönnek (pl. sell vagy delete után)
+  // Szinkronizáció a szerveroldali adatokkal
   useEffect(() => { 
     if (puppies) setPugs(puppies); 
   }, [puppies]);
@@ -81,38 +84,26 @@ export default function LittersClient({
     
     const pData = { 
       litter_id: selId, 
+      name: fname.trim(),
       collar_color: fc.trim(), 
       gender: fg, 
       weight_unit: fw, 
       birth_weight: parseInt(fb || "0", 10) 
     };
     
-    const tempId = "t-" + Date.now();
-    const temp = { 
-      ...pData, 
-      id: tempId, 
-      status: "Elérhető" 
-    };
-    
-    // Először betesszük az ideiglenes elemet (Optimistic UI)
-    setPugs((prev) => [...prev, temp]);
-    
     try {
+      // Megvárjuk a szerver válaszát (Nincs korai felvillanás!)
       const savedPuppy = await addPuppyAction(pData);
       
-      // Ha sikeres, kicseréljük az ideiglenes elemet a szervertől kapottra
       if (savedPuppy) {
-        setPugs((prev) => 
-          prev.map((p) => p.id === tempId ? savedPuppy : p)
-        );
+        setPugs((prev) => [...prev, savedPuppy]);
       }
+      setFname("");
       setFc(""); 
       setFb("");
     } catch (e: any) {
-      alert("HIBA: " + (e.message || "Hiba!"));
+      alert("Mentési hiba: " + (e.message || "Hiba!"));
       setErr(e.message);
-      // Hiba esetén kiszedjük az ideiglenes elemet a listából
-      setPugs((prev) => prev.filter((x) => x.id !== tempId));
     } finally { 
       setLoad(false); 
     }
@@ -361,6 +352,17 @@ export default function LittersClient({
             <h3 className="font-bold text-zinc-400 uppercase">
               Add Puppy
             </h3>
+            <div>
+              <label className="text-zinc-500 block mb-0.5">
+                Puppy Name
+              </label>
+              <input 
+                value={fname} 
+                onChange={(e) => setFname(e.target.value)} 
+                placeholder="Pl. Fuego, Zeus..." 
+                className="w-full p-1.5 bg-black border border-zinc-800 rounded" 
+              />
+            </div>
             <div>
               <label className="text-zinc-500 block mb-0.5">
                 Collar / Markings
