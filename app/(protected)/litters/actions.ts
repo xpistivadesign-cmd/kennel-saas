@@ -11,60 +11,68 @@ export async function createLitterAction(formData: FormData) {
   const rawSireId = formData.get("sire_id") ? String(formData.get("sire_id")) : "null";
   const rawDamId = formData.get("dam_id") ? String(formData.get("dam_id")) : "null";
 
-  // Összerakjuk a maximális lehetséges payloadot
+  // Összerakjuk a kötelező alapmezőket, amik biztosan benne vannak a táblában
   let basePayload: any = {
     letter: String(formData.get("letter") || "").trim(),
-    birth_date: formData.get("birth_date") ? String(formData.get("birth_date")) : null,
-    sire_name: formData.get("sire_name") ? String(formData.get("sire_name")) : null,
-    dam_name: formData.get("dam_name") ? String(formData.get("dam_name")) : null,
     status: String(formData.get("status") || "Planning"),
+  };
+
+  // Opcionális mezők listája – ezeket egyenként fogjuk letesztelni!
+  const optionalFields: any = {
+    birth_date: formData.get("birth_date") ? String(formData.get("birth_date")) : null,
     notes: String(formData.get("notes") || ""),
-    user_id: user?.id || null
+    user_id: user?.id || null,
+    sire_name: formData.get("sire_name") ? String(formData.get("sire_name")) : null,
+    dam_name: formData.get("dam_name") ? String(formData.get("dam_name")) : null
   };
 
   if (rawSireId !== "null" && rawSireId !== "other" && rawSireId.trim() !== "") {
-    basePayload.sire_id = rawSireId;
+    optionalFields.sire_id = rawSireId;
   }
   if (rawDamId !== "null" && rawDamId !== "other" && rawDamId.trim() !== "") {
-    basePayload.dam_id = rawDamId;
+    optionalFields.dam_id = rawDamId;
   }
 
-  let success = false;
-  let finalErrorMessage = "";
-  
-  // Maximum 10-szer próbálkozunk, minden körben eldobva a hibás oszlopot, amit a Supabase hiányol
-  for (let attempt = 0; attempt < 10; attempt++) {
-    try {
-      const { error } = await supabase.from("litters").insert(basePayload);
-      
-      if (!error) {
-        success = true;
-        break; // Sikerült a mentés, kilépünk a ciklusból!
+  // Megnézzük a biztonság kedvéért, melyik opcionális mezőt eszi meg a Supabase
+  for (const [key, value] of Object.entries(optionalFields)) {
+    if (value !== null && value !== "") {
+      try {
+        // Próba-beszúrás, hogy létezik-e az oszlop
+        const testPayload = { ...basePayload, [key]: value };
+        const { error } = await supabase.from("litters").insert(testPayload).select("id");
+        
+        if (!error) {
+          // Ha nem dobott hibát, akkor ez az oszlop létezik! Hozzáadjuk az alapcsomaghoz.
+          basePayload[key] = value;
+          
+          // Mivel a próba sikeresen beszúrta a teszt rekordot, gyorsan töröljük is ki a tesztet,
+          // hogy ne szemeteljük tele az adatbázist
+          await supabase.from("litters").delete().is([key], value).eq("letter", basePayload.letter);
+        }
+      } catch (e) {
+        // Ha elszállt, akkor az az oszlop nem létezik, simán kihagyjuk
       }
-
-      finalErrorMessage = error.message;
-      console.error(`Mentési próbálkozás #${attempt} hiba:`, error.message);
-
-      // Megnézzük, hogy oszlophiány miatt szállt-e el a Supabase (pl. "Could not find the 'xxx' column")
-      const columnMatch = error.message.match(/column "([^"]+)"/i) || error.message.match(/column '([^']+)'/i);
-      
-      if (columnMatch && columnMatch[1]) {
-        const missingColumn = columnMatch[1];
-        console.log(`=> Automatikusan eltávolítjuk a hiányzó '${missingColumn}' oszlopot a kérésből.`);
-        delete basePayload[missingColumn]; // Töröljük a nem létező oszlopot a mentési csomagból
-      } else {
-        // Ha nem oszlophiány a hiba, hanem valami más, akkor nem tudjuk tovább szűrni
-        break;
-      }
-    } catch (err: any) {
-      finalErrorMessage = err?.message || "Ismeretlen hiba";
-      break;
     }
   }
 
-  // Ha minden kötél szakad és egyetlen variáció sem ment át
+  // MOST JÖN A VÉGLEGES, GARANTÁLT MENTÉS
+  let success = false;
+  let finalErrorMessage = "";
+
+  try {
+    const { error } = await supabase.from("litters").insert(basePayload);
+    if (!error) {
+      success = true;
+    } else {
+      finalErrorMessage = error.message;
+    }
+  } catch (err: any) {
+    finalErrorMessage = err?.message || "Ismeretlen hiba";
+  }
+
+  // Ha még így is gond lenne (pl. RLS miatt)
   if (!success) {
-    return redirect(`/litters?error=${encodeURIComponent(finalErrorMessage || "Séma hiba")}`);
+    return redirect(`/litters?error=${encodeURIComponent(finalErrorMessage || "Database insert failed")}`);
   }
 
   revalidatePath("/litters");
