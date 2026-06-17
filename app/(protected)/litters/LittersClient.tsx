@@ -103,4 +103,16 @@ export default function LittersClient({ litters, puppies, potentialSires, potent
     setDbError(null);
 
     const formData = new FormData();
-    formData.append
+    formData.append("litter_id", selectedLitterId);
+    formData.append("collar_color", formCollar.trim());
+    formData.append("gender", formGender);
+    formData.append("weight_unit", formWeightUnit);
+    formData.append("birth_weight", formBirthWeight || "0");
+
+    const tempId = "temp-" + Date.now();
+    const mockPuppy = {
+      id: tempId,
+      litter_id: selectedLitterId,
+      collar_color: formCollar.trim(),
+      gender: formGender,
+      weight_
