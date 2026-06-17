@@ -1,78 +1,59 @@
-import { createServerSupabase } from "@/lib/supabase/server";
+import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
+import LittersClient from "./LittersClient";
 
 export const dynamic = "force-dynamic";
 
-async function addPuppy(formData: FormData) {
-  "use server";
+export default async function LittersPage({ searchParams }: any) {
+  const cookieStore = await cookies();
+  const resolvedSearchParams = await searchParams;
+  const activeLitterId = resolvedSearchParams.id || null;
 
-  const supabase = createServerSupabase();
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll(cookiesToSet: any[]) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            cookieStore.set(name, value, options);
+          });
+        },
+      },
+    }
+  );
 
-  const litter_id = String(formData.get("litter_id"));
-
-  await supabase.from("puppies").insert({
-    litter_id,
-    name: String(formData.get("name")),
-    status: String(formData.get("status")),
-  });
-
-  revalidatePath("/litters");
-}
-
-async function sellPuppy(formData: FormData) {
-  "use server";
-
-  const supabase = createServerSupabase();
-
-  const puppy_id = String(formData.get("puppy_id"));
-  const price = Number(formData.get("price"));
-
-  await supabase.from("puppies").update({
-    status: "sold",
-    price,
-  }).eq("id", puppy_id);
-
-  await supabase.from("payments").insert({
-    amount: price,
-    type: "income",
-    category: "Puppy Sale",
-  });
-
-  revalidatePath("/litters");
-}
-
-export default async function Page() {
-  const supabase = createServerSupabase();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
+  const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  // 1. Almok lekérése
   const { data: litters } = await supabase
     .from("litters")
-    .select("*, puppies(*)")
-    .eq("user_id", user.id);
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  // 2. Kiskutyák lekérése
+  const { data: puppies } = await supabase
+    .from("puppies")
+    .select("*")
+    .order("created_at", { ascending: true });
+
+  // 3. Potenciális szülők listája a legördülőhöz
+  const { data: allDogs } = await supabase.from("dogs").select("id, name, sex");
+  const potentialSires = allDogs?.filter((d: any) => d.sex === "Male") || [];
+  const potentialDams = allDogs?.filter((d: any) => d.sex === "Female") || [];
 
   return (
-    <div className="p-8 text-white space-y-10">
-
-      {(litters || []).map((l: any) => (
-        <div key={l.id} className="border p-4 rounded-xl">
-
-          <div className="font-bold">{l.name}</div>
-
-          {(l.puppies || []).map((p: any) => (
-            <div key={p.id} className="text-sm">
-              {p.name} — {p.status}
-            </div>
-          ))}
-
-        </div>
-      ))}
-
-    </div>
+    <LittersClient 
+      litters={litters || []} 
+      puppies={puppies || []} 
+      potentialSires={potentialSires} 
+      potentialDams={potentialDams}
+      activeLitterId={activeLitterId}
+    />
   );
 }
