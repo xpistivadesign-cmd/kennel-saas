@@ -14,28 +14,22 @@ export default function HeatsClient({ heatCycles, femaleDogs }: Props) {
     const start = new Date(startDateStr);
     const today = new Date();
     
-    // Eltelt napok száma a kezdettől fogva
     const diffTime = today.getTime() - start.getTime();
     const elapsedDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
 
-    // 1. Ciklus vége (+21 nap)
     const endDate = new Date(start);
     endDate.setDate(start.getDate() + 21);
 
-    // 2. Következő tüzelés (+6 hónap / 180 nap)
     const nextHeatDate = new Date(start);
     nextHeatDate.setDate(start.getDate() + 180);
 
-    // 3. Fedeztetési ablak (11. naptól a 14. napig)
     const windowStart = new Date(start);
-    windowStart.setDate(start.getDate() + 10); // 11. nap
+    windowStart.setDate(start.getDate() + 10); 
     const windowEnd = new Date(start);
-    windowEnd.setDate(start.getDate() + 13); // 14. nap
+    windowEnd.setDate(start.getDate() + 13); 
 
-    // Formázó funkció magyaros dátumhoz
     const formatDate = (d: Date) => d.toISOString().split('T')[0];
 
-    // 4. Státusz és Progress Bar százalék meghatározása
     let statusText = "";
     let statusColor = "";
     let progressPercent = 0;
@@ -87,6 +81,7 @@ export default function HeatsClient({ heatCycles, femaleDogs }: Props) {
               
               return (
                 <div key={heat.id} className="bg-zinc-900/50 border border-zinc-800/80 p-6 rounded-2xl space-y-4 shadow-xl">
+                  
                   {/* Fejléc: Kutya név + Aktuális fázis címke */}
                   <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
                     <div>
@@ -117,4 +112,7 @@ export default function HeatsClient({ heatCycles, femaleDogs }: Props) {
                   </div>
 
                   {/* Automata Tenyésztői Predikciók rács */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 text-xs">
+                    
+                    {/* Fedeztetési ablak */}
+                    <div className="bg-zinc-950/60 border border-zinc-900 p-3 rounded-xl space-y
