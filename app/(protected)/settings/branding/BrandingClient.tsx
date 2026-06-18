@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { createClient } from "@supabase/supabase-js"; // Ha van saját kliensed, használd azt: import { supabase } from "@/lib/supabase/client";
+import { createClient } from "@supabase/supabase-js";
 
 export const PRESETS = {
   royal_purple: { name: "Királyi Lila", bg: "#ba24ff", accent: "#eab308", heading: "#ffffff", body: "#f3e8ff" },
@@ -10,7 +10,6 @@ export const PRESETS = {
   soft_beige: { name: "Elegáns Bézs", bg: "#f5f5f4", accent: "#78716c", heading: "#1c1917", body: "#44403c" },
 };
 
-// Inicializáljuk a Supabase-t kliens oldalon (Next.js környezeti változókból)
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
@@ -27,8 +26,6 @@ export default function BrandingClient({ settings, saveBrandingAction }: any) {
   const [headingColor, setHeadingColor] = useState(settings.text_heading_color || "#ffffff");
   const [bodyColor, setBodyColor] = useState(settings.text_body_color || "#a1a1aa");
   const [kennelName, setKennelName] = useState(settings.kennel_name || "Saját Kennel");
-  
-  // Ebben tároljuk az éppen aktív vagy frissen feltöltött logó linket
   const [logoUrl, setLogoUrl] = useState<string | null>(settings.logo_url);
 
   const activeBg = themeMode === "preset" ? PRESETS[selectedPreset as keyof typeof PRESETS].bg : bgColor;
@@ -36,7 +33,6 @@ export default function BrandingClient({ settings, saveBrandingAction }: any) {
   const activeHeading = themeMode === "preset" ? PRESETS[selectedPreset as keyof typeof PRESETS].heading : headingColor;
   const activeBody = themeMode === "preset" ? PRESETS[selectedPreset as keyof typeof PRESETS].body : bodyColor;
 
-  // 🚀 KÖZVETLEN BÖNGÉSZŐS FELTÖLTÉS A SUPABASE STORAGE-BA
   const handleClientFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -46,24 +42,21 @@ export default function BrandingClient({ settings, saveBrandingAction }: any) {
       const fileExt = file.name.split('.').pop();
       const fileName = `client-${Date.now()}.${fileExt}`;
 
-      // Feltöltés egyenesen a böngészőből
-      const { data, error } = await supabase.storage
+      const { error } = await supabase.storage
         .from("logos")
         .upload(fileName, file, { cacheControl: "3600", upsert: true });
 
       if (error) {
-        alert("Feltöltési hiba: " + error.message);
+        alert("Supabase hiba: Kérlek ellenőrizd, hogy a 'logos' bucket létezik-e és Public-ra van-e állítva! Hibaüzenet: " + error.message);
         return;
       }
 
-      // Publikus URL lekérése
       const { data: { publicUrl } } = supabase.storage.from("logos").getPublicUrl(fileName);
-      
-      setLogoUrl(publicUrl); // Azonnal frissítjük az állapotot és az előnézetet
-      alert("Logó sikeresen feltöltve a felhőbe! Ne felejtsd el elmenteni az arculatot alul.");
+      setLogoUrl(publicUrl);
+      alert("Minta logó feltöltve! Kattints a lenti gombra a mentéshez.");
     } catch (err) {
       console.error(err);
-      alert("Váratlan hiba történt a feltöltés során.");
+      alert("Nem sikerült elérni a tárolót.");
     } finally {
       setUploading(false);
     }
@@ -71,6 +64,8 @@ export default function BrandingClient({ settings, saveBrandingAction }: any) {
 
   return (
     <div className="max-w-5xl mx-auto space-y-6 text-white text-xs">
+      <link rel="stylesheet" href={`https://fonts.googleapis.com/css2?family=${activeBody.replace(/ /g, "+")}:wght@400;500;700;900&display=swap`} />
+
       <div>
         <h1 className="text-3xl font-black font-sans tracking-tight">White-Label & Arculat Tervező</h1>
         <p className="text-zinc-500 text-xs mt-1">Alakítsd át a szoftvert prémium dizájn-kártyákkal és intelligens ikon-csoportokkal.</p>
@@ -80,7 +75,6 @@ export default function BrandingClient({ settings, saveBrandingAction }: any) {
         onSubmit={(e) => {
           e.preventDefault();
           const fd = new FormData(e.currentTarget);
-          // Kényszerítjük a friss kliensoldali logo URL-t a form-ba mentés előtt
           fd.set("logo_url", logoUrl || "");
           startTransition(async () => {
             await saveBrandingAction(fd);
