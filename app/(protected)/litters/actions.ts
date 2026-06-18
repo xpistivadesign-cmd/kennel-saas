@@ -100,7 +100,6 @@ export async function deleteVaccinationAction(id: string) {
   revalidatePath("/litters", "page");
 }
 
-// BOMBABIZTOS, PAYMENTS TÁBLÁHOZ IGAZÍTOTT GYORS ELADÁS
 export async function sellPuppyAction(puppyId: string, litterId: string, formData: FormData) {
   const supabase = createServerSupabase();
   const { data: { user } } = await supabase.auth.getUser();
@@ -108,7 +107,6 @@ export async function sellPuppyAction(puppyId: string, litterId: string, formDat
   const buyer_name = String(formData.get("buyer_name") || "").trim();
   const sale_price = parseFloat(String(formData.get("sale_price") || "0"));
 
-  // 1. Kiskutya adatainak frissítése a puppies táblában
   const { error: pErr } = await supabase
     .from("puppies")
     .update({ buyer_name, sale_price, status: "Sold" })
@@ -116,7 +114,6 @@ export async function sellPuppyAction(puppyId: string, litterId: string, formDat
     
   if (pErr) return { success: false, error: "Kiskutya tábla frissítési hiba: " + pErr.message };
   
-  // 2. Összerakjuk az adatot PONTOSAN a működő 'payments' sémád szerint (nincs currency és category!)
   const paymentData = {
     user_id: user?.id || null, 
     amount: sale_price, 
@@ -125,7 +122,6 @@ export async function sellPuppyAction(puppyId: string, litterId: string, formDat
     date: new Date().toISOString().split("T")[0]
   };
 
-  // 3. Beszúrás a valós 'payments' táblába
   const { error: fErr } = await supabase.from("payments").insert(paymentData);
   
   if (fErr) {
@@ -138,4 +134,12 @@ export async function sellPuppyAction(puppyId: string, litterId: string, formDat
   revalidatePath("/litters", "page");
   revalidatePath("/dashboard");
   return { success: true };
+}
+
+// ÚJ AKCIÓ: KISKUTYA VÉGLEGES TÖRLÉSE
+export async function deletePuppyAction(puppyId: string) {
+  const supabase = createServerSupabase();
+  const { error } = await supabase.from("puppies").delete().eq("id", puppyId);
+  if (error) throw new Error(error.message);
+  revalidatePath("/litters", "page");
 }
