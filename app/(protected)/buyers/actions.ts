@@ -17,10 +17,12 @@ export async function addBuyerAction(data: {
     const supabase = createServerSupabase();
     const { data: { user } } = await supabase.auth.getUser();
 
-    // Itt a kulcs: data.name megy a full_name oszlopba!
+    // Biztonsági játék: Mindkét oszlopot (name és full_name) feltöltjük, 
+    // így bármelyik verzió él az adatbázisodban, le fog futni a mentés!
     const { data: newBuyer, error } = await supabase.from("buyers").insert({
       user_id: user?.id || null,
-      full_name: data.name, 
+      name: data.name,             // Ha a 'name' oszlop a kötelező
+      full_name: data.name,        // Ha a 'full_name' oszlop a kötelező
       email: data.email || null,
       phone: data.phone || null,
       address: data.address || null,
