@@ -3,12 +3,6 @@
 import { revalidatePath } from "next/cache";
 import { createServerSupabase } from "@/lib/supabase/server";
 
-// Megjegyzés: Az e-mail küldéshez a Resend könyvtárat (npm i resend) ajánlom, 
-// de sima fetch-el is megvalósítható a végpontjukon keresztül.
-import { Resend } from "resend";
-
-const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
-
 export async function saveAndSendContractAction(data: {
   buyer_id: string;
   buyer_name: string;
@@ -18,7 +12,6 @@ export async function saveAndSendContractAction(data: {
   price_currency: string;
   contract_date: string;
   breeder_email: string;
-  breeder_signature_url?: string; // Opcionális kép az aláírásról
 }) {
   try {
     const supabase = createServerSupabase();
@@ -44,22 +37,33 @@ export async function saveAndSendContractAction(data: {
 
     if (dbError) throw new Error("Adatbázis hiba: " + dbError.message);
 
-    // 2. AUTOMATIKUS E-MAIL KÜLDÉS (Ha be van állítva a Resend API)
-    if (resend && data.buyer_email) {
-      await resend.emails.send({
-        from: "Kennel SaaS <noreply@yourkennelapp.com>",
-        to: [data.buyer_email, data.breeder_email], // Mind a kettőjüknek elmegy
-        subject: `Adásvételi Szerződés - ${data.puppy_name}`,
-        html: `
-          <h3>Tisztelt ${data.buyer_name}!</h3>
-          <p>Mellékelten küldjük a(z) <strong>${data.puppy_name}</strong> nevű kiskutya adásvételi szerződését.</p>
-          <p>A szerződés sikeresen iktatásra került a rendszerünkben.</p>
-          <br/>
-          <p>Üdvözlettel,<br/>${user.email}</p>
-        `,
-        // Itt opcionálisan generálható és csatolható a valós PDF buffer is,
-        // vagy a levélbe rakható egy biztonságos letöltési link az appból!
-      });
+    // 2. AUTOMATIKUS E-MAIL KÜLDÉS NATÍV FETCH-EL (Így nincs szükség külső csomagra!)
+    const apiKey = process.env.RESEND_API_KEY;
+    if (apiKey && data.buyer_email) {
+      try {
+        await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify({
+            from: "Kennel SaaS <noreply@yourkennelapp.com>",
+            to: [data.buyer_email, data.breeder_email],
+            subject: `Adásvételi Szerződés - ${data.puppy_name}`,
+            html: `
+              <h3>Tisztelt ${data.buyer_name}!</h3>
+              <p>Mellékelten küldjük a(z) <strong>${data.puppy_name}</strong> nevű kiskutya adásvételi szerződését.</p>
+              <p>A szerződés sikeresen iktatásra került a rendszerünkben.</p>
+              <br/>
+              <p>Üdvözlettel,<br/>${user.email}</p>
+            `,
+          }),
+        });
+      } catch (emailErr) {
+        console.error("Nem sikerült elküldeni az e-mailt:", emailErr);
+        // Az e-mail hiba nem rontja el a sikeres adatbázis mentést
+      }
     }
 
     revalidatePath("/buyers");
