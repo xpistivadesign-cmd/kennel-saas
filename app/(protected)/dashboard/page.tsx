@@ -169,11 +169,19 @@ export default async function DashboardPage() {
         <div className="bg-zinc-950 border border-zinc-800 p-4 rounded-xl space-y-3">
           <h3 className="text-sm font-bold text-zinc-300">Upcoming Heats</h3>
           <div className="space-y-2">
-            {upcomingHeats?.map((heat) => (
-              <div key={heat.id} className="bg-zinc-900/60 p-3 rounded-lg text-xs text-zinc-400 font-mono">
-                {heat.start_date} — <span className="text-zinc-200 font-sans font-bold">{heat.dogs?.name || "Unknown Dog"}</span>
-              </div>
-            ))}
+            {upcomingHeats?.map((heat: any) => {
+              // Megoldjuk a TypeScript hibát: biztonságosan kinyerjük a kutya nevét akár objektum, akár tömb formájában jön vissza
+              const dogData = heat.dogs;
+              const dogName = Array.isArray(dogData) 
+                ? dogData[0]?.name 
+                : dogData?.name;
+
+              return (
+                <div key={heat.id} className="bg-zinc-900/60 p-3 rounded-lg text-xs text-zinc-400 font-mono">
+                  {heat.start_date} — <span className="text-zinc-200 font-sans font-bold">{dogName || "Unknown Dog"}</span>
+                </div>
+              );
+            })}
             {(!upcomingHeats || upcomingHeats.length === 0) && <p className="text-zinc-600 text-xs italic">No active or upcoming heats logged.</p>}
           </div>
         </div>
