@@ -3,7 +3,8 @@ import { useState, useEffect, startTransition } from "react";
 import { useRouter } from "next/navigation";
 import { 
   createLitterAction, addPuppyAction, sellPuppyAction, 
-  markLitterAsBornAction, deleteLitterAction, updatePuppyProfileAction, addVaccinationAction, deleteVaccinationAction 
+  markLitterAsBornAction, deleteLitterAction, updatePuppyProfileAction, addVaccinationAction, deleteVaccinationAction,
+  deletePuppyAction
 } from "./actions";
 
 export default function LittersClient({ litters, puppies, potentialSires, potentialDams, activeLitterId, vaccinations }: any) {
@@ -62,6 +63,16 @@ export default function LittersClient({ litters, puppies, potentialSires, potent
       await updatePuppyProfileAction(selPuppy.id, selPuppy);
       startTransition(() => { router.refresh(); });
       alert("Profil sikeresen mentve! 💾");
+    } catch (e: any) { alert(e.message); }
+  };
+
+  const onDeletePuppy = async (id: string) => {
+    if (!confirm("Biztosan VÉGLEG törölni akarod ezt a kiskutyát a rendszerből? Ez a művelet nem vonható vissza! ⚠️")) return;
+    try {
+      await deletePuppyAction(id);
+      setSelPuppy(null);
+      startTransition(() => { router.refresh(); });
+      alert("Kiskutya sikeresen törölve! 🗑️");
     } catch (e: any) { alert(e.message); }
   };
 
@@ -188,108 +199,120 @@ export default function LittersClient({ litters, puppies, potentialSires, potent
             <div className="space-y-2">
               <h3 className="text-sm font-bold uppercase text-zinc-400">Kölykök a listában ({currentPuppies.length})</h3>
               {currentPuppies.map((p) => (
-                <div key={p.id} className={`border p-4 rounded space-y-3 ${p.status === 'Deceased' ? 'bg-red-950/20 border-red-900/50 opacity-60' : 'bg-zinc-950 border-zinc-900'}`}>
-                  <div className="flex justify-between items-start">
-                    <button onClick={() => setSelPuppy(p)} className="text-left block">
-                      <span className="font-bold text-sm text-amber-400 block hover:underline">
-                        🐶 {p.name || "Névtelen"} 
-                        {p.status === "Deceased" && <span className="text-red-500 ml-2 font-mono text-xs uppercase">[Elhullott 🕯️]</span>}
-                        {p.status === "Sold" && <span className="text-emerald-500 ml-2 font-mono text-xs uppercase">[Gazdis 🎉]</span>}
-                      </span>
-                      <span className="text-zinc-300 block">🎀 Nyakörv/Jelölés: {p.collar_color} ({p.gender === "Male" ? "Kan" : "Szuka"})</span>
-                      <span className="text-zinc-500 font-mono text-[10px]">Súly: {p.birth_weight}{p.weight_unit}</span>
-                    </button>
-                    {p.status !== "Sold" && p.status !== "Deceased" ? (
-                      <form onSubmit={(e) => handleSellFormSubmit(p.id, e)} className="flex gap-1 bg-zinc-900 p-1.5 rounded border border-zinc-800 text-white">
-                        <input name="buyer_name" required placeholder="Gazdi" className="p-1 bg-black rounded border border-zinc-800 w-24 text-white" />
-                        <input name="sale_price" type="number" required placeholder="EUR" className="w-16 p-1 bg-black rounded border border-zinc-800 text-white" />
-                        <button type="submit" className="bg-emerald-500 text-black px-2 py-1 font-bold rounded">SELL</button>
-                      </form>
-                    ) : p.status === "Sold" ? (
-                      <span className="text-emerald-400 font-bold bg-emerald-950/40 border border-emerald-900 px-2 py-1 rounded text-[10px]">SOLD & SYNCED</span>
-                    ) : null}
+                <div key={p.id} className="space-y-2">
+                  <div className={`border p-4 rounded space-y-3 ${p.status === 'Deceased' ? 'bg-red-950/20 border-red-900/50 opacity-60' : 'bg-zinc-950 border-zinc-900'}`}>
+                    <div className="flex justify-between items-start">
+                      <button onClick={() => setSelPuppy(selPuppy?.id === p.id ? null : p)} className="text-left block flex-1">
+                        <span className="font-bold text-sm text-amber-400 block hover:underline">
+                          🐶 {p.name || "Névtelen"} 
+                          {p.status === "Deceased" && <span className="text-red-500 ml-2 font-mono text-xs uppercase">[Elhullott 🕯️]</span>}
+                          {p.status === "Sold" && <span className="text-emerald-500 ml-2 font-mono text-xs uppercase">[Gazdis 🎉]</span>}
+                        </span>
+                        <span className="text-zinc-300 block">🎀 Nyakörv/Jelölés: {p.collar_color} ({p.gender === "Male" ? "Kan" : "Szuka"})</span>
+                        <span className="text-zinc-500 font-mono text-[10px]">Súly: {p.birth_weight}{p.weight_unit}</span>
+                      </button>
+                      {p.status !== "Sold" && p.status !== "Deceased" ? (
+                        <form onSubmit={(e) => handleSellFormSubmit(p.id, e)} className="flex gap-1 bg-zinc-900 p-1.5 rounded border border-zinc-800 text-white">
+                          <input name="buyer_name" required placeholder="Gazdi" className="p-1 bg-black rounded border border-zinc-800 w-24 text-white" />
+                          <input name="sale_price" type="number" required placeholder="EUR" className="w-16 p-1 bg-black rounded border border-zinc-800 text-white" />
+                          <button type="submit" className="bg-emerald-500 text-black px-2 py-1 font-bold rounded">SELL</button>
+                        </form>
+                      ) : p.status === "Sold" ? (
+                        <span className="text-emerald-400 font-bold bg-emerald-950/40 border border-emerald-900 px-2 py-1 rounded text-[10px]">SOLD & SYNCED</span>
+                      ) : null}
+                    </div>
                   </div>
+
+                  {/* ADATLAP BEÁGYAZÁSA: Pontosan az éppen kattintott kutya doboza alatt nyílik meg */}
+                  {selPuppy && selPuppy.id === p.id && (
+                    <div className="bg-zinc-900 border border-zinc-800 p-4 rounded space-y-4 animate-fadeIn ml-2 border-l-4 border-l-amber-500">
+                      <form onSubmit={onSaveProfile} className="space-y-3">
+                        <div className="flex justify-between items-center border-b border-zinc-800 pb-2">
+                          <div className="flex items-center gap-3">
+                            <h2 className="text-base font-bold text-amber-400">🐶 Kiskutya Profil részletes adatai</h2>
+                            <button 
+                              type="button" 
+                              onClick={() => onDeletePuppy(selPuppy.id)} 
+                              className="bg-red-950/60 hover:bg-red-900/80 text-red-400 border border-red-900/50 px-2 py-0.5 rounded text-[10px] font-bold transition-all uppercase tracking-wider"
+                            >
+                              🗑️ Kutya törlése
+                            </button>
+                          </div>
+                          <button type="button" onClick={() => setSelPuppy(null)} className="text-zinc-500 hover:text-white font-bold">Bezárás ✕</button>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div><label className="text-zinc-500 block mb-1">Név</label><input value={selPuppy.name || ""} onChange={e => setSelPuppy({...selPuppy, name: e.target.value})} className="w-full bg-black p-2 border border-zinc-800 rounded text-white" /></div>
+                          <div><label className="text-zinc-500 block mb-1">Nyakörv / Jelölés</label><input value={selPuppy.collar_color || ""} onChange={e => setSelPuppy({...selPuppy, collar_color: e.target.value})} className="w-full bg-black p-2 border border-zinc-800 rounded text-white" /></div>
+                          <div><label className="text-zinc-500 block mb-1">Törzskönyvi szám</label><input value={selPuppy.pedigree_number || ""} onChange={e => setSelPuppy({...selPuppy, pedigree_number: e.target.value})} placeholder="Pl. MET.Whip.124/26" className="w-full bg-black p-2 border border-zinc-800 rounded text-white" /></div>
+                          <div><label className="text-zinc-500 block mb-1">Microchip szám</label><input value={selPuppy.microchip_number || ""} onChange={e => setSelPuppy({...selPuppy, microchip_number: e.target.value})} placeholder="Pl. 900182000123456" className="w-full bg-black p-2 border border-zinc-800 rounded text-white" /></div>
+                          <div><label className="text-zinc-500 block mb-1">Útlevél szám</label><input value={selPuppy.passport_number || ""} onChange={e => setSelPuppy({...selPuppy, passport_number: e.target.value})} placeholder="Pl. HU123456" className="w-full bg-black p-2 border border-zinc-800 rounded text-white" /></div>
+                          <div>
+                            <label className="text-zinc-500 block mb-1">Élethelyzet / Státusz</label>
+                            <select value={selPuppy.status || "Elérhető"} onChange={e => setSelPuppy({...selPuppy, status: e.target.value})} className="w-full bg-black p-2 border border-zinc-800 rounded text-white">
+                              <option value="Elérhető">Available</option>
+                              <option value="Sold">Sold</option>
+                              <option value="Deceased">Deceased (Elhullott 🕯️)</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        {selPuppy.status === "Sold" && (
+                          <div className="bg-emerald-950/20 border border-emerald-900/50 p-3 rounded grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="text-emerald-400 block mb-0.5 font-bold">Tulajdonos / Gazdi neve</label>
+                              <input value={selPuppy.buyer_name || "Nincs rögzítve"} readOnly className="w-full bg-black p-2 border border-zinc-800 rounded text-zinc-400 text-xs font-semibold cursor-not-allowed" />
+                            </div>
+                            <div>
+                              <label className="text-emerald-400 block mb-0.5 font-bold">Vételár (EUR)</label>
+                              <input value={selPuppy.sale_price ? `${selPuppy.sale_price} EUR` : "0 EUR"} readOnly className="w-full bg-black p-2 border border-zinc-800 rounded text-zinc-400 text-xs font-mono cursor-not-allowed" />
+                            </div>
+                          </div>
+                        )}
+
+                        {selPuppy.status === "Deceased" && (
+                          <div className="bg-red-950/30 border border-red-900/50 p-3 rounded">
+                            <label className="text-red-400 block mb-1 font-bold">Elhullás oka</label>
+                            <input value={selPuppy.death_reason || ""} onChange={e => setSelPuppy({...selPuppy, death_reason: e.target.value})} placeholder="Pl. Parvo, herpesz..." className="w-full bg-black p-2 border border-red-900 rounded text-white text-xs" />
+                          </div>
+                        )}
+
+                        <div><label className="text-zinc-500 block mb-1">Megjegyzés</label><input value={selPuppy.notes || ""} onChange={e => setSelPuppy({...selPuppy, notes: e.target.value})} className="w-full bg-black p-2 border border-zinc-800 rounded text-white" /></div>
+                        <button type="submit" className="w-full bg-emerald-600 text-white font-bold p-2.5 rounded uppercase">Kiskutya adatlap mentése</button>
+                      </form>
+
+                      <hr className="border-zinc-800 my-4" />
+
+                      <div className="space-y-3">
+                        <h3 className="text-sm font-bold text-amber-400 uppercase tracking-wider">🏥 Egyedi Egészségügyi sáv ({selPuppy.name || "Kiskutya"})</h3>
+                        
+                        <form onSubmit={onPuppyMedicalSubmit} className="flex gap-2 bg-black p-2 rounded border border-zinc-800 items-center">
+                          <select value={pMedType} onChange={e => setPMedType(e.target.value)} className="bg-zinc-900 p-2 rounded border border-zinc-800 text-white text-xs font-bold">
+                            <option value="Vaccination">💉 Oltás</option>
+                            <option value="Deworming">💊 Féreghajtás</option>
+                            <option value="Medical">🩺 Egyéb orvosi</option>
+                          </select>
+                          <input value={pMedName} onChange={e => setPMedName(e.target.value)} required placeholder="Pl. Kombinált, Vitamin, Műtét..." className="bg-zinc-900 p-2 rounded border border-zinc-800 flex-1 text-white text-xs" />
+                          <input type="date" value={pMedDate} onChange={e => setPMedDate(e.target.value)} className="bg-zinc-900 p-2 rounded border border-zinc-800 text-white text-xs" />
+                          <button type="submit" className="bg-blue-600 text-white px-3 py-2 rounded font-bold">Hozzáadás</button>
+                        </form>
+
+                        <div className="space-y-1">
+                          {puppyMedicalRecords.map((m: any) => (
+                            <div key={m.id} className="flex justify-between items-center bg-zinc-950 p-2 border border-zinc-900 rounded">
+                              <span className="text-zinc-300 font-medium">
+                                {m.treatment_type === 'Deworming' ? '💊 [FÉREGHAJTÁS]' : m.treatment_type === 'Medical' ? '🩺 [EGYÉB ORVOSI]' : '💉 [OLTÁS]'} {m.vaccine_name} 
+                                <span className="text-zinc-500 font-mono text-[10px] ml-2">({m.date_administered})</span>
+                              </span>
+                              <button type="button" onClick={() => onDeleteMedical(m.id)} className="text-red-500 hover:text-red-400 font-bold px-2 py-0.5 border border-red-950 rounded bg-red-950/20 text-[10px]">TÖRLÉS</button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
-
-            {selPuppy && (
-              <div className="bg-zinc-900 border border-zinc-800 p-4 rounded space-y-4">
-                <form onSubmit={onSaveProfile} className="space-y-3">
-                  <div className="flex justify-between items-center">
-                    <h2 className="text-base font-bold text-amber-400">🐶 Kiskutya Profil részletes adatai</h2>
-                    <button type="button" onClick={() => setSelPuppy(null)} className="text-zinc-500 hover:text-white">Bezárás X</button>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div><label className="text-zinc-500 block mb-1">Név</label><input value={selPuppy.name || ""} onChange={e => setSelPuppy({...selPuppy, name: e.target.value})} className="w-full bg-black p-2 border border-zinc-800 rounded text-white" /></div>
-                    <div><label className="text-zinc-500 block mb-1">Nyakörv / Jelölés</label><input value={selPuppy.collar_color || ""} onChange={e => setSelPuppy({...selPuppy, collar_color: e.target.value})} className="w-full bg-black p-2 border border-zinc-800 rounded text-white" /></div>
-                    <div><label className="text-zinc-500 block mb-1">Törzskönyvi szám</label><input value={selPuppy.pedigree_number || ""} onChange={e => setSelPuppy({...selPuppy, pedigree_number: e.target.value})} placeholder="Pl. MET.Whip.124/26" className="w-full bg-black p-2 border border-zinc-800 rounded text-white" /></div>
-                    <div><label className="text-zinc-500 block mb-1">Microchip szám</label><input value={selPuppy.microchip_number || ""} onChange={e => setSelPuppy({...selPuppy, microchip_number: e.target.value})} placeholder="Pl. 900182000123456" className="w-full bg-black p-2 border border-zinc-800 rounded text-white" /></div>
-                    <div><label className="text-zinc-500 block mb-1">Útlevél szám</label><input value={selPuppy.passport_number || ""} onChange={e => setSelPuppy({...selPuppy, passport_number: e.target.value})} placeholder="Pl. HU123456" className="w-full bg-black p-2 border border-zinc-800 rounded text-white" /></div>
-                    <div>
-                      <label className="text-zinc-500 block mb-1">Élethelyzet / Státusz</label>
-                      <select value={selPuppy.status || "Elérhető"} onChange={e => setSelPuppy({...selPuppy, status: e.target.value})} className="w-full bg-black p-2 border border-zinc-800 rounded text-white">
-                        <option value="Elérhető">Available</option>
-                        <option value="Sold">Sold</option>
-                        <option value="Deceased">Deceased (Elhullott 🕯️)</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  {selPuppy.status === "Sold" && (
-                    <div className="bg-emerald-950/20 border border-emerald-900/50 p-3 rounded grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="text-emerald-400 block mb-0.5 font-bold">Tulajdonos / Gazdi neve</label>
-                        <input value={selPuppy.buyer_name || "Nincs rögzítve"} readOnly className="w-full bg-black p-2 border border-zinc-800 rounded text-zinc-400 text-xs font-semibold cursor-not-allowed" />
-                      </div>
-                      <div>
-                        <label className="text-emerald-400 block mb-0.5 font-bold">Vételár (EUR)</label>
-                        <input value={selPuppy.sale_price ? `${selPuppy.sale_price} EUR` : "0 EUR"} readOnly className="w-full bg-black p-2 border border-zinc-800 rounded text-zinc-400 text-xs font-mono cursor-not-allowed" />
-                      </div>
-                    </div>
-                  )}
-
-                  {selPuppy.status === "Deceased" && (
-                    <div className="bg-red-950/30 border border-red-900/50 p-3 rounded">
-                      <label className="text-red-400 block mb-1 font-bold">Elhullás oka</label>
-                      <input value={selPuppy.death_reason || ""} onChange={e => setSelPuppy({...selPuppy, death_reason: e.target.value})} placeholder="Pl. Parvo, herpesz..." className="w-full bg-black p-2 border border-red-900 rounded text-white text-xs" />
-                    </div>
-                  )}
-
-                  <div><label className="text-zinc-500 block mb-1">Megjegyzés</label><input value={selPuppy.notes || ""} onChange={e => setSelPuppy({...selPuppy, notes: e.target.value})} className="w-full bg-black p-2 border border-zinc-800 rounded text-white" /></div>
-                  <button type="submit" className="w-full bg-emerald-600 text-white font-bold p-2.5 rounded uppercase">Kiskutya adatlap mentése</button>
-                </form>
-
-                <hr className="border-zinc-800 my-4" />
-
-                <div className="space-y-3">
-                  <h3 className="text-sm font-bold text-amber-400 uppercase tracking-wider">🏥 Egyedi Egészségügyi sáv ({selPuppy.name || "Kiskutya"})</h3>
-                  
-                  <form onSubmit={onPuppyMedicalSubmit} className="flex gap-2 bg-black p-2 rounded border border-zinc-800 items-center">
-                    <select value={pMedType} onChange={e => setPMedType(e.target.value)} className="bg-zinc-900 p-2 rounded border border-zinc-800 text-white text-xs font-bold">
-                      <option value="Vaccination">💉 Oltás</option>
-                      <option value="Deworming">💊 Féreghajtás</option>
-                      <option value="Medical">🩺 Egyéb orvosi</option>
-                    </select>
-                    <input value={pMedName} onChange={e => setPMedName(e.target.value)} required placeholder="Pl. Kombinált, Vitamin, Műtét..." className="bg-zinc-900 p-2 rounded border border-zinc-800 flex-1 text-white text-xs" />
-                    <input type="date" value={pMedDate} onChange={e => setPMedDate(e.target.value)} className="bg-zinc-900 p-2 rounded border border-zinc-800 text-white text-xs" />
-                    <button type="submit" className="bg-blue-600 text-white px-3 py-2 rounded font-bold">Hozzáadás</button>
-                  </form>
-
-                  <div className="space-y-1">
-                    {puppyMedicalRecords.map((m: any) => (
-                      <div key={m.id} className="flex justify-between items-center bg-zinc-950 p-2 border border-zinc-900 rounded">
-                        <span className="text-zinc-300 font-medium">
-                          {m.treatment_type === 'Deworming' ? '💊 [FÉREGHAJTÁS]' : m.treatment_type === 'Medical' ? '🩺 [EGYÉB ORVOSI]' : '💉 [OLTÁS]'} {m.vaccine_name} 
-                          <span className="text-zinc-500 font-mono text-[10px] ml-2">({m.date_administered})</span>
-                        </span>
-                        <button type="button" onClick={() => onDeleteMedical(m.id)} className="text-red-500 hover:text-red-400 font-bold px-2 py-0.5 border border-red-950 rounded bg-red-950/20 text-[10px]">TÖRLÉS</button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
 
           <form onSubmit={onAddPuppy} className="bg-zinc-900 border border-zinc-800 p-4 rounded h-fit space-y-2">
