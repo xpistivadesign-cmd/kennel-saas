@@ -107,3 +107,25 @@ export async function saveContractAction(data: {
     return { success: false, error: err.message };
   }
 }
+// Kiskutya leválasztása a gazdiról (visszaállítás elérhetőre)
+export async function removePuppyFromBuyerAction(puppyId: string) {
+  try {
+    const supabase = createServerSupabase();
+    
+    const { error } = await supabase
+      .from("puppies")
+      .update({
+        buyer_name: null,
+        status: "Elérhető",
+        sale_price: null // opcionális: az árat is nullázhatjuk, ha szükséges
+      })
+      .eq("id", puppyId);
+
+    if (error) return { success: false, error: error.message };
+    
+    revalidatePath("/buyers");
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
