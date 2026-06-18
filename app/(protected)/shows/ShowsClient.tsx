@@ -1,7 +1,7 @@
 "use client";
 import { useState, startTransition } from "react";
 import { useRouter } from "next/navigation";
-import { createEventAction, updateEventAction, updateEntryResultAction, deleteEventAction } from "./actions";
+import { createEventAction, updateEntryResultAction, deleteEventAction } from "./actions";
 
 export default function ShowsClient({ events, dogs }: any) {
   const router = useRouter();
@@ -187,7 +187,7 @@ export default function ShowsClient({ events, dogs }: any) {
         </div>
       </div>
 
-      {/* JOBB OLDAL: PROFI ÚJ ESEMÉNY ÉS TÖBBES NEVEZÉSI ŰRLAP */}
+      {/* JOBB OLDAL: NEVEZÉSI ŰRLAP */}
       <form onSubmit={onSubmitEvent} className="bg-zinc-900 border border-zinc-800 p-4 rounded-lg space-y-3">
         <h3 className="font-bold text-zinc-400 uppercase text-xs border-b border-zinc-800 pb-2">Esemény / Kiállítás Kiírása</h3>
         
