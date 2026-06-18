@@ -23,21 +23,33 @@ async function saveBrandingAction(formData: FormData) {
 
   let logo_url = String(formData.get("current_logo_url") || "");
 
-  // Ha a felhasználó feltöltött egy új képet
-  if (logo_file && logo_file.size > 0) {
+  // BIZTONSÁGOS ARRAYBUFFER ÁTALAKÍTÁS A FELTÖLTÉSHEZ
+  if (logo_file && logo_file.size > 0 && logo_file.name !== "undefined") {
     const fileExt = logo_file.name.split('.').pop();
     const fileName = `${user.id}-${Date.now()}.${fileExt}`;
     const filePath = `${fileName}`;
 
-    // Feltöltjük a 'logos' nevű storage bucketbe
-    const { error: uploadError } = await supabase.storage
-      .from("logos")
-      .upload(filePath, logo_file, { cacheControl: "3600", upsert: true });
+    try {
+      // Átalakítjuk a fájlt olyan formátummá, amit a szerver imádni fog
+      const bytes = await logo_file.arrayBuffer();
+      const buffer = Buffer.from(bytes);
 
-    if (!uploadError) {
-      // Megszerezzük a publikus URL-t
-      const { data: { publicUrl } } = supabase.storage.from("logos").getPublicUrl(filePath);
-      logo_url = publicUrl;
+      const { error: uploadError } = await supabase.storage
+        .from("logos")
+        .upload(filePath, buffer, {
+          contentType: logo_file.type,
+          cacheControl: "3600",
+          upsert: true
+        });
+
+      if (!uploadError) {
+        const { data: { publicUrl } } = supabase.storage.from("logos").getPublicUrl(filePath);
+        logo_url = publicUrl;
+      } else {
+        console.error("Storage hiba:", uploadError.message);
+      }
+    } catch (e) {
+      console.error("Fájl konverziós hiba:", e);
     }
   }
 
