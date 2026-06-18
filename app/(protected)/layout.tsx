@@ -1,14 +1,9 @@
 import Link from "next/link";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { BRANDING_PRESETS } from "./settings/branding/BrandingClient";
 
 export const dynamic = "force-dynamic";
-
-const SERVER_PRESETS = {
-  royal_purple: { bg: "#0d0814", accent: "#a855f7", heading: "#ffffff", body: "#e9d5ff", cDash: "#1a0f30", cDogs: "#111827", cHeats: "#2d0b1e", cFin: "#062419" },
-  midnight_neon: { bg: "#09090b", accent: "#6df73b", heading: "#ffffff", body: "#a1a1aa", cDash: "#16161a", cDogs: "#16161a", cHeats: "#1f0814", cFin: "#041910" },
-  luxury_gold: { bg: "#141414", accent: "#dca54e", heading: "#fafaf9", body: "#a1a1aa", cDash: "#1c1c1c", cDogs: "#1c1c1c", cHeats: "#2a1a08", cFin: "#1c1c1c" },
-};
 
 export default async function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const supabase = createServerSupabase();
@@ -18,87 +13,129 @@ export default async function ProtectedLayout({ children }: { children: React.Re
   const { data: brandingData } = await supabase.from("branding_settings").select("*").eq("user_id", user.id);
   const branding = brandingData?.[0] || null;
 
-  const currentPresetKey = branding?.preset_palette || "royal_purple";
-  const themeMode = branding?.theme_mode || "preset";
-  const isPreset = themeMode === "preset";
-  
-  const presetData = SERVER_PRESETS[currentPresetKey as keyof typeof SERVER_PRESETS] || SERVER_PRESETS.royal_purple;
+  const isPreset = (branding?.theme_mode || "preset") === "preset";
+  const currentPresetKey = branding?.preset_palette || "obsidian_platinum";
+  const presetData = BRANDING_PRESETS[currentPresetKey as keyof typeof BRANDING_PRESETS] || BRANDING_PRESETS.obsidian_platinum;
 
-  // Globális színek
-  const bgColor = (isPreset || !branding?.bg_color) ? presetData.bg : branding.bg_color;
-  const accentColor = (isPreset || !branding?.accent_color) ? presetData.accent : branding.accent_color;
-  const headingColor = branding?.text_heading_color || presetData.heading;
-  const bodyColor = branding?.text_body_color || presetData.body;
-  
-  // EGYEDI KÁRTYASZÍNEK DINAMIKUS BEOLVASÁSA
-  const cardDashboardColor = (isPreset || !branding?.card_dashboard_color) ? presetData.cDash : branding.card_dashboard_color;
-  const cardDogsColor = (isPreset || !branding?.card_dogs_color) ? presetData.cDogs : branding.card_dogs_color;
-  const cardHeatsColor = (isPreset || !branding?.card_heats_color) ? presetData.cHeats : branding.card_heats_color;
-  const cardFinanceColor = (isPreset || !branding?.card_finance_color) ? presetData.cFin : branding.card_finance_color;
+  // SZIGORÚ 3-SZÍNES STRUKTÚRA BEOLVASÁSA
+  const bgColor = isPreset ? presetData.bg : (branding?.bg_color || "#0A0B0F");
+  const headingColor = isPreset ? presetData.primary : "#FFFFFF"; // Presetnél a gyári elsődleges szín, customnál tiszta fehér kontraszt
+  const accentColor = isPreset ? presetData.accent : (branding?.accent_color || "#8B8D98");
+  const bodyColor = `${headingColor}cc`; // A törzsszöveg mindig a főcím színének 80%-os áttetsző változata az eleganciáért
 
-  const kennelName = branding?.kennel_name || "Kennel OS";
+  const googleFontName = branding?.google_font_name || "Inter";
   const logoUrl = branding?.logo_url || null;
+  const kennelName = branding?.kennel_name || "Kennel OS";
   const iconStyle = branding?.icon_style || "glass-box";
   const userGreetingName = branding?.owner_name || user.user_metadata?.full_name || "Tenyésztő";
 
+  const navItems = [
+    { href: "/dashboard", label: "Dashboard", icon: "📊" },
+    { href: "/dogs", label: "Dogs", icon: "🐕" },
+    { href: "/heats", label: "Heats", icon: "🩸" },
+    { href: "/litters", label: "Litters", icon: "🐾" },
+    { href: "/shows", label: "Shows", icon: "🏆" },
+    { href: "/buyers", label: "Buyers & Waitlist", icon: "👥" },
+    { href: "/finance", label: "Finance", icon: "💰" },
+    { href: "/settings/branding", label: "Branding & Style", icon: "🎨" },
+  ];
+
+  async function signOut() {
+    "use server";
+    const supabase = createServerSupabase();
+    await supabase.auth.signOut();
+    redirect("/login");
+  }
+
   return (
-    <div className="min-h-screen flex" style={{ backgroundColor: bgColor, color: bodyColor }}>
-      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;700;900&display=swap" />
+    <div className="min-h-screen flex transition-all duration-300" style={{ backgroundColor: bgColor, color: bodyColor, fontFamily: `'${googleFontName}', sans-serif` }}>
+      <link rel="stylesheet" href={`https://fonts.googleapis.com/css2?family=${googleFontName.replace(/ /g, "+")}:wght@400;600;900&display=swap`} />
 
-      {/* 🔮 AGRESSZÍV DINAMIKUS WHITE-LABEL KÁRTYA GENERÁTOR */}
+      {/* 🚀 ELŐRE TERVEZETT DINAMIKUS 3-SZÍNES LUXUS INJEKCIÓ */}
       <style dangerouslySetInnerHTML={{ __html: `
-        body, html { background-color: ${bgColor} !important; font-family: 'Poppins', sans-serif !important; }
-        h1, h2, h3, h4, th, .text-white, strong { color: ${headingColor} !important; }
-        
-        /* Gombok */
-        button[type="submit"], .bg-emerald-500, .bg-blue-500, .bg-blue-600, button:contains("MENTÉS") {
+        body, html { background-color: ${bgColor} !important; }
+        h1, h2, h3, h4, th, .text-white, strong, b { color: ${headingColor} !important; }
+        p, span, td, label, li, .text-zinc-400, .text-zinc-300 { color: ${bodyColor} !important; }
+
+        /* Globális akciógombok */
+        button[type="submit"], .bg-emerald-500, .bg-blue-500, .bg-blue-600, .bg-zinc-100, 
+        button:contains("+"), button:contains("MENTÉS"), button[className*="bg-emerald"] {
           background-color: ${accentColor} !important;
-          color: #000000 !important;
+          color: ${bgColor} !important;
           font-weight: 900 !important;
+          border: none !important;
+          box-shadow: 0 4px 20px ${accentColor}33 !important;
         }
 
-        /* ⬛ ALAPÉRTELMEZETT KÁRTYÁK */
-        .bg-zinc-950, .bg-zinc-900, .bg-black, .bg-zinc-800, .rounded-xl.border, .border-zinc-800 {
-          background-color: ${cardDashboardColor} !important; 
-          border: 1px solid rgba(255,255,255,0.08) !important;
+        /* 🪐 MATEMATIKAI ÜVEGHATÁSÚ PRÉMIUM KÁRTYÁK (A főszöveg színének 4%-os vetülete, így mindig tökéletesen harmonizál!) */
+        .bg-zinc-950, .bg-zinc-900, .bg-black, .bg-zinc-800, .bg-zinc-800\\/50, .rounded-xl.border, .border-zinc-800 {
+          background-color: ${headingColor}0a !important;
+          border: 1px solid ${headingColor}12 !important;
+          backdrop-filter: blur(20px) !important;
+          box-shadow: 0 4px 30px rgba(0,0,0,0.1) !important;
         }
 
-        /* 🖥️ DASHBOARD KÁRTYÁK (Csak a dashboard aloldalon) */
-        main[className*="p-10"] .grid, url*="dashboard" .bg-zinc-900 {
-          background-color: ${cardDashboardColor} !important;
+        /* Hover kártya effektus */
+        .bg-zinc-900:hover, .rounded-xl.border:hover {
+          background-color: ${headingColor}0f !important;
+          border-color: ${accentColor}44 !important;
+          transform: translateY(-2px);
         }
 
-        /* 🐕 DOGS KÁRTYÁK HÁTTÉRSZÍNE (Te állítod be!) */
-        div:contains("Male"), div:contains("Female"), div:contains("Breed"), div:contains("DOGS DIRECTORY") {
-          background-color: ${cardDogsColor} !important;
+        /* 🔲 IKON BOXOK DESIGN */
+        aside span[className*="rounded-lg"], main span[className*="bg-zinc-900"] {
+          background-color: ${accentColor}15 !important;
+          border: 1px solid ${accentColor}30 !important;
+          color: ${accentColor} !important;
         }
 
-        /* 🩸 HEATS (TÜZELÉSEK) KÁRTYÁK HÁTTÉRSZÍNE (Te állítod be!) */
-        div:contains("HEAT CYCLES"), div:contains("Ciklus"), div:contains("Tüzelés") {
-          background-color: ${cardHeatsColor} !important;
+        /* Inputok */
+        input, select, textarea {
+          background-color: rgba(0,0,0,0.3) !important;
+          border: 1px solid ${headingColor}15 !important;
+          color: ${headingColor} !important;
         }
-
-        /* 🟢 FINANCE (PÉNZÜGY) KÁRTYÁK HÁTTÉRSZÍNE (Te állítod be!) */
-        div:contains("Finance & Analytics"), div:contains("Revenue"), div:contains("Expense"), div:contains("Transaction") {
-          background-color: ${cardFinanceColor} !important;
+        input:focus, select:focus, textarea:focus {
+          border-color: ${accentColor} !important;
         }
       `}} />
 
-      <aside className="w-64 shrink-0 p-6 flex flex-col justify-between border-r border-white/5" style={{ backgroundColor: "rgba(0,0,0,0.3)" }}>
+      <aside className="w-64 shrink-0 p-6 flex flex-col justify-between border-r" style={{ backgroundColor: "rgba(0,0,0,0.15)", borderColor: `${headingColor}0d` }}>
         <div>
-          <div className="mb-8 flex items-center gap-2 border-b border-white/5 pb-4">
-            {logoUrl ? <img src={logoUrl} alt="Logo" className="h-10 max-w-[180px] object-contain" /> : <span className="text-xl font-black">{kennelName}</span>}
+          <div className="mb-8 flex items-center gap-2 border-b pb-4" style={{ borderColor: `${headingColor}0d` }}>
+            {logoUrl ? (
+              <img src={logoUrl} alt="Logo" className="h-9 max-w-[180px] object-contain rounded" />
+            ) : (
+              <span className="text-lg font-black" style={{ color: headingColor }}>
+                <span style={{ color: accentColor }}>🐾</span> {kennelName}
+              </span>
+            )}
           </div>
-          <div className="mb-6 p-4 rounded-2xl bg-white/5 border border-white/5 text-xs font-bold">✨ {userGreetingName}</div>
-          <nav className="flex flex-col gap-2">
+
+          <div className="mb-6 p-3.5 rounded-xl border text-xs font-bold" style={{ backgroundColor: `${headingColor}04`, borderColor: `${headingColor}0d` }}>
+            <span className="text-[9px] block uppercase tracking-wider opacity-40">Tenyészet</span>
+            <div className="text-xs font-black mt-0.5" style={{ color: headingColor }}>✨ Welcome, {userGreetingName}!</div>
+          </div>
+
+          <nav className="flex flex-col gap-1.5">
             {navItems.map((item) => (
-              <Link key={item.href} href={item.href} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition-all hover:bg-white/5">
-                <span className="w-8 h-8 rounded-lg flex items-center justify-center bg-white/5 border border-white/10">{item.icon}</span>
-                <span className="font-bold">{item.label}</span>
+              <Link key={item.href} href={item.href} className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs transition-all hover:bg-white/5">
+                {iconStyle === "glass-box" ? (
+                  <span className="w-7 h-7 rounded-lg flex items-center justify-center transition-all" style={{ backgroundColor: `${accentColor}15`, border: `1px solid ${accentColor}25`, color: accentColor }}>{item.icon}</span>
+                ) : (
+                  <span>{item.icon}</span>
+                )}
+                <span className="font-bold" style={{ color: headingColor }}>{item.label}</span>
               </Link>
             ))}
           </nav>
         </div>
+
+        <form action={signOut}>
+          <button type="submit" className="w-full p-2.5 rounded-xl border text-xs font-bold transition-all" style={{ backgroundColor: `${headingColor}04`, borderColor: `${headingColor}0d`, color: headingColor }}>
+            Kijelentkezés
+          </button>
+        </form>
       </aside>
 
       <main className="flex-1 min-w-0 p-10 overflow-y-auto">{children}</main>
