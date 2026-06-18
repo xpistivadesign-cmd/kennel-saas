@@ -250,5 +250,145 @@ export default async function FinancePage({
                             ✏️
                           </a>
                           
-                          {/* JAVÍTOTT FORM: Nincs onSubmit, a confirm ellenőrzés a gombra került */}
-                          <form action={deleteTransaction
+                          <form action={deleteTransactionAction}>
+                            <input type="hidden" name="id" value={p.id} />
+                            <button 
+                              type="submit" 
+                              className="p-1.5 hover:bg-zinc-900 rounded text-zinc-400 hover:text-red-500 transition-colors"
+                              title="Törlés"
+                              onClick={(e) => {
+                                if (!confirm("Biztosan törölni szeretnéd ezt a tranzakciót?")) {
+                                  e.preventDefault();
+                                }
+                              }}
+                            >
+                              🗑️
+                            </button>
+                          </form>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+                {payments.length === 0 && <p className="text-zinc-600 italic">Nincsenek még könyvelt tranzakciók.</p>}
+              </div>
+            </div>
+
+          </div>
+
+          {/* DINAMIKUS ÚJ / SZERKESZTŐŰRLAP */}
+          <div className={`border p-5 rounded-xl space-y-4 transition-all ${
+            editingTransaction ? "border-amber-500 bg-amber-950/5" : "border-zinc-800 bg-zinc-950"
+          }`}>
+            <h3 className="text-sm font-bold text-zinc-300 uppercase tracking-wider border-b border-zinc-900 pb-2">
+              {editingTransaction ? "✏️ Edit Transaction" : "Log Transaction"}
+            </h3>
+            <form action={saveTransactionAction} className="space-y-3.5">
+              {editingTransaction && (
+                <input type="hidden" name="id" value={editingTransaction.id} />
+              )}
+
+              <div>
+                <label className="text-zinc-500 block mb-1">Összeg (EUR)</label>
+                <input
+                  name="amount"
+                  type="number"
+                  required
+                  placeholder="Pl. 2500"
+                  defaultValue={editingTransaction ? editingTransaction.amount : ""}
+                  className="w-full rounded-lg bg-black border border-zinc-800 p-2.5 text-white focus:outline-none focus:border-emerald-500 transition-colors font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="text-zinc-500 block mb-1">Tranzakció Típusa</label>
+                <select
+                  name="type"
+                  defaultValue={editingTransaction ? editingTransaction.type : "income"}
+                  className="w-full rounded-lg bg-black border border-zinc-800 p-2.5 text-white focus:outline-none focus:border-emerald-500 transition-colors font-bold"
+                >
+                  <option value="income">🟢 Income (Bevétel)</option>
+                  <option value="expense">🔴 Expense (Kiadás)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-zinc-500 block mb-1">Kategória</label>
+                <select
+                  name="category"
+                  defaultValue={editingTransaction ? editingTransaction.category : "Puppy Sale"}
+                  className="w-full rounded-lg bg-black border border-zinc-800 p-2.5 text-white focus:outline-none focus:border-emerald-500 transition-colors"
+                >
+                  <option value="Puppy Sale">Puppy Sale (Kölyök eladás)</option>
+                  <option value="Stud Fee">Stud Fee (Fedeztetési díj)</option>
+                  <option value="Medical & Vaccine">Medical & Vaccine (Orvosi & Oltás)</option>
+                  <option value="Dog Food">Dog Food & Supps (Kutyatáp & Vitamin)</option>
+                  <option value="Show Entry">Show Entry (Kiállítási nevezés)</option>
+                  <option value="Equipment">Equipment (Felszerelés)</option>
+                  <option value="Other">Other (Egyéb bejegyzés)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-zinc-500 block mb-1">Hozzárendelés Alomhoz (Opcionális)</label>
+                <select
+                  name="litter_id"
+                  defaultValue={editingTransaction?.litter_id ? editingTransaction.litter_id : "none"}
+                  className="w-full rounded-lg bg-black border border-zinc-800 p-2.5 text-white focus:outline-none focus:border-emerald-500 transition-colors"
+                >
+                  <option value="none">-- Nem tartozik alomhoz --</option>
+                  {litters.map((l) => (
+                    <option key={l.id} value={l.id}>"{l.letter}" alom</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-zinc-500 block mb-1">Dátum</label>
+                <input
+                  name="date"
+                  type="date"
+                  required
+                  defaultValue={editingTransaction ? editingTransaction.date : new Date().toISOString().split("T")[0]}
+                  className="w-full rounded-lg bg-black border border-zinc-800 p-2.5 text-white focus:outline-none focus:border-emerald-500 transition-colors font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="text-zinc-500 block mb-1">Megjegyzés / Részletek</label>
+                <textarea
+                  name="notes"
+                  placeholder="Pl. Oltási költségek az egész alomnak..."
+                  defaultValue={editingTransaction ? editingTransaction.description : ""}
+                  className="w-full rounded-lg bg-black border border-zinc-800 p-2.5 text-white focus:outline-none focus:border-emerald-500 transition-colors h-16 resize-none"
+                />
+              </div>
+
+              <button 
+                type="submit" 
+                className={`w-full rounded-lg py-2.5 font-bold text-black uppercase tracking-wider transition-colors ${
+                  editingTransaction ? "bg-amber-500 hover:bg-amber-400" : "bg-emerald-500 hover:bg-emerald-400"
+                }`}
+              >
+                {editingTransaction ? "Frissítés mentése" : "Log Transaction"}
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    );
+  } catch (err: any) {
+    return (
+      <div className="p-8 bg-zinc-950 border border-red-900 rounded-xl max-w-2xl mx-auto my-10 space-y-4">
+        <h1 className="text-red-500 text-xl font-bold font-sans">⚠️ Adatbázis szinkronizációs hiba történt</h1>
+        <p className="text-zinc-400 text-xs">A Next.js nem omlott össze, de a Supabase visszautasította a kérést az alábbi okból:</p>
+        <pre className="bg-black p-4 rounded border border-zinc-800 text-red-400 text-xs font-mono overflow-auto whitespace-pre-wrap">
+          {err.message || String(err)}
+        </pre>
+        <p className="text-zinc-500 text-[11px]">
+          Tipp: Ha azt írja, hogy egy oszlop hiányzik (pl. <code className="text-zinc-300">description</code> vagy <code className="text-zinc-300">type</code>), add hozzá a Supabase Table Editorban, majd kattints a Project Settings → API → "Reload PostgREST Schema" gombra!
+        </p>
+      </div>
+    );
+  }
+}
