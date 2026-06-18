@@ -41,9 +41,8 @@ export default async function ProtectedLayout({ children }: { children: React.Re
   const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
   const isLight = yiq >= 128;
 
-  // JAVÍTVA: cardOverlay név használata a cardBgColor helyett
-  const cardOverlay = isLight ? "rgba(0, 0, 0, 0.03)" : "rgba(255, 255, 255, 0.03)";
-  const borderOverlay = isLight ? "rgba(0, 0, 0, 0.08)" : "rgba(255, 255, 255, 0.07)";
+  const cardOverlay = isLight ? "rgba(0, 0, 0, 0.04)" : "rgba(255, 255, 255, 0.03)";
+  const borderOverlay = isLight ? "rgba(0, 0, 0, 0.08)" : "rgba(255, 255, 255, 0.08)";
 
   const navItems = [
     { href: "/dashboard", label: "Dashboard", icon: "📊" },
@@ -65,61 +64,69 @@ export default async function ProtectedLayout({ children }: { children: React.Re
 
   return (
     <div className="min-h-screen flex transition-all duration-200" style={{ backgroundColor: bgColor, color: bodyColor, fontFamily: `'${googleFontName}', sans-serif` }}>
-      <link rel="stylesheet" href={`https://fonts.googleapis.com/css2?family=${googleFontName.replace(/ /g, "+")}:wght@400;500;700;900&addisplay=swap`} />
+      <link rel="stylesheet" href={`https://fonts.googleapis.com/css2?family=${googleFontName.replace(/ /g, "+")}:wght@400;500;700;900&display=swap`} />
 
+      {/* 🔮 AGRESSZÍV PRÉMIUM SAAS STÍLUS INJEKCIÓ */}
       <style dangerouslySetInnerHTML={{ __html: `
-        h1, h2, h3, h4, th, .text-white, strong { color: ${headingColor} !important; }
-        p, span, td, label, .text-zinc-400 { color: ${bodyColor} !important; }
+        /* Szövegek kényszerítése az arculat színeire */
+        h1, h2, h3, h4, th, .text-white, strong, [className*="text-zinc-100"] { color: ${headingColor} !important; }
+        p, span, td, label, .text-zinc-400, [className*="text-zinc-400"] { color: ${bodyColor} !important; }
         
-        button[type="submit"]:not(.bg-zinc-900):not(.bg-red-500), 
+        /* 1. AKCIÓGOMBOK ÉS KÍSÉRŐSZÍN RENDZSER (Mentés, Új hozzáadása, stb) */
+        button[type="submit"]:not(.bg-red-500), 
         .bg-emerald-500, .bg-blue-500, .bg-lime-500, .bg-emerald-400,
-        button:contains("+"), button:contains("MENTÉS"), button[className*="bg-emerald"] { 
+        button:contains("+"), button:contains("MENTÉS"), a[href*="new"], a[href*="create"] { 
           background-color: ${accentColor} !important; 
           color: ${isLight ? '#000000' : '#ffffff'} !important;
           border-color: ${accentColor} !important;
           font-weight: 800 !important;
-          box-shadow: 0 4px 14px ${accentColor}40 !important;
+          box-shadow: 0 4px 20px ${accentColor}40 !important;
         }
 
-        .bg-zinc-950, .bg-zinc-900, .bg-black, .bg-zinc-800, .rounded-xl.border, .rounded-2xl.border {
+        /* 2. ÁLTALÁNOS ÜVEGHATÁSÚ ALAP KÁRTYÁK (Minden Tailwind sötét hátteret felülbírálunk) */
+        .bg-zinc-950, .bg-zinc-900, .bg-black, .bg-zinc-800, 
+        div[className*="bg-zinc-900"], div[className*="bg-black"],
+        .rounded-xl.border, .rounded-2xl.border {
           background-color: ${cardOverlay} !important;
           border-color: ${borderOverlay} !important;
-          backdrop-filter: blur(16px) !important;
-          box-shadow: 0 4px 30px rgba(0, 0, 0, 0.02) !important;
-          transition: all 0.25s ease-in-out !important;
+          backdrop-filter: blur(20px) !important;
+          box-shadow: 0 4px 30px rgba(0, 0, 0, 0.03) !important;
+          transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
         }
 
-        div[className*="border-amber"], div:contains("SÜRGŐS"), div:contains("⚠️"), div:contains("Optimal") {
-          background-color: ${isLight ? 'rgba(217, 119, 6, 0.07)' : 'rgba(245, 158, 11, 0.06)'} !important;
+        /* 3. LÜKTETŐ/HOVER EFFEKTUS: Amikor ráviszed az egeret a kártyákra */
+        .bg-zinc-950:hover, .bg-zinc-900:hover, .bg-black:hover, .rounded-xl.border:hover {
+          transform: translateY(-3px) !important;
+          box-shadow: 0 12px 40px rgba(0,0,0,0.15) !important;
+          border-color: ${accentColor}50 !important;
+        }
+
+        /* 4. FIGYELMEZTETŐ / KÖZELGŐ ESEMÉNYEK KÁRTYÁI (Borostyán / Sárga derengés) */
+        div:contains("⚠️"), div:contains("SÜRGŐS"), div:contains("Optimal") {
+          background-color: ${isLight ? 'rgba(245, 158, 11, 0.08)' : 'rgba(245, 158, 11, 0.05)'} !important;
           border-left: 4px solid #f59e0b !important;
           border-color: rgba(245, 158, 11, 0.2) !important;
-          box-shadow: 0 0 20px rgba(245, 158, 11, 0.05) !important;
         }
 
-        div[className*="text-emerald"], div:contains("Income"), div:contains("Total Income"), div:contains("Revenue") {
-          background-color: ${isLight ? 'rgba(16, 185, 129, 0.07)' : 'rgba(16, 185, 129, 0.05)'} !important;
-          border-color: rgba(16, 185, 129, 0.2) !important;
-        }
-        div:contains("Income") .text-white, div:contains("Revenue") {
-          color: #34d399 !important;
+        /* 5. BEVÉTELEK / FINANCES KÁRTYÁK (Smaragdzöld derengés) */
+        div:contains("Income"), div:contains("Total Income"), div:contains("Revenue") {
+          background-color: ${isLight ? 'rgba(16, 185, 129, 0.08)' : 'rgba(16, 185, 129, 0.05)'} !important;
+          border-color: rgba(16, 185, 129, 0.24) !important;
         }
 
-        div[className*="text-red"], div:contains("Expense"), div:contains("Total Expense"), div:contains("Heats"), div:contains("🔴") {
-          background-color: ${isLight ? 'rgba(239, 68, 68, 0.07)' : 'rgba(244, 63, 94, 0.05)'} !important;
-          border-color: rgba(244, 63, 94, 0.2) !important;
+        /* 6. KIADÁSOK / SZUKÁK / TÜZELÉSEK (Tűzpiros / Magenta derengés) */
+        div:contains("Expense"), div:contains("Total Expense"), div:contains("Heats"), div:contains("🔴"), div:contains("Female") {
+          background-color: ${isLight ? 'rgba(244, 63, 94, 0.08)' : 'rgba(244, 63, 94, 0.05)'} !important;
+          border-color: rgba(244, 63, 94, 0.24) !important;
         }
 
-        div:contains("Male"), div:contains("Net Profit") {
-          background-color: ${isLight ? 'rgba(59, 130, 246, 0.07)' : 'rgba(59, 130, 246, 0.05)'} !important;
-          border-color: rgba(59, 130, 246, 0.2) !important;
-        }
-
-        .bg-zinc-950:hover, .bg-black:hover, .rounded-xl.border:hover {
-          transform: translateY(-2px) !important;
-          box-shadow: 0 10px 40px rgba(0,0,0,0.12) !important;
-          border-color: ${accentColor}30 !important;
+        /* 7. KAN KUTYÁK (Prémium kék derengés) */
+        div:contains("Male") {
+          background-color: ${isLight ? 'rgba(59, 130, 246, 0.08)' : 'rgba(59, 130, 246, 0.05)'} !important;
+          border-color: rgba(59, 130, 246, 0.24) !important;
         }
         
+        /* Input mezők és legördülők formázása */
         input, select, textarea { 
           background-color: ${isLight ? 'rgba(0,0,0,0.02)' : 'rgba(0,0,0,0.3)'} !important; 
           color: ${headingColor} !important; 
@@ -129,6 +136,7 @@ export default async function ProtectedLayout({ children }: { children: React.Re
 
       <aside className="w-64 shrink-0 border-r flex flex-col justify-between p-6" style={{ backgroundColor: bgColor, borderColor: borderOverlay }}>
         <div>
+          {/* LOGÓ SZEKCIÓ */}
           <div className="mb-8 tracking-wide flex items-center gap-2 border-b pb-4" style={{ borderColor: borderOverlay }}>
             {logoUrl ? (
               <img src={logoUrl} alt="Logo" className="h-8 max-w-[180px] object-contain rounded" />
@@ -139,11 +147,13 @@ export default async function ProtectedLayout({ children }: { children: React.Re
             )}
           </div>
 
+          {/* ÜDVÖZLŐ DOBOZ */}
           <div className="rounded-xl border mb-6 p-3" style={{ backgroundColor: cardOverlay, borderColor: borderOverlay }}>
             <span className="text-[9px] block uppercase tracking-wider font-bold opacity-60">Tenyészet</span>
             <div className="text-xs font-bold mt-0.5" style={{ color: headingColor }}>✨ Welcome, {userGreetingName}! 👋</div>
           </div>
 
+          {/* NAVIGÁCIÓ */}
           <nav className="flex flex-col gap-2">
             {navItems.map((item) => (
               <Link key={item.href} href={item.href} className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs hover:bg-zinc-800/10 transition-all">
