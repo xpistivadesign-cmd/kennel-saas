@@ -1,7 +1,14 @@
 "use client";
 import { useState, startTransition } from "react";
 import { useRouter } from "next/navigation";
-import { addBuyerAction, updateBuyerStatusAction, deleteBuyerAction, assignPuppyToBuyerAction, saveContractAction } from "./actions";
+import { 
+  addBuyerAction, 
+  updateBuyerStatusAction, 
+  deleteBuyerAction, 
+  assignPuppyToBuyerAction, 
+  saveContractAction,
+  removePuppyFromBuyerAction 
+} from "./actions";
 
 export default function BuyersClient({ buyers, puppies, contracts }: any) {
   const router = useRouter();
@@ -184,12 +191,12 @@ export default function BuyersClient({ buyers, puppies, contracts }: any) {
 
   const waitlistBuyers = buyers.filter((b: any) => b.status === "Waiting" || b.status === "Approved");
   const activeOwners = buyers.filter((b: any) => b.status === "Active Owner");
-  const availablePuppies = puppies.filter((p: any) => p.status !== "Sold");
+  const availablePuppies = puppies.filter((p: any) => p.status !== "Sold" && !p.buyer_name);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
       <div className="lg:col-span-2 space-y-4">
-        {/* Navigációs fülek a kért Dokumentumok résszel kibővítve */}
+        {/* Navigációs fülek */}
         <div className="flex border-b border-zinc-800 gap-4 text-xs">
           <button onClick={() => setSubTab("waitlist")} className={`pb-2 uppercase font-bold tracking-wider ${subTab === "waitlist" ? "text-amber-400 border-b-2 border-amber-400" : "text-zinc-500"}`}>⏳ Várólista ({waitlistBuyers.length})</button>
           <button onClick={() => setSubTab("database")} className={`pb-2 uppercase font-bold tracking-wider ${subTab === "database" ? "text-amber-400 border-b-2 border-amber-400" : "text-zinc-500"}`}>👥 Gazdi Adatbázis ({activeOwners.length})</button>
@@ -216,12 +223,11 @@ export default function BuyersClient({ buyers, puppies, contracts }: any) {
           </div>
         )}
 
-        {/* GAZDI ADATBÁZIS + KUTYÁK MEGJELENÍTÉSE */}
+        {/* GAZDI ADATBÁZIS + KUTYÁK MEGJELENÍTÉSE EDITTEL */}
         {subTab === "database" && (
           <div className="space-y-2">
             {activeOwners.map((b: any) => {
               const currentName = b.name || b.full_name;
-              // Kikeressük azokat a kutyákat, amik hozzá tartoznak
               const ownedPuppies = puppies.filter((p: any) => p.buyer_name === currentName);
 
               return (
@@ -234,16 +240,39 @@ export default function BuyersClient({ buyers, puppies, contracts }: any) {
                     <button onClick={() => onDelete(b.id)} className="bg-zinc-950 text-red-400 px-2 py-1 rounded border border-zinc-800 text-[10px] hover:bg-red-950 transition">TÖRLÉS</button>
                   </div>
 
-                  {/* Kutyák szekció a kártyán belül */}
+                  {/* Kutyák szekció szerkesztési lehetőséggel */}
                   <div className="bg-black/40 border border-zinc-800/60 p-2.5 rounded-md space-y-2">
                     <h4 className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider">Tulajdonolt Kiskutyák:</h4>
                     
                     {ownedPuppies.length > 0 ? (
                       <div className="flex flex-wrap gap-1.5">
                         {ownedPuppies.map((p: any) => (
-                          <span key={p.id} className="bg-emerald-950/60 text-emerald-400 border border-emerald-900/60 px-2 py-1 rounded text-[11px] font-medium">
-                            🐶 {p.name || "Névtelen"} ({p.collar_color})
-                          </span>
+                          <div 
+                            key={p.id} 
+                            className="bg-emerald-950/60 text-emerald-400 border border-emerald-900/60 px-2.5 py-1 rounded text-[11px] font-medium flex items-center gap-2"
+                          >
+                            <span>🐶 {p.name || "Névtelen"} ({p.collar_color})</span>
+                            <button
+                              onClick={async () => {
+                                if (confirm(`Biztosan eltávolítod ${p.name || "ezt a kutyát"} ettől a gazditól?`)) {
+                                  try {
+                                    const res = await removePuppyFromBuyerAction(p.id);
+                                    if (res && !res.success) {
+                                      alert("Hiba: " + res.error);
+                                    } else {
+                                      startTransition(() => { router.refresh(); });
+                                    }
+                                  } catch (err: any) {
+                                    alert(err.message);
+                                  }
+                                }
+                              }}
+                              className="text-emerald-600 hover:text-red-400 font-bold text-[10px] transition-colors px-0.5 ml-0.5"
+                              title="Kutya leválasztása"
+                            >
+                              ✕
+                            </button>
+                          </div>
                         ))}
                       </div>
                     ) : (
