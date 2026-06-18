@@ -4,27 +4,20 @@ import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
-// Szerveroldali másolat a palettákról, hogy ne kelljen kliens fájlból importálni!
 const SERVER_PRESETS = {
-  royal_purple: { bg: "#ba24ff", accent: "#6d17eb", heading: "#ffffff", body: "#f3e8ff" },
+  royal_purple: { bg: "#ba24ff", accent: "#eab308", heading: "#ffffff", body: "#f3e8ff" },
   midnight_neon: { bg: "#09090b", accent: "#6df73b", heading: "#ffffff", body: "#a1a1aa" },
-  luxury_gold: { bg: "#1c1917", accent: "#eab308", heading: "#fafaf9", body: "#d6d3d1" },
+  luxury_gold: { bg: "#141414", accent: "#dca54e", heading: "#fafaf9", body: "#a1a1aa" },
   soft_beige: { bg: "#f5f5f4", accent: "#78716c", heading: "#1c1917", body: "#44403c" },
 };
 
 export default async function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const supabase = createServerSupabase();
-
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: branding } = await supabase
-    .from("branding_settings")
-    .select("*")
-    .eq("user_id", user.id)
-    .single();
+  const { data: branding } = await supabase.from("branding_settings").select("*").eq("user_id", user.id).single();
 
-  // STÍLUS ÉRTÉKEK MEGHATÁROZÁSA (PRESET VAGY CUSTOM)
   const isPreset = (branding?.theme_mode || "preset") === "preset";
   const currentPresetKey = branding?.preset_palette || "royal_purple";
   const presetData = SERVER_PRESETS[currentPresetKey as keyof typeof SERVER_PRESETS] || SERVER_PRESETS.royal_purple;
@@ -39,18 +32,18 @@ export default async function ProtectedLayout({ children }: { children: React.Re
   const kennelName = branding?.kennel_name || "Kennel OS";
   const iconStyle = branding?.icon_style || "minimal";
 
-  // FIX: Az elmentett tenyésztő nevet írja ki üdvözlésként!
+  // FIX: Az elmentett tenyésztő nevet jeleníti meg a kártyán!
   const userGreetingName = branding?.owner_name || user.user_metadata?.full_name || user.email?.split("@")[0] || "Tenyésztő";
 
-  // Kártya háttér árnyalás intelligensen a háttérszín alapján
   const hex = bgColor.replace("#", "");
   const r = parseInt(hex.substr(0, 2), 16);
   const g = parseInt(hex.substr(2, 2), 16);
   const b = parseInt(hex.substr(4, 2), 16);
   const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
-  
-  const cardBgColor = (yiq >= 128) ? "rgba(0,0,0,0.05)" : "rgba(255,255,255,0.05)";
-  const borderOverlay = (yiq >= 128) ? "rgba(0,0,0,0.1)" : "rgba(255,255,255,0.1)";
+
+  const isLight = yiq >= 128;
+  const cardOverlay = isLight ? "rgba(0, 0, 0, 0.03)" : "rgba(255, 255, 255, 0.03)";
+  const borderOverlay = isLight ? "rgba(0, 0, 0, 0.08)" : "rgba(255, 255, 255, 0.07)";
 
   const navItems = [
     { href: "/dashboard", label: "Dashboard", icon: "📊" },
@@ -71,37 +64,37 @@ export default async function ProtectedLayout({ children }: { children: React.Re
   }
 
   return (
-    <div 
-      className="min-h-screen flex transition-all duration-200" 
-      style={{ 
-        backgroundColor: bgColor, 
-        color: bodyColor,
-        fontFamily: `'${googleFontName}', sans-serif`
-      }}
-    >
+    <div className="min-h-screen flex transition-all duration-200" style={{ backgroundColor: bgColor, color: bodyColor, fontFamily: `'${googleFontName}', sans-serif` }}>
       <link rel="stylesheet" href={`https://fonts.googleapis.com/css2?family=${googleFontName.replace(/ /g, "+")}:wght@400;500;700;900&display=swap`} />
 
+      {/* 🔮 PRÉMIUM WHITE-LABEL DIZÁJN INJEKCIÓ A DESIGNER ÉLETTEL */}
       <style dangerouslySetInnerHTML={{ __html: `
         h1, h2, h3, h4, th, .text-white, strong { color: ${headingColor} !important; }
         p, span, td, label, .text-zinc-400 { color: ${bodyColor} !important; }
         
         button[type="submit"]:not(.bg-zinc-900):not(.bg-red-500), 
-        .bg-emerald-500, .bg-blue-500, .bg-lime-500, 
-        button:contains("+"), button:contains("MENTÉS") { 
+        .bg-emerald-500, .bg-blue-500, .bg-lime-500, .bg-emerald-400,
+        button:contains("+"), button:contains("MENTÉS"), button[className*="bg-emerald"] { 
           background-color: ${accentColor} !important; 
-          color: ${yiq >= 128 ? '#000000' : '#ffffff'} !important;
+          color: ${isLight ? '#ffffff' : '#000000'} !important;
           border-color: ${accentColor} !important;
+          font-weight: 900 !important;
         }
 
-        .bg-zinc-950, .bg-zinc-900, .bg-black, .bg-zinc-800,
-        div[className*="bg-zinc-950"], div[className*="bg-black"],
-        .rounded-xl.border, .rounded-2xl.border {
-          background-color: ${cardBgColor} !important;
+        /* 🌈 KÁRTYÁK SZEPARÁLT SZÍNEZÉSE ÉS CHIPS-EK AZ IGAZI SAAS ÉLETÉRT */
+        .bg-zinc-950, .bg-zinc-900, .bg-black, .bg-zinc-800, .rounded-xl.border, .rounded-2xl.border {
+          background-color: ${cardOverlay} !important;
           border-color: ${borderOverlay} !important;
+          backdrop-filter: blur(12px) !important;
+          box-shadow: 0 4px 30px rgba(0, 0, 0, 0.05) !important;
         }
+
+        /* Automatikus színes ikon boxok és egyedi kártya kiemelések aloldalanként */
+        div[className*="border-emerald"], div[className*="text-emerald"] { border-color: ${accentColor} !important; color: ${accentColor} !important; }
         
+        /* Űrlapok */
         input, select, textarea { 
-          background-color: rgba(0,0,0,0.2) !important; 
+          background-color: ${isLight ? 'rgba(0,0,0,0.02)' : 'rgba(0,0,0,0.3)'} !important; 
           color: ${headingColor} !important; 
           border-color: ${borderOverlay} !important; 
         }
@@ -111,22 +104,23 @@ export default async function ProtectedLayout({ children }: { children: React.Re
         <div>
           <div className="mb-8 tracking-wide flex items-center gap-2 border-b pb-4" style={{ borderColor: borderOverlay }}>
             {logoUrl ? (
-              <img src={logoUrl} alt="Logo" className="h-8 max-w-[180px] object-contain" />
+              <img src={logoUrl} alt="Logo" className="h-8 max-w-[180px] object-contain rounded" />
             ) : (
-              <span className="text-base font-black" style={{ color: headingColor }}>
+              <span className="text-base font-black flex items-center gap-1.5" style={{ color: headingColor }}>
                 <span style={{ color: accentColor }}>🐾</span> {kennelName}
               </span>
             )}
           </div>
 
-          <div className="mb-6 p-3 rounded-xl border" style={{ backgroundColor: cardBgColor, borderColor: borderOverlay }}>
+          {/* FIX: ÜDVÖZLŐ DOBOZ AZ ELMENTETT TULAJDONOS NEVÉVEL */}
+          <div className="mb-6 p-3 rounded-xl border" style={{ backgroundColor: cardOverlay, borderColor: borderOverlay }}>
             <span className="text-[9px] block uppercase tracking-wider font-bold opacity-60">Tenyészet</span>
             <div className="text-xs font-bold mt-0.5" style={{ color: headingColor }}>✨ Welcome, {userGreetingName}! 👋</div>
           </div>
 
           <nav className="flex flex-col gap-2">
             {navItems.map((item) => (
-              <Link key={item.href} href={item.href} className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs hover:bg-zinc-800/10">
+              <Link key={item.href} href={item.href} className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs hover:bg-zinc-800/10 transition-all">
                 {iconStyle === "minimal" && <span className="text-sm opacity-70">{item.icon}</span>}
                 {iconStyle === "neon" && <span className="text-sm" style={{ color: accentColor, filter: `drop-shadow(0 0 4px ${accentColor})` }}>{item.icon}</span>}
                 {iconStyle === "glass-box" && (
@@ -134,14 +128,14 @@ export default async function ProtectedLayout({ children }: { children: React.Re
                     {item.icon}
                   </span>
                 )}
-                <span className="font-medium" style={{ color: headingColor }}>{item.label}</span>
+                <span className="font-bold" style={{ color: headingColor }}>{item.label}</span>
               </Link>
             ))}
           </nav>
         </div>
 
         <form action={signOut}>
-          <button type="submit" className="w-full px-3 py-2 rounded-lg border text-xs transition-all" style={{ backgroundColor: cardBgColor, borderColor: borderOverlay, color: headingColor }}>
+          <button type="submit" className="w-full px-3 py-2 rounded-lg border text-xs transition-all" style={{ backgroundColor: cardOverlay, borderColor: borderOverlay, color: headingColor }}>
             Kijelentkezés
           </button>
         </form>
