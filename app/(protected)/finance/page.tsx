@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 
 export const dynamic = "force-dynamic";
 
-// Tranzakció hozzáadása kibővítve a felhasználó azonosítójával és az alommal
+// Tranzakció hozzáadása - Teljesen szinkronizálva a te valós payments sémáddal
 async function addTransactionAction(formData: FormData) {
   "use server";
 
@@ -15,18 +15,17 @@ async function addTransactionAction(formData: FormData) {
   const type = String(formData.get("type"));
   const category = String(formData.get("category"));
   const date = String(formData.get("date"));
-  const notes = String(formData.get("notes") || "");
-  const litter_id = formData.get("litter_id") === "none" ? null : String(formData.get("litter_id"));
+  const notesText = String(formData.get("notes") || "");
 
+  // Csak olyan oszlopokat küldünk, amik 100%, hogy léteznek a payments tábládban
   const { error } = await supabase.from("payments").insert({
     user_id: user?.id || null,
     amount,
     type,
     category,
     date,
-    notes,
-    description: notes || `Manuális ${category}`, // Háttérkompatibilitás a leírásnak
-    litter_id,
+    description: notesText || `Manuális ${category}`, // A notes értékét a biztosan létező description-be mentjük
+    litter_id: formData.get("litter_id") === "none" ? null : String(formData.get("litter_id")),
   });
 
   if (error) {
@@ -45,7 +44,7 @@ export default async function FinancePage() {
 
   if (!user) redirect("/login");
 
-  // 1. Összes tranzakció lekérése korlát nélkül a statisztikákhoz
+  // 1. Összes tranzakció lekérése
   const { data: paymentsData } = await supabase
     .from("payments")
     .select("*")
@@ -54,7 +53,7 @@ export default async function FinancePage() {
 
   const payments = paymentsData || [];
 
-  // 2. Almok lekérése a legördülő menühöz és a ROI számításhoz
+  // 2. Almok lekérése a legördülő menühöz és a ROI-hoz
   const { data: littersData } = await supabase
     .from("litters")
     .select("id, letter, birth_date")
@@ -72,14 +71,14 @@ export default async function FinancePage() {
   const expense = payments.filter((p) => p.type === "expense").reduce((sum, p) => sum + Number(p.amount), 0);
   const net = income - expense;
 
-  // Kategória alapú kiadások összesítése a vizuális sávokhoz
+  // Kiadások kategóriánkénti eloszlása
   const expenseCategories: { [key: string]: number } = {};
   payments.filter((p) => p.type === "expense").forEach((p) => {
     const cat = p.category || "Egyéb";
     expenseCategories[cat] = (expenseCategories[cat] || 0) + Number(p.amount);
   });
 
-  // Alomszintű megtérülés (Litter ROI) kiszámítása
+  // Alomszintű megtérülés (Litter ROI)
   const litterStats = litters.map((l) => {
     const lIncome = payments.filter((p) => p.litter_id === l.id && p.type === "income").reduce((sum, p) => sum + Number(p.amount), 0);
     const lExpense = payments.filter((p) => p.litter_id === l.id && p.type === "expense").reduce((sum, p) => sum + Number(p.amount), 0);
@@ -189,7 +188,7 @@ export default async function FinancePage() {
                     <div className="text-zinc-500 font-mono text-[11px] mt-0.5">
                       {p.type === "income" ? "🟢 Bevétel" : "🔴 Kiadás"} • {p.date}
                     </div>
-                    {p.notes && <p className="text-zinc-400 italic text-[11px] mt-1 font-sans">💬 {p.notes}</p>}
+                    {p.description && <p className="text-zinc-400 italic text-[11px] mt-1 font-sans">💬 {p.description}</p>}
                   </div>
                   <div className={`text-sm font-mono font-black ${p.type === "income" ? "text-emerald-400" : "text-red-400"}`}>
                     {p.type === "income" ? "+" : "-"} {formatCurrency(p.amount)}
@@ -202,7 +201,7 @@ export default async function FinancePage() {
 
         </div>
 
-        {/* ÚJ KATEGORIZÁLT TRANZAKCIÓ RÖGZÍTŐŰRLAP */}
+        {/* ÚJ TRANZAKCIÓ RÖGZÍTŐŰRLAP */}
         <div className="bg-zinc-950 border border-zinc-800 p-5 rounded-xl space-y-4">
           <h3 className="text-sm font-bold text-zinc-300 uppercase tracking-wider border-b border-zinc-900 pb-2">Log Transaction</h3>
           <form action={addTransactionAction} className="space-y-3.5">
@@ -234,14 +233,12 @@ export default async function FinancePage() {
                 name="category"
                 className="w-full rounded-lg bg-black border border-zinc-800 p-2.5 text-white focus:outline-none focus:border-emerald-500 transition-colors"
               >
-                {/* Bevételek */}
                 <option value="Puppy Sale">Puppy Sale (Kölyök eladás)</option>
                 <option value="Stud Fee">Stud Fee (Fedeztetési díj)</option>
-                {/* Kiadások */}
                 <option value="Medical & Vaccine">Medical & Vaccine (Orvosi & Oltás)</option>
                 <option value="Dog Food">Dog Food & Supps (Kutyatáp & Vitamin)</option>
                 <option value="Show Entry">Show Entry (Kiállítási nevezés)</option>
-                <option value="Equipment">Equipment (Felszerelés, Kennel építés)</option>
+                <option value="Equipment">Equipment (Felszerelés)</option>
                 <option value="Other">Other (Egyéb bejegyzés)</option>
               </select>
             </div>
@@ -274,7 +271,7 @@ export default async function FinancePage() {
               <label className="text-zinc-500 block mb-1">Megjegyzés / Részletek</label>
               <textarea
                 name="notes"
-                placeholder="Pl. Kiss János vette meg a kék kan kiskutyát..."
+                placeholder="Pl. Oltási költségek az egész alomnak..."
                 className="w-full rounded-lg bg-black border border-zinc-800 p-2.5 text-white focus:outline-none focus:border-emerald-500 transition-colors h-16 resize-none"
               />
             </div>
