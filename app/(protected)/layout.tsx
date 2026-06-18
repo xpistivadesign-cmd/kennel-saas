@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 export const dynamic = "force-dynamic";
 
 const SERVER_PRESETS = {
-  royal_purple: { bg: "#ba24ff", accent: "#eab308", heading: "#ffffff", body: "#f3e8ff" },
+  royal_purple: { bg: "#1e113a", accent: "#eab308", heading: "#ffffff", body: "#f3e8ff" },
   midnight_neon: { bg: "#09090b", accent: "#6df73b", heading: "#ffffff", body: "#a1a1aa" },
   luxury_gold: { bg: "#141414", accent: "#dca54e", heading: "#fafaf9", body: "#a1a1aa" },
   soft_beige: { bg: "#f5f5f4", accent: "#78716c", heading: "#1c1917", body: "#44403c" },
@@ -16,16 +16,36 @@ export default async function ProtectedLayout({ children }: { children: React.Re
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: branding } = await supabase.from("branding_settings").select("*").eq("user_id", user.id).single();
+  // Biztonságos lekérdezés
+  const { data: branding } = await supabase
+    .from("branding_settings")
+    .select("*")
+    .eq("user_id", user.id)
+    .single();
 
-  const isPreset = (branding?.theme_mode || "preset") === "preset";
+  // HA AZ ADATBÁZIS ÜRES VAGY HIBÁS, AKKOR IS LEGYEN EGY ALAPÉRTELMEZETT PRESET (Pl. royal_purple)
   const currentPresetKey = branding?.preset_palette || "royal_purple";
+  const themeMode = branding?.theme_mode || "preset";
+  const isPreset = themeMode === "preset";
+  
   const presetData = SERVER_PRESETS[currentPresetKey as keyof typeof SERVER_PRESETS] || SERVER_PRESETS.royal_purple;
 
-  const bgColor = isPreset ? presetData.bg : (branding?.bg_color || "#09090b");
-  const accentColor = isPreset ? presetData.accent : (branding?.accent_color || "#3b82f6");
-  const headingColor = isPreset ? presetData.heading : (branding?.text_heading_color || "#ffffff");
-  const bodyColor = isPreset ? presetData.body : (branding?.text_body_color || "#a1a1aa");
+  // Golyóálló szín-kiválasztás (Ha a custom szín üres vagy hibás, azonnal a preset lép életbe)
+  const bgColor = (isPreset || !branding?.bg_color || branding.bg_color === "undefined" || branding.bg_color === "#000000") 
+    ? presetData.bg 
+    : branding.bg_color;
+
+  const accentColor = (isPreset || !branding?.accent_color || branding.accent_color === "undefined" || branding.accent_color === "#000000") 
+    ? presetData.accent 
+    : branding.accent_color;
+
+  const headingColor = (isPreset || !branding?.text_heading_color || branding.text_heading_color === "undefined") 
+    ? presetData.heading 
+    : branding.text_heading_color;
+
+  const bodyColor = (isPreset || !branding?.text_body_color || branding.text_body_color === "undefined") 
+    ? presetData.body 
+    : branding.text_body_color;
 
   const googleFontName = branding?.google_font_name || "Inter";
   const logoUrl = branding?.logo_url || null;
@@ -34,15 +54,17 @@ export default async function ProtectedLayout({ children }: { children: React.Re
 
   const userGreetingName = branding?.owner_name || user.user_metadata?.full_name || user.email?.split("@")[0] || "Tenyésztő";
 
+  // Light/Dark mód kiszámítása a kontraszthoz
   const hex = bgColor.replace("#", "");
-  const r = parseInt(hex.substr(0, 2), 16);
-  const g = parseInt(hex.substr(2, 2), 16);
-  const b = parseInt(hex.substr(4, 2), 16);
+  const r = parseInt(hex.substring(0, 2), 16) || 0;
+  const g = parseInt(hex.substring(2, 4), 16) || 0;
+  const b = parseInt(hex.substring(4, 6), 16) || 0;
   const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
   const isLight = yiq >= 128;
 
-  const cardOverlay = isLight ? "rgba(0, 0, 0, 0.04)" : "rgba(255, 255, 255, 0.03)";
-  const borderOverlay = isLight ? "rgba(0, 0, 0, 0.08)" : "rgba(255, 255, 255, 0.08)";
+  // Szuper-látható, valódi üveghatású kártya hátterek kontrasztosan
+  const cardOverlay = isLight ? "rgba(0, 0, 0, 0.05)" : "rgba(255, 255, 255, 0.06)";
+  const borderOverlay = isLight ? "rgba(0, 0, 0, 0.12)" : "rgba(255, 255, 255, 0.12)";
 
   const navItems = [
     { href: "/dashboard", label: "Dashboard", icon: "📊" },
@@ -66,69 +88,70 @@ export default async function ProtectedLayout({ children }: { children: React.Re
     <div className="min-h-screen flex transition-all duration-200" style={{ backgroundColor: bgColor, color: bodyColor, fontFamily: `'${googleFontName}', sans-serif` }}>
       <link rel="stylesheet" href={`https://fonts.googleapis.com/css2?family=${googleFontName.replace(/ /g, "+")}:wght@400;500;700;900&display=swap`} />
 
-      {/* 🔮 AGRESSZÍV PRÉMIUM SAAS STÍLUS INJEKCIÓ */}
+      {/* 🔮 MAXIMÁLISAN AGRESSZÍV CSS FELÜLBÍRÁLÁS */}
       <style dangerouslySetInnerHTML={{ __html: `
         /* Szövegek kényszerítése az arculat színeire */
-        h1, h2, h3, h4, th, .text-white, strong, [className*="text-zinc-100"] { color: ${headingColor} !important; }
-        p, span, td, label, .text-zinc-400, [className*="text-zinc-400"] { color: ${bodyColor} !important; }
+        h1, h2, h3, h4, th, .text-white, strong, [className*="text-zinc-100"], [className*="text-zinc-200"] { color: ${headingColor} !important; }
+        p, span, td, label, .text-zinc-400, [className*="text-zinc-400"], [className*="text-zinc-300"] { color: ${bodyColor} !important; }
         
         /* 1. AKCIÓGOMBOK ÉS KÍSÉRŐSZÍN RENDZSER (Mentés, Új hozzáadása, stb) */
         button[type="submit"]:not(.bg-red-500), 
         .bg-emerald-500, .bg-blue-500, .bg-lime-500, .bg-emerald-400,
-        button:contains("+"), button:contains("MENTÉS"), a[href*="new"], a[href*="create"] { 
+        button:contains("+"), button:contains("MENTÉS"), a[href*="new"], a[href*="create"],
+        [className*="bg-emerald-500"], [className*="bg-blue-600"] { 
           background-color: ${accentColor} !important; 
           color: ${isLight ? '#000000' : '#ffffff'} !important;
           border-color: ${accentColor} !important;
           font-weight: 800 !important;
-          box-shadow: 0 4px 20px ${accentColor}40 !important;
+          box-shadow: 0 4px 24px ${accentColor}50 !important;
         }
 
-        /* 2. ÁLTALÁNOS ÜVEGHATÁSÚ ALAP KÁRTYÁK (Minden Tailwind sötét hátteret felülbírálunk) */
-        .bg-zinc-950, .bg-zinc-900, .bg-black, .bg-zinc-800, 
-        div[className*="bg-zinc-900"], div[className*="bg-black"],
-        .rounded-xl.border, .rounded-2xl.border {
+        /* 2. VALÓDI ÜVEGHATÁSÚ ALAP KÁRTYÁK (Minden Tailwind sötét hátteret brutálisan felülírunk) */
+        .bg-zinc-950, .bg-zinc-900, .bg-black, .bg-zinc-800, .bg-zinc-900\\/50,
+        div[className*="bg-zinc-900"], div[className*="bg-black"], div[className*="bg-zinc-950"],
+        .rounded-xl.border, .rounded-2xl.border, [className*="rounded-xl border"] {
           background-color: ${cardOverlay} !important;
           border-color: ${borderOverlay} !important;
-          backdrop-filter: blur(20px) !important;
-          box-shadow: 0 4px 30px rgba(0, 0, 0, 0.03) !important;
+          backdrop-filter: blur(24px) !important;
+          box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2) !important;
           transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
         }
 
-        /* 3. LÜKTETŐ/HOVER EFFEKTUS: Amikor ráviszed az egeret a kártyákra */
-        .bg-zinc-950:hover, .bg-zinc-900:hover, .bg-black:hover, .rounded-xl.border:hover {
-          transform: translateY(-3px) !important;
-          box-shadow: 0 12px 40px rgba(0,0,0,0.15) !important;
-          border-color: ${accentColor}50 !important;
+        /* 3. DINAMIKUS HOVER EFFEKTUS */
+        .bg-zinc-950:hover, .bg-zinc-900:hover, .bg-black:hover, .rounded-xl.border:hover, div[className*="bg-zinc-900"]:hover {
+          transform: translateY(-4px) !important;
+          box-shadow: 0 16px 40px rgba(0,0,0,0.3) !important;
+          border-color: ${accentColor}60 !important;
         }
 
-        /* 4. FIGYELMEZTETŐ / KÖZELGŐ ESEMÉNYEK KÁRTYÁI (Borostyán / Sárga derengés) */
+        /* 4. FIGYELMEZTETŐ / KÖZELGŐ ESEMÉNYEK KÁRTYÁI */
         div:contains("⚠️"), div:contains("SÜRGŐS"), div:contains("Optimal") {
-          background-color: ${isLight ? 'rgba(245, 158, 11, 0.08)' : 'rgba(245, 158, 11, 0.05)'} !important;
+          background-color: ${isLight ? 'rgba(245, 158, 11, 0.12)' : 'rgba(245, 158, 11, 0.07)'} !important;
           border-left: 4px solid #f59e0b !important;
-          border-color: rgba(245, 158, 11, 0.2) !important;
+          border-color: rgba(245, 158, 11, 0.3) !important;
         }
 
-        /* 5. BEVÉTELEK / FINANCES KÁRTYÁK (Smaragdzöld derengés) */
+        /* 5. FINANCES KÁRTYÁK (Smaragdzöld derengés) */
         div:contains("Income"), div:contains("Total Income"), div:contains("Revenue") {
-          background-color: ${isLight ? 'rgba(16, 185, 129, 0.08)' : 'rgba(16, 185, 129, 0.05)'} !important;
-          border-color: rgba(16, 185, 129, 0.24) !important;
+          background-color: ${isLight ? 'rgba(16, 185, 129, 0.12)' : 'rgba(16, 185, 129, 0.07)'} !important;
+          border-color: rgba(16, 185, 129, 0.3) !important;
         }
 
         /* 6. KIADÁSOK / SZUKÁK / TÜZELÉSEK (Tűzpiros / Magenta derengés) */
         div:contains("Expense"), div:contains("Total Expense"), div:contains("Heats"), div:contains("🔴"), div:contains("Female") {
-          background-color: ${isLight ? 'rgba(244, 63, 94, 0.08)' : 'rgba(244, 63, 94, 0.05)'} !important;
-          border-color: rgba(244, 63, 94, 0.24) !important;
+          background-color: ${isLight ? 'rgba(244, 63, 94, 0.12)' : 'rgba(244, 63, 94, 0.07)'} !important;
+          border-color: rgba(244, 63, 94, 0.3) !important;
         }
 
         /* 7. KAN KUTYÁK (Prémium kék derengés) */
         div:contains("Male") {
-          background-color: ${isLight ? 'rgba(59, 130, 246, 0.08)' : 'rgba(59, 130, 246, 0.05)'} !important;
-          border-color: rgba(59, 130, 246, 0.24) !important;
+          background-color: ${isLight ? 'rgba(59, 130, 246, 0.12)' : 'rgba(59, 130, 246, 0.07)'} !important;
+          border-color: rgba(59, 130, 246, 0.3) !important;
         }
         
-        /* Input mezők és legördülők formázása */
+        /* Input mezők formázása */
         input, select, textarea { 
-          background-color: ${isLight ? 'rgba(0,0,0,0.02)' : 'rgba(0,0,0,0.3)'} !important; 
+          background-color: ${isLight ? 'rgba(0,0,0,0.04)' : 'rgba(0,0,0,0.4)'} !important; 
           color: ${headingColor} !important; 
           border-color: ${borderOverlay} !important; 
         }
