@@ -4,23 +4,29 @@ import { revalidatePath } from "next/cache";
 
 export const dynamic = "force-dynamic";
 
+// Tranzakció hozzáadása kibővítve a felhasználó azonosítójával és az alommal
 async function addTransactionAction(formData: FormData) {
   "use server";
 
   const supabase = createServerSupabase();
+  const { data: { user } } = await supabase.auth.getUser();
 
   const amount = Number(formData.get("amount"));
   const type = String(formData.get("type"));
   const category = String(formData.get("category"));
   const date = String(formData.get("date"));
   const notes = String(formData.get("notes") || "");
+  const litter_id = formData.get("litter_id") === "none" ? null : String(formData.get("litter_id"));
 
   const { error } = await supabase.from("payments").insert({
+    user_id: user?.id || null,
     amount,
     type,
     category,
     date,
     notes,
+    description: notes || `Manuális ${category}`, // Háttérkompatibilitás a leírásnak
+    litter_id,
   });
 
   if (error) {
@@ -39,118 +45,246 @@ export default async function FinancePage() {
 
   if (!user) redirect("/login");
 
-  const { data: payments } = await supabase
+  // 1. Összes tranzakció lekérése korlát nélkül a statisztikákhoz
+  const { data: paymentsData } = await supabase
     .from("payments")
     .select("*")
     .eq("user_id", user.id)
-    .order("date", { ascending: false })
-    .limit(10);
+    .order("date", { ascending: false });
 
-  const income =
-    (payments || [])
-      .filter((p) => p.type === "income")
-      .reduce((sum, p) => sum + Number(p.amount), 0);
+  const payments = paymentsData || [];
 
-  const expense =
-    (payments || [])
-      .filter((p) => p.type === "expense")
-      .reduce((sum, p) => sum + Number(p.amount), 0);
+  // 2. Almok lekérése a legördülő menühöz és a ROI számításhoz
+  const { data: littersData } = await supabase
+    .from("litters")
+    .select("id, letter, birth_date")
+    .eq("user_id", user.id);
 
+  const litters = littersData || [];
+
+  // Pénznem formázó függvény ezres tagolással
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat("hu-HU", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(amount);
+  };
+
+  // Globális Összesítők
+  const income = payments.filter((p) => p.type === "income").reduce((sum, p) => sum + Number(p.amount), 0);
+  const expense = payments.filter((p) => p.type === "expense").reduce((sum, p) => sum + Number(p.amount), 0);
   const net = income - expense;
 
+  // Kategória alapú kiadások összesítése a vizuális sávokhoz
+  const expenseCategories: { [key: string]: number } = {};
+  payments.filter((p) => p.type === "expense").forEach((p) => {
+    const cat = p.category || "Egyéb";
+    expenseCategories[cat] = (expenseCategories[cat] || 0) + Number(p.amount);
+  });
+
+  // Alomszintű megtérülés (Litter ROI) kiszámítása
+  const litterStats = litters.map((l) => {
+    const lIncome = payments.filter((p) => p.litter_id === l.id && p.type === "income").reduce((sum, p) => sum + Number(p.amount), 0);
+    const lExpense = payments.filter((p) => p.litter_id === l.id && p.type === "expense").reduce((sum, p) => sum + Number(p.amount), 0);
+    return {
+      id: l.id,
+      letter: l.letter,
+      birth_date: l.birth_date,
+      income: lIncome,
+      expense: lExpense,
+      profit: lIncome - lExpense,
+    };
+  });
+
   return (
-    <div className="space-y-10 text-white">
-      <h1 className="text-3xl font-bold">Finance</h1>
+    <div className="space-y-10 text-white text-xs">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight text-white font-sans">Finance & Analytics</h1>
+        <p className="text-zinc-500 text-xs mt-1">A kennel bevételeinek, kiadásainak, kategóriáinak és alomszintű megtérülésének teljes elemzése.</p>
+      </div>
 
-      {/* CARDS */}
-      <div className="grid md:grid-cols-3 gap-6">
-        <div className="rounded-2xl bg-green-500/10 border border-green-500/30 p-6">
-          <div className="text-green-400">Total Income</div>
-          <div className="text-3xl font-bold">{income}</div>
+      {/* METRIKÁK KÁRTYÁK PREMIÚM FORMÁZÁSSAL */}
+      <div className="grid md:grid-cols-3 gap-4">
+        <div className="rounded-xl bg-zinc-950 border border-zinc-800 p-5 space-y-1">
+          <div className="text-emerald-500 font-medium uppercase tracking-wider text-[10px]">Total Income</div>
+          <div className="text-2xl font-black font-mono text-white">{formatCurrency(income)}</div>
         </div>
 
-        <div className="rounded-2xl bg-red-500/10 border border-red-500/30 p-6">
-          <div className="text-red-400">Total Expense</div>
-          <div className="text-3xl font-bold">{expense}</div>
+        <div className="rounded-xl bg-zinc-950 border border-zinc-800 p-5 space-y-1">
+          <div className="text-red-500 font-medium uppercase tracking-wider text-[10px]">Total Expense</div>
+          <div className="text-2xl font-black font-mono text-white">{formatCurrency(expense)}</div>
         </div>
 
-        <div className="rounded-2xl bg-blue-500/10 border border-blue-500/30 p-6">
-          <div className="text-blue-400">Net Profit</div>
-          <div className="text-3xl font-bold">{net}</div>
+        <div className="rounded-xl bg-zinc-950 border border-zinc-800 p-5 space-y-1">
+          <div className="text-blue-500 font-medium uppercase tracking-wider text-[10px]">Net Profit</div>
+          <div className="text-2xl font-black font-mono text-white">{formatCurrency(net)}</div>
         </div>
       </div>
 
-      {/* LIST */}
-      <div className="space-y-3">
-        {(payments || []).map((p) => (
-          <div
-            key={p.id}
-            className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-4 flex justify-between"
-          >
-            <div>
-              <div className="font-semibold">
-                {p.category}
-              </div>
-              <div className="text-sm text-zinc-400">
-                {p.type} • {p.date}
-              </div>
-            </div>
-
-            <div
-              className={
-                p.type === "income"
-                  ? "text-green-400"
-                  : "text-red-400"
-              }
-            >
-              {p.amount}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+        <div className="lg:col-span-2 space-y-6">
+          
+          {/* KIADÁSI KATEGÓRIÁK VIZUÁLIS ELOSZLÁSA */}
+          <div className="bg-zinc-950 border border-zinc-800 p-5 rounded-xl space-y-4">
+            <h3 className="text-sm font-bold text-zinc-300">📊 Kiadások kategóriák szerint elosztva</h3>
+            <div className="space-y-3">
+              {Object.entries(expenseCategories).map(([cat, amt]) => {
+                const percentage = expense > 0 ? (amt / expense) * 100 : 0;
+                return (
+                  <div key={cat} className="space-y-1.5">
+                    <div className="flex justify-between text-[11px]">
+                      <span className="text-zinc-400 font-medium">{cat}</span>
+                      <span className="text-zinc-300 font-mono font-bold">{formatCurrency(amt)} <span className="text-zinc-500 font-normal">({percentage.toFixed(0)}%)</span></span>
+                    </div>
+                    <div className="w-full bg-zinc-900 h-2 rounded-full overflow-hidden border border-zinc-800/40">
+                      <div className="bg-red-500 h-full transition-all" style={{ width: `${percentage}%` }}></div>
+                    </div>
+                  </div>
+                );
+              })}
+              {Object.keys(expenseCategories).length === 0 && (
+                <p className="text-zinc-600 italic">Nincs még rögzített kiadás a statisztikához.</p>
+              )}
             </div>
           </div>
-        ))}
+
+          {/* ALOMSZINTŰ MEGTÉRÜLÉS (LITTER ROI) */}
+          <div className="bg-zinc-950 border border-zinc-800 p-5 rounded-xl space-y-4">
+            <h3 className="text-sm font-bold text-zinc-300">🐶 Alomszintű Megtérülés (Litter ROI)</h3>
+            <div className="space-y-2">
+              <div className="grid grid-cols-4 text-zinc-500 font-bold uppercase tracking-wider text-[10px] border-b border-zinc-900 pb-2">
+                <span>Alom</span>
+                <span className="text-right">Bevétel</span>
+                <span className="text-right">Kiadás</span>
+                <span className="text-right">Tiszta Haszon</span>
+              </div>
+              {litterStats.map((l) => (
+                <div key={l.id} className="grid grid-cols-4 items-center py-2.5 border-b border-zinc-900/60 font-mono">
+                  <span className="font-sans font-bold text-amber-400">"{l.letter}" alom <span className="text-[10px] text-zinc-600 block font-normal">{l.birth_date || "Nincs dátum"}</span></span>
+                  <span className="text-right text-zinc-300">{formatCurrency(l.income)}</span>
+                  <span className="text-right text-zinc-500">{formatCurrency(l.expense)}</span>
+                  <span className={`text-right font-bold ${l.profit >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                    {formatCurrency(l.profit)}
+                  </span>
+                </div>
+              ))}
+              {litterStats.length === 0 && (
+                <p className="text-zinc-600 italic pt-2">Nincs még felvett alom a rendszerben.</p>
+              )}
+            </div>
+          </div>
+
+          {/* UTOLSÓ TRANZAKCIÓK LISTÁJA */}
+          <div className="space-y-2">
+            <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-wider">📜 Legutóbbi Tranzakciók</h3>
+            <div className="space-y-2">
+              {payments.map((p) => (
+                <div key={p.id} className="rounded-xl border border-zinc-800 bg-zinc-950 p-4 flex justify-between items-center">
+                  <div>
+                    <div className="font-bold text-zinc-200 text-sm flex items-center gap-2">
+                      {p.category}
+                      {p.litter_id && (
+                        <span className="text-[10px] bg-amber-950/40 text-amber-400 border border-amber-900/50 px-1.5 py-0.5 rounded font-sans">
+                          "{litters.find((l) => l.id === p.litter_id)?.letter}" alom
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-zinc-500 font-mono text-[11px] mt-0.5">
+                      {p.type === "income" ? "🟢 Bevétel" : "🔴 Kiadás"} • {p.date}
+                    </div>
+                    {p.notes && <p className="text-zinc-400 italic text-[11px] mt-1 font-sans">💬 {p.notes}</p>}
+                  </div>
+                  <div className={`text-sm font-mono font-black ${p.type === "income" ? "text-emerald-400" : "text-red-400"}`}>
+                    {p.type === "income" ? "+" : "-"} {formatCurrency(p.amount)}
+                  </div>
+                </div>
+              ))}
+              {payments.length === 0 && <p className="text-zinc-600 italic">Nincsenek még könyvelt tranzakciók.</p>}
+            </div>
+          </div>
+
+        </div>
+
+        {/* ÚJ KATEGORIZÁLT TRANZAKCIÓ RÖGZÍTŐŰRLAP */}
+        <div className="bg-zinc-950 border border-zinc-800 p-5 rounded-xl space-y-4">
+          <h3 className="text-sm font-bold text-zinc-300 uppercase tracking-wider border-b border-zinc-900 pb-2">Log Transaction</h3>
+          <form action={addTransactionAction} className="space-y-3.5">
+            <div>
+              <label className="text-zinc-500 block mb-1">Összeg (EUR)</label>
+              <input
+                name="amount"
+                type="number"
+                required
+                placeholder="Pl. 2500"
+                className="w-full rounded-lg bg-black border border-zinc-800 p-2.5 text-white focus:outline-none focus:border-emerald-500 transition-colors font-mono"
+              />
+            </div>
+
+            <div>
+              <label className="text-zinc-500 block mb-1">Tranzakció Típusa</label>
+              <select
+                name="type"
+                className="w-full rounded-lg bg-black border border-zinc-800 p-2.5 text-white focus:outline-none focus:border-emerald-500 transition-colors font-bold"
+              >
+                <option value="income">🟢 Income (Bevétel)</option>
+                <option value="expense">🔴 Expense (Kiadás)</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="text-zinc-500 block mb-1">Kategória</label>
+              <select
+                name="category"
+                className="w-full rounded-lg bg-black border border-zinc-800 p-2.5 text-white focus:outline-none focus:border-emerald-500 transition-colors"
+              >
+                {/* Bevételek */}
+                <option value="Puppy Sale">Puppy Sale (Kölyök eladás)</option>
+                <option value="Stud Fee">Stud Fee (Fedeztetési díj)</option>
+                {/* Kiadások */}
+                <option value="Medical & Vaccine">Medical & Vaccine (Orvosi & Oltás)</option>
+                <option value="Dog Food">Dog Food & Supps (Kutyatáp & Vitamin)</option>
+                <option value="Show Entry">Show Entry (Kiállítási nevezés)</option>
+                <option value="Equipment">Equipment (Felszerelés, Kennel építés)</option>
+                <option value="Other">Other (Egyéb bejegyzés)</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="text-zinc-500 block mb-1">Hozzárendelés Alomhoz (Opcionális)</label>
+              <select
+                name="litter_id"
+                className="w-full rounded-lg bg-black border border-zinc-800 p-2.5 text-white focus:outline-none focus:border-emerald-500 transition-colors"
+              >
+                <option value="none">-- Nem tartozik alomhoz --</option>
+                {litters.map((l) => (
+                  <option key={l.id} value={l.id}>"{l.letter}" alom</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="text-zinc-500 block mb-1">Dátum</label>
+              <input
+                name="date"
+                type="date"
+                required
+                defaultValue={new Date().toISOString().split("T")[0]}
+                className="w-full rounded-lg bg-black border border-zinc-800 p-2.5 text-white focus:outline-none focus:border-emerald-500 transition-colors font-mono"
+              />
+            </div>
+
+            <div>
+              <label className="text-zinc-500 block mb-1">Megjegyzés / Részletek</label>
+              <textarea
+                name="notes"
+                placeholder="Pl. Kiss János vette meg a kék kan kiskutyát..."
+                className="w-full rounded-lg bg-black border border-zinc-800 p-2.5 text-white focus:outline-none focus:border-emerald-500 transition-colors h-16 resize-none"
+              />
+            </div>
+
+            <button type="submit" className="w-full rounded-lg bg-emerald-500 hover:bg-emerald-400 py-2.5 font-bold text-black uppercase tracking-wider transition-colors">
+              Log Transaction
+            </button>
+          </form>
+        </div>
       </div>
-
-      {/* FORM */}
-      <form
-        action={addTransactionAction}
-        className="space-y-3 rounded-2xl border border-zinc-800 bg-zinc-900/40 p-6"
-      >
-        <input
-          name="amount"
-          type="number"
-          placeholder="Amount"
-          className="w-full rounded-xl bg-zinc-950 p-3"
-        />
-
-        <select
-          name="type"
-          className="w-full rounded-xl bg-zinc-950 p-3"
-        >
-          <option value="income">Income</option>
-          <option value="expense">Expense</option>
-        </select>
-
-        <input
-          name="category"
-          placeholder="Category"
-          className="w-full rounded-xl bg-zinc-950 p-3"
-        />
-
-        <input
-          name="date"
-          type="date"
-          className="w-full rounded-xl bg-zinc-950 p-3"
-        />
-
-        <textarea
-          name="notes"
-          placeholder="Notes"
-          className="w-full rounded-xl bg-zinc-950 p-3"
-        />
-
-        <button className="w-full rounded-xl bg-emerald-500 py-3 font-semibold text-black">
-          Log Transaction
-        </button>
-      </form>
     </div>
   );
 }
