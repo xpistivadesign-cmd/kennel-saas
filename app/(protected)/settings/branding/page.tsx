@@ -19,45 +19,34 @@ async function saveBrandingAction(formData: FormData) {
   const kennel_address = String(formData.get("kennel_address") || "");
   const tax_number = String(formData.get("tax_number") || "");
   const icon_style = String(formData.get("icon_style") || "minimal");
-  const logo_file = formData.get("logo_file") as File;
+  
+  // ÚJ MEZŐK
+  const theme_mode = String(formData.get("theme_mode") || "preset");
+  const preset_palette = String(formData.get("preset_palette") || "royal_purple");
+  const text_heading_color = String(formData.get("text_heading_color") || "#ffffff");
+  const text_body_color = String(formData.get("text_body_color") || "#a1a1aa");
 
+  const logo_file = formData.get("logo_file") as File;
   let logo_url = String(formData.get("current_logo_url") || "");
 
-  // BIZTONSÁGOS ARRAYBUFFER ÁTALAKÍTÁS A FELTÖLTÉSHEZ
   if (logo_file && logo_file.size > 0 && logo_file.name !== "undefined") {
     const fileExt = logo_file.name.split('.').pop();
     const fileName = `${user.id}-${Date.now()}.${fileExt}`;
-    const filePath = `${fileName}`;
-
     try {
-      // Átalakítjuk a fájlt olyan formátummá, amit a szerver imádni fog
       const bytes = await logo_file.arrayBuffer();
       const buffer = Buffer.from(bytes);
-
       const { error: uploadError } = await supabase.storage
         .from("logos")
-        .upload(filePath, buffer, {
-          contentType: logo_file.type,
-          cacheControl: "3600",
-          upsert: true
-        });
+        .upload(fileName, buffer, { contentType: logo_file.type, upsert: true });
 
       if (!uploadError) {
-        const { data: { publicUrl } } = supabase.storage.from("logos").getPublicUrl(filePath);
+        const { data: { publicUrl } } = supabase.storage.from("logos").getPublicUrl(fileName);
         logo_url = publicUrl;
-      } else {
-        console.error("Storage hiba:", uploadError.message);
       }
     } catch (e) {
-      console.error("Fájl konverziós hiba:", e);
+      console.error(e);
     }
   }
-
-  const { data: existing } = await supabase
-    .from("branding_settings")
-    .select("id")
-    .eq("user_id", user.id)
-    .single();
 
   const payload = {
     user_id: user.id,
@@ -70,8 +59,14 @@ async function saveBrandingAction(formData: FormData) {
     kennel_address,
     tax_number,
     icon_style,
+    theme_mode,
+    preset_palette,
+    text_heading_color,
+    text_body_color,
     updated_at: new Date().toISOString(),
   };
+
+  const { data: existing } = await supabase.from("branding_settings").select("id").eq("user_id", user.id).single();
 
   if (existing) {
     await supabase.from("branding_settings").update(payload).eq("user_id", user.id);
@@ -87,11 +82,7 @@ export default async function BrandingPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: settings } = await supabase
-    .from("branding_settings")
-    .select("*")
-    .eq("user_id", user.id)
-    .single();
+  const { data: settings } = await supabase.from("branding_settings").select("*").eq("user_id", user.id).single();
 
   const defaultSettings = settings || {
     accent_color: "#3b82f6",
@@ -103,12 +94,11 @@ export default async function BrandingPage() {
     kennel_address: "",
     tax_number: "",
     icon_style: "minimal",
+    theme_mode: "preset",
+    preset_palette: "royal_purple",
+    text_heading_color: "#ffffff",
+    text_body_color: "#a1a1aa"
   };
 
-  return (
-    <BrandingClient 
-      settings={defaultSettings} 
-      saveBrandingAction={saveBrandingAction} 
-    />
-  );
+  return <BrandingClient settings={defaultSettings} saveBrandingAction={saveBrandingAction} />;
 }
