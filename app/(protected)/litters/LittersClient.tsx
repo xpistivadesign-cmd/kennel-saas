@@ -12,7 +12,7 @@ export default function LittersClient({ litters, puppies, potentialSires, potent
   const [selId, setSelId] = useState<string | null>(activeLitterId || litters[0]?.id || null);
   const [sireType, setSireType] = useState("");
   const [damType, setDamType] = useState("");
-  
+    
   const [pugs, setPugs] = useState<any[]>(puppies || []);
   const [vaccs, setVaccs] = useState<any[]>(vaccinations || []);
 
@@ -236,9 +236,8 @@ export default function LittersClient({ litters, puppies, potentialSires, potent
                     </div>
                   </div>
 
-                  {/* ÚJ: HA EL VAN ADVA, ITT JELENIK MEG A VEVŐ ÉS AZ ÁR IS FIXEN */}
                   {selPuppy.status === "Sold" && (
-                    <div className="bg-emerald-950/20 border border-emerald-900/50 p-3 rounded grid grid-cols-2 gap-2 animate-fadeIn">
+                    <div className="bg-emerald-950/20 border border-emerald-900/50 p-3 rounded grid grid-cols-2 gap-2">
                       <div>
                         <label className="text-emerald-400 block mb-0.5 font-bold">Tulajdonos / Gazdi neve</label>
                         <input value={selPuppy.buyer_name || "Nincs rögzítve"} readOnly className="w-full bg-black p-2 border border-zinc-800 rounded text-zinc-400 text-xs font-semibold cursor-not-allowed" />
