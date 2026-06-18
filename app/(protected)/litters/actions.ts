@@ -107,6 +107,11 @@ export async function sellPuppyAction(puppyId: string, litterId: string, formDat
   const buyer_name = String(formData.get("buyer_name") || "").trim();
   const sale_price = parseFloat(String(formData.get("sale_price") || "0"));
 
+  // 1. Lekérjük a kiskutya nevét a szebb leíráshoz
+  const { data: puppyData } = await supabase.from("puppies").select("name").eq("id", puppyId).single();
+  const puppyName = puppyData?.name && puppyData.name !== "Névtelen" ? puppyData.name : "Kiskutya";
+
+  // 2. Kiskutya státuszának frissítése
   const { error: pErr } = await supabase
     .from("puppies")
     .update({ buyer_name, sale_price, status: "Sold" })
@@ -114,12 +119,15 @@ export async function sellPuppyAction(puppyId: string, litterId: string, formDat
     
   if (pErr) return { success: false, error: "Kiskutya tábla frissítési hiba: " + pErr.message };
   
+  // 3. Pénzügyi tétel összeállítása a vadiúj 'payments' struktúrának megfelelően
   const paymentData = {
     user_id: user?.id || null, 
     amount: sale_price, 
     type: "income", 
-    description: `Kiskutya eladás: ${buyer_name}`,
-    date: new Date().toISOString().split("T")[0]
+    category: "Puppy Sale", // Fontos, hogy pontosan egyezzen a finance oldali select opcióval!
+    description: `${puppyName} eladása - Vevő: ${buyer_name}`,
+    date: new Date().toISOString().split("T")[0],
+    litter_id: litterId // Így az alomszintű megtérülésnél (ROI) azonnal hozzákapcsolja a statisztikához!
   };
 
   const { error: fErr } = await supabase.from("payments").insert(paymentData);
@@ -132,11 +140,12 @@ export async function sellPuppyAction(puppyId: string, litterId: string, formDat
   }
   
   revalidatePath("/litters", "page");
+  revalidatePath("/finance");
   revalidatePath("/dashboard");
   return { success: true };
 }
 
-// ÚJ AKCIÓ: KISKUTYA VÉGLEGES TÖRLÉSE
+// KISKUTYA VÉGLEGES TÖRLÉSE
 export async function deletePuppyAction(puppyId: string) {
   const supabase = createServerSupabase();
   const { error } = await supabase.from("puppies").delete().eq("id", puppyId);
