@@ -4,30 +4,52 @@ import { revalidatePath } from "next/cache";
 
 export const dynamic = "force-dynamic";
 
-// Tranzakció hozzáadása - Teljesen szinkronizálva a te valós payments sémáddal
-async function addTransactionAction(formData: FormData) {
+// 1. Tranzakció hozzáadása vagy frissítése
+async function saveTransactionAction(formData: FormData) {
   "use server";
 
   const supabase = createServerSupabase();
   const { data: { user } } = await supabase.auth.getUser();
 
+  const id = formData.get("id") ? String(formData.get("id")) : null;
   const amount = Number(formData.get("amount"));
   const type = String(formData.get("type"));
   const category = String(formData.get("category"));
   const date = String(formData.get("date"));
   const notesText = String(formData.get("notes") || "");
+  const litter_id = formData.get("litter_id") === "none" ? null : String(formData.get("litter_id"));
 
-  // Csak olyan oszlopokat küldünk, amik 100%, hogy léteznek a payments tábládban
-  const { error } = await supabase.from("payments").insert({
+  const payload = {
     user_id: user?.id || null,
     amount,
     type,
     category,
     date,
-    description: notesText || `Manuális ${category}`, // A notes értékét a biztosan létező description-be mentjük
-    litter_id: formData.get("litter_id") === "none" ? null : String(formData.get("litter_id")),
-  });
+    description: notesText,
+    litter_id,
+  };
 
+  if (id) {
+    // HA VAN ID -> SZERKESZTÉS/UPDATE
+    const { error } = await supabase.from("payments").update(payload).eq("id", id);
+    if (error) throw new Error(error.message);
+  } else {
+    // HA NINCS ID -> ÚJ LÉTREHOZÁSA
+    const { error } = await supabase.from("payments").insert(payload);
+    if (error) throw new Error(error.message);
+  }
+
+  revalidatePath("/finance");
+}
+
+// 2. Tranzakció törlése Action
+async function deleteTransactionAction(formData: FormData) {
+  "use server";
+
+  const supabase = createServerSupabase();
+  const id = String(formData.get("id"));
+
+  const { error } = await supabase.from("payments").delete().eq("id", id);
   if (error) {
     throw new Error(error.message);
   }
@@ -35,7 +57,11 @@ async function addTransactionAction(formData: FormData) {
   revalidatePath("/finance");
 }
 
-export default async function FinancePage() {
+export default async function FinancePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ edit?: string }>;
+}) {
   const supabase = createServerSupabase();
 
   const {
@@ -43,6 +69,10 @@ export default async function FinancePage() {
   } = await supabase.auth.getUser();
 
   if (!user) redirect("/login");
+
+  // Várjuk meg a keresési paramétereket az aktuálisan szerkesztett elemhez
+  const resolvedParams = await searchParams;
+  const editId = resolvedParams.edit || null;
 
   // 1. Összes tranzakció lekérése
   const { data: paymentsData } = await supabase
@@ -53,7 +83,10 @@ export default async function FinancePage() {
 
   const payments = paymentsData || [];
 
-  // 2. Almok lekérése a legördülő menühöz és a ROI-hoz
+  // Ha szerkesztési módban vagyunk, keressük ki az adott tranzakciót
+  const editingTransaction = editId ? payments.find((p) => p.id === editId) : null;
+
+  // 2. Almok lekérése
   const { data: littersData } = await supabase
     .from("litters")
     .select("id, letter, birth_date")
@@ -61,7 +94,6 @@ export default async function FinancePage() {
 
   const litters = littersData || [];
 
-  // Pénznem formázó függvény ezres tagolással
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("hu-HU", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(amount);
   };
@@ -94,12 +126,19 @@ export default async function FinancePage() {
 
   return (
     <div className="space-y-10 text-white text-xs">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight text-white font-sans">Finance & Analytics</h1>
-        <p className="text-zinc-500 text-xs mt-1">A kennel bevételeinek, kiadásainak, kategóriáinak és alomszintű megtérülésének teljes elemzése.</p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-white font-sans">Finance & Analytics</h1>
+          <p className="text-zinc-500 text-xs mt-1">A kennel bevételeinek, kiadásainak módosítása, törlése és elemzése.</p>
+        </div>
+        {editId && (
+          <a href="/finance" className="bg-zinc-800 hover:bg-zinc-700 px-4 py-2 rounded-lg font-bold text-zinc-200 transition-colors">
+            ❌ Szerkesztési mód bezárása
+          </a>
+        )}
       </div>
 
-      {/* METRIKÁK KÁRTYÁK PREMIÚM FORMÁZÁSSAL */}
+      {/* METRIKÁK KÁRTYÁK */}
       <div className="grid md:grid-cols-3 gap-4">
         <div className="rounded-xl bg-zinc-950 border border-zinc-800 p-5 space-y-1">
           <div className="text-emerald-500 font-medium uppercase tracking-wider text-[10px]">Total Income</div>
@@ -164,19 +203,21 @@ export default async function FinancePage() {
                   </span>
                 </div>
               ))}
-              {litterStats.length === 0 && (
-                <p className="text-zinc-600 italic pt-2">Nincs még felvett alom a rendszerben.</p>
-              )}
             </div>
           </div>
 
-          {/* UTOLSÓ TRANZAKCIÓK LISTÁJA */}
+          {/* UTOLSÓ TRANZAKCIÓK LISTÁJA SZERKESZTÉS ÉS TÖRLES FUNKCIÓVAL */}
           <div className="space-y-2">
             <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-wider">📜 Legutóbbi Tranzakciók</h3>
             <div className="space-y-2">
               {payments.map((p) => (
-                <div key={p.id} className="rounded-xl border border-zinc-800 bg-zinc-950 p-4 flex justify-between items-center">
-                  <div>
+                <div 
+                  key={p.id} 
+                  className={`rounded-xl border p-4 flex justify-between items-center transition-all ${
+                    editId === p.id ? "border-amber-500 bg-amber-950/10" : "border-zinc-800 bg-zinc-950"
+                  }`}
+                >
+                  <div className="space-y-1">
                     <div className="font-bold text-zinc-200 text-sm flex items-center gap-2">
                       {p.category}
                       {p.litter_id && (
@@ -185,13 +226,39 @@ export default async function FinancePage() {
                         </span>
                       )}
                     </div>
-                    <div className="text-zinc-500 font-mono text-[11px] mt-0.5">
+                    <div className="text-zinc-500 font-mono text-[11px]">
                       {p.type === "income" ? "🟢 Bevétel" : "🔴 Kiadás"} • {p.date}
                     </div>
-                    {p.description && <p className="text-zinc-400 italic text-[11px] mt-1 font-sans">💬 {p.description}</p>}
+                    {p.description && <p className="text-zinc-400 italic text-[11px] font-sans">💬 {p.description}</p>}
                   </div>
-                  <div className={`text-sm font-mono font-black ${p.type === "income" ? "text-emerald-400" : "text-red-400"}`}>
-                    {p.type === "income" ? "+" : "-"} {formatCurrency(p.amount)}
+
+                  <div className="flex items-center gap-4">
+                    <div className={`text-sm font-mono font-black ${p.type === "income" ? "text-emerald-400" : "text-red-400"}`}>
+                      {p.type === "income" ? "+" : "-"} {formatCurrency(p.amount)}
+                    </div>
+
+                    {/* INTERAKCIÓS GOMBOK (EDIT & DELETE) */}
+                    <div className="flex items-center gap-1.5 border-l border-zinc-800 pl-3">
+                      <a 
+                        href={`/finance?edit=${p.id}`}
+                        className="p-1.5 hover:bg-zinc-900 rounded text-zinc-400 hover:text-amber-400 transition-colors"
+                        title="Szerkesztés"
+                      >
+                        ✏️
+                      </a>
+                      <form action={deleteTransactionAction} onSubmit={(e) => {
+                        if(!confirm("Biztosan törölni szeretnéd ezt a tranzakciót?")) e.preventDefault();
+                      }}>
+                        <input type="hidden" name="id" value={p.id} />
+                        <button 
+                          type="submit" 
+                          className="p-1.5 hover:bg-zinc-900 rounded text-zinc-400 hover:text-red-500 transition-colors"
+                          title="Törlés"
+                        >
+                          🗑️
+                        </button>
+                      </form>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -201,10 +268,18 @@ export default async function FinancePage() {
 
         </div>
 
-        {/* ÚJ TRANZAKCIÓ RÖGZÍTŐŰRLAP */}
-        <div className="bg-zinc-950 border border-zinc-800 p-5 rounded-xl space-y-4">
-          <h3 className="text-sm font-bold text-zinc-300 uppercase tracking-wider border-b border-zinc-900 pb-2">Log Transaction</h3>
-          <form action={addTransactionAction} className="space-y-3.5">
+        {/* DINAMIKUS ÚJ / SZERKESZTŐŰRLAP */}
+        <div className={`border p-5 rounded-xl space-y-4 transition-all ${
+          editingTransaction ? "border-amber-500 bg-amber-950/5" : "border-zinc-800 bg-zinc-950"
+        }`}>
+          <h3 className="text-sm font-bold text-zinc-300 uppercase tracking-wider border-b border-zinc-900 pb-2">
+            {editingTransaction ? "✏️ Edit Transaction" : "Log Transaction"}
+          </h3>
+          <form action={saveTransactionAction} className="space-y-3.5">
+            {editingTransaction && (
+              <input type="hidden" name="id" value={editingTransaction.id} />
+            )}
+
             <div>
               <label className="text-zinc-500 block mb-1">Összeg (EUR)</label>
               <input
@@ -212,6 +287,7 @@ export default async function FinancePage() {
                 type="number"
                 required
                 placeholder="Pl. 2500"
+                defaultValue={editingTransaction ? editingTransaction.amount : ""}
                 className="w-full rounded-lg bg-black border border-zinc-800 p-2.5 text-white focus:outline-none focus:border-emerald-500 transition-colors font-mono"
               />
             </div>
@@ -220,6 +296,7 @@ export default async function FinancePage() {
               <label className="text-zinc-500 block mb-1">Tranzakció Típusa</label>
               <select
                 name="type"
+                defaultValue={editingTransaction ? editingTransaction.type : "income"}
                 className="w-full rounded-lg bg-black border border-zinc-800 p-2.5 text-white focus:outline-none focus:border-emerald-500 transition-colors font-bold"
               >
                 <option value="income">🟢 Income (Bevétel)</option>
@@ -231,6 +308,7 @@ export default async function FinancePage() {
               <label className="text-zinc-500 block mb-1">Kategória</label>
               <select
                 name="category"
+                defaultValue={editingTransaction ? editingTransaction.category : "Puppy Sale"}
                 className="w-full rounded-lg bg-black border border-zinc-800 p-2.5 text-white focus:outline-none focus:border-emerald-500 transition-colors"
               >
                 <option value="Puppy Sale">Puppy Sale (Kölyök eladás)</option>
@@ -247,6 +325,7 @@ export default async function FinancePage() {
               <label className="text-zinc-500 block mb-1">Hozzárendelés Alomhoz (Opcionális)</label>
               <select
                 name="litter_id"
+                defaultValue={editingTransaction?.litter_id ? editingTransaction.litter_id : "none"}
                 className="w-full rounded-lg bg-black border border-zinc-800 p-2.5 text-white focus:outline-none focus:border-emerald-500 transition-colors"
               >
                 <option value="none">-- Nem tartozik alomhoz --</option>
@@ -262,7 +341,7 @@ export default async function FinancePage() {
                 name="date"
                 type="date"
                 required
-                defaultValue={new Date().toISOString().split("T")[0]}
+                defaultValue={editingTransaction ? editingTransaction.date : new Date().toISOString().split("T")[0]}
                 className="w-full rounded-lg bg-black border border-zinc-800 p-2.5 text-white focus:outline-none focus:border-emerald-500 transition-colors font-mono"
               />
             </div>
@@ -272,12 +351,18 @@ export default async function FinancePage() {
               <textarea
                 name="notes"
                 placeholder="Pl. Oltási költségek az egész alomnak..."
+                defaultValue={editingTransaction ? editingTransaction.description : ""}
                 className="w-full rounded-lg bg-black border border-zinc-800 p-2.5 text-white focus:outline-none focus:border-emerald-500 transition-colors h-16 resize-none"
               />
             </div>
 
-            <button type="submit" className="w-full rounded-lg bg-emerald-500 hover:bg-emerald-400 py-2.5 font-bold text-black uppercase tracking-wider transition-colors">
-              Log Transaction
+            <button 
+              type="submit" 
+              className={`w-full rounded-lg py-2.5 font-bold text-black uppercase tracking-wider transition-colors ${
+                editingTransaction ? "bg-amber-500 hover:bg-amber-400" : "bg-emerald-500 hover:bg-emerald-400"
+              }`}
+            >
+              {editingTransaction ? "Frissítés mentése" : "Log Transaction"}
             </button>
           </form>
         </div>
