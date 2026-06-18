@@ -24,32 +24,26 @@ async function saveBrandingAction(formData: FormData) {
   const text_heading_color = String(formData.get("text_heading_color") || "#ffffff");
   const text_body_color = String(formData.get("text_body_color") || "#a1a1aa");
 
+  // ÚJ EGYEDI KÁRTYASZÍNEK LEKÉRÉSE
+  const card_dashboard_color = String(formData.get("card_dashboard_color") || "#1f1c2c");
+  const card_dogs_color = String(formData.get("card_dogs_color") || "#111827");
+  const card_heats_color = String(formData.get("card_heats_color") || "#2d0b1e");
+  const card_finance_color = String(formData.get("card_finance_color") || "#062419");
+
   let logo_url = String(formData.get("current_logo_url") || "");
   const logo_file = formData.get("logo_file") as File;
 
-  // Ha érkezett valódi fájl a beküldéssel
   if (logo_file && logo_file.size > 0 && logo_file.name !== "undefined") {
     const fileExt = logo_file.name.split('.').pop();
     const fileName = `${user.id}-${Date.now()}.${fileExt}`;
-
     try {
-      // Biztonságos bináris puffer átalakítás a szerveren
       const bytes = await logo_file.arrayBuffer();
       const buffer = Buffer.from(bytes);
-
-      const { error: uploadError } = await supabase.storage
-        .from("logos")
-        .upload(fileName, buffer, {
-          contentType: logo_file.type,
-          upsert: true
-        });
-
-      if (!uploadError) {
-        const { data: { publicUrl } } = supabase.storage.from("logos").getPublicUrl(fileName);
-        logo_url = publicUrl;
-      }
+      await supabase.storage.from("logos").upload(fileName, buffer, { contentType: logo_file.type, upsert: true });
+      const { data: { publicUrl } } = supabase.storage.from("logos").getPublicUrl(fileName);
+      logo_url = publicUrl;
     } catch (e) {
-      console.error("Szerver oldali feltöltési hiba:", e);
+      console.error(e);
     }
   }
 
@@ -68,6 +62,10 @@ async function saveBrandingAction(formData: FormData) {
     preset_palette,
     text_heading_color,
     text_body_color,
+    card_dashboard_color,
+    card_dogs_color,
+    card_heats_color,
+    card_finance_color,
     updated_at: new Date().toISOString(),
   };
 
@@ -102,7 +100,11 @@ export default async function BrandingPage() {
     theme_mode: "preset",
     preset_palette: "royal_purple",
     text_heading_color: "#ffffff",
-    text_body_color: "#a1a1aa"
+    text_body_color: "#a1a1aa",
+    card_dashboard_color: "#1f1c2c",
+    card_dogs_color: "#111827",
+    card_heats_color: "#2d0b1e",
+    card_finance_color: "#062419"
   };
 
   return <BrandingClient settings={defaultSettings} saveBrandingAction={saveBrandingAction} />;
