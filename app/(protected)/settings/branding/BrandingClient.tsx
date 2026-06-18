@@ -47,16 +47,15 @@ export default function BrandingClient({ settings, saveBrandingAction }: any) {
         .upload(fileName, file, { cacheControl: "3600", upsert: true });
 
       if (error) {
-        alert("Supabase hiba: Kérlek ellenőrizd, hogy a 'logos' bucket létezik-e és Public-ra van-e állítva! Hibaüzenet: " + error.message);
+        alert("LOGÓ HIBA: A színeket ettől még el tudod menteni, de a kép nem fog megjelenni, amíg Supabase-ben nem hozod létre a 'logos' nevű PUBLIC bucketet!");
         return;
       }
 
       const { data: { publicUrl } } = supabase.storage.from("logos").getPublicUrl(fileName);
       setLogoUrl(publicUrl);
-      alert("Minta logó feltöltve! Kattints a lenti gombra a mentéshez.");
+      alert("Logó ideiglenesen feltöltve! Kattints az 'Alkalmazás' gombra a véglegesítéshez.");
     } catch (err) {
       console.error(err);
-      alert("Nem sikerült elérni a tárolót.");
     } finally {
       setUploading(false);
     }
@@ -64,11 +63,9 @@ export default function BrandingClient({ settings, saveBrandingAction }: any) {
 
   return (
     <div className="max-w-5xl mx-auto space-y-6 text-white text-xs">
-      <link rel="stylesheet" href={`https://fonts.googleapis.com/css2?family=${activeBody.replace(/ /g, "+")}:wght@400;500;700;900&display=swap`} />
-
       <div>
-        <h1 className="text-3xl font-black font-sans tracking-tight">White-Label & Arculat Tervező</h1>
-        <p className="text-zinc-500 text-xs mt-1">Alakítsd át a szoftvert prémium dizájn-kártyákkal és intelligens ikon-csoportokkal.</p>
+        <h1 className="text-3xl font-black tracking-tight">White-Label & Arculat Tervező</h1>
+        <p className="text-zinc-500 text-xs mt-1">Szabd személyre a szoftver kinézetét.</p>
       </div>
 
       <form 
@@ -76,55 +73,55 @@ export default function BrandingClient({ settings, saveBrandingAction }: any) {
           e.preventDefault();
           const fd = new FormData(e.currentTarget);
           fd.set("logo_url", logoUrl || "");
+          fd.set("theme_mode", themeMode);
+          fd.set("preset_palette", selectedPreset);
+          
+          if (themeMode === "preset") {
+            fd.set("bg_color", PRESETS[selectedPreset as keyof typeof PRESETS].bg);
+            fd.set("accent_color", PRESETS[selectedPreset as keyof typeof PRESETS].accent);
+            fd.set("text_heading_color", PRESETS[selectedPreset as keyof typeof PRESETS].heading);
+            fd.set("text_body_color", PRESETS[selectedPreset as keyof typeof PRESETS].body);
+          }
+
           startTransition(async () => {
             await saveBrandingAction(fd);
-            alert("Minden változtatás élesítve lett a teljes rendszerben!");
+            alert("Minden változtatás sikeresen elmentve az adatbázisba!");
           });
         }}
         className="grid grid-cols-1 lg:grid-cols-3 gap-6"
       >
         <input type="hidden" name="current_logo_url" value={logoUrl || ""} />
-        <input type="hidden" name="theme_mode" value={themeMode} />
-        <input type="hidden" name="preset_palette" value={selectedPreset} />
 
         <div className="lg:col-span-2 space-y-5 bg-zinc-900/30 border border-zinc-800 p-6 rounded-2xl">
           
-          {/* IDENTITÁS */}
           <div className="space-y-3">
             <h3 className="text-xs font-bold text-amber-400 uppercase tracking-wider border-b border-zinc-800/60 pb-1.5">🏨 Kennel Azonosítók</h3>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-zinc-400 block mb-1">Kennel Neve (Menühöz)</label>
+                <label className="text-zinc-400 block mb-1">Kennel Neve</label>
                 <input type="text" name="kennel_name" value={kennelName} onChange={(e) => setKennelName(e.target.value)} className="w-full bg-black border border-zinc-800 rounded-lg p-2.5 text-white" />
               </div>
               <div>
-                <label className="text-zinc-400 block mb-1">Logó Feltöltése {uploading && "⏳ (Feltöltés...)"}</label>
-                <input 
-                  type="file" 
-                  accept="image/*" 
-                  onChange={handleClientFileUpload}
-                  className="w-full bg-black border border-zinc-800 rounded-lg p-2 text-zinc-400 cursor-pointer file:bg-zinc-800 file:text-white file:border-0 file:rounded file:px-2 file:py-0.5 file:mr-2" 
-                />
+                <label className="text-zinc-400 block mb-1">Logó Feltöltése</label>
+                <input type="file" accept="image/*" onChange={handleClientFileUpload} className="w-full bg-black border border-zinc-800 rounded-lg p-2 text-zinc-400 cursor-pointer" />
               </div>
             </div>
           </div>
 
-          {/* VÁLASZTÓ */}
           <div className="space-y-3 pt-2">
             <h3 className="text-xs font-bold text-blue-400 uppercase tracking-wider border-b border-zinc-800/60 pb-1.5">🎨 Megjelenés Típusa</h3>
             <div className="flex gap-3">
               <button type="button" onClick={() => setThemeMode("preset")} className={`flex-1 p-2.5 rounded-xl border font-bold text-xs transition-all ${themeMode === 'preset' ? 'bg-white text-black border-white' : 'bg-black text-zinc-400 border-zinc-800'}`}>
-                ✨ Luxus Témacsomagok
+                ✨ Témacsomagok
               </button>
               <button type="button" onClick={() => setThemeMode("custom")} className={`flex-1 p-2.5 rounded-xl border font-bold text-xs transition-all ${themeMode === 'custom' ? 'bg-white text-black border-white' : 'bg-black text-zinc-400 border-zinc-800'}`}>
-                🛠️ Kézi Színbeállítások
+                🛠️ Egyedi Színek
               </button>
             </div>
           </div>
 
-          {/* PALETTÁK */}
           {themeMode === "preset" && (
-            <div className="grid grid-cols-2 gap-3 animate-fadeIn">
+            <div className="grid grid-cols-2 gap-3">
               {Object.entries(PRESETS).map(([key, p]: any) => (
                 <button
                   key={key}
@@ -136,69 +133,57 @@ export default function BrandingClient({ settings, saveBrandingAction }: any) {
                   <div className="flex gap-1 h-3 w-full rounded overflow-hidden">
                     <div className="flex-1" style={{ backgroundColor: p.bg }} />
                     <div className="flex-1" style={{ backgroundColor: p.accent }} />
-                    <div className="flex-1" style={{ backgroundColor: p.heading }} />
                   </div>
                 </button>
               ))}
             </div>
           )}
 
-          {/* EGYEDI SZÍNEK */}
           {themeMode === "custom" && (
             <div className="grid grid-cols-2 gap-4 p-4 bg-black/40 rounded-xl border border-zinc-800">
               <div>
                 <label className="text-zinc-400 block mb-1">Háttérszín</label>
-                <div className="flex gap-2"><input type="color" value={bgColor} onChange={(e) => setBgColor(e.target.value)} className="w-8 h-8 rounded border-0 cursor-pointer bg-transparent" /><input type="text" name="bg_color" value={bgColor} className="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-1.5 text-xs font-mono" /></div>
+                <div className="flex gap-2"><input type="color" value={bgColor} onChange={(e) => setBgColor(e.target.value)} className="w-8 h-8 rounded border-0 cursor-pointer" /><input type="text" name="bg_color" value={bgColor} onChange={(e) => setBgColor(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-1.5 text-xs font-mono" /></div>
               </div>
               <div>
                 <label className="text-zinc-400 block mb-1">Kísérőszín</label>
-                <div className="flex gap-2"><input type="color" value={accentColor} onChange={(e) => setAccentColor(e.target.value)} className="w-8 h-8 rounded border-0 cursor-pointer bg-transparent" /><input type="text" name="accent_color" value={accentColor} className="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-1.5 text-xs font-mono" /></div>
+                <div className="flex gap-2"><input type="color" value={accentColor} onChange={(e) => setAccentColor(e.target.value)} className="w-8 h-8 rounded border-0 cursor-pointer" /><input type="text" name="accent_color" value={accentColor} onChange={(e) => setAccentColor(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-1.5 text-xs font-mono" /></div>
               </div>
               <div className="pt-2">
-                <label className="text-zinc-400 block mb-1">Főcímek betűszíne</label>
-                <div className="flex gap-2"><input type="color" value={headingColor} onChange={(e) => setHeadingColor(e.target.value)} className="w-8 h-8 rounded border-0 cursor-pointer bg-transparent" /><input type="text" name="text_heading_color" value={headingColor} className="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-1.5 text-xs font-mono" /></div>
+                <label className="text-zinc-400 block mb-1">Főcímek színe</label>
+                <div className="flex gap-2"><input type="color" value={headingColor} onChange={(e) => setHeadingColor(e.target.value)} className="w-8 h-8 rounded border-0 cursor-pointer" /><input type="text" name="text_heading_color" value={headingColor} onChange={(e) => setHeadingColor(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-1.5 text-xs font-mono" /></div>
               </div>
               <div className="pt-2">
-                <label className="text-zinc-400 block mb-1">Leírások betűszíne</label>
-                <div className="flex gap-2"><input type="color" value={bodyColor} onChange={(e) => setBodyColor(e.target.value)} className="w-8 h-8 rounded border-0 cursor-pointer bg-transparent" /><input type="text" name="text_body_color" value={bodyColor} className="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-1.5 text-xs font-mono" /></div>
+                <label className="text-zinc-400 block mb-1">Szövegek színe</label>
+                <div className="flex gap-2"><input type="color" value={bodyColor} onChange={(e) => setBodyColor(e.target.value)} className="w-8 h-8 rounded border-0 cursor-pointer" /><input type="text" name="text_body_color" value={bodyColor} onChange={(e) => setBodyColor(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-1.5 text-xs font-mono" /></div>
               </div>
             </div>
-          )}
-
-          {themeMode === "preset" && (
-            <>
-              <input type="hidden" name="bg_color" value={PRESETS[selectedPreset as keyof typeof PRESETS].bg} />
-              <input type="hidden" name="accent_color" value={PRESETS[selectedPreset as keyof typeof PRESETS].accent} />
-              <input type="hidden" name="text_heading_color" value={PRESETS[selectedPreset as keyof typeof PRESETS].heading} />
-              <input type="hidden" name="text_body_color" value={PRESETS[selectedPreset as keyof typeof PRESETS].body} />
-            </>
           )}
 
           <div className="grid grid-cols-2 gap-4 pt-2">
             <div>
               <label className="text-zinc-400 block mb-1">Betűtípus</label>
               <select name="google_font_name" defaultValue={settings.google_font_name} className="w-full bg-black border border-zinc-800 rounded-lg p-2.5 text-white">
-                <option value="Inter">Inter (Letisztult)</option>
-                <option value="Poppins">Poppins (Karakteres)</option>
-                <option value="Cinzel">Cinzel (Királyi Luxus)</option>
-                <option value="Playfair Display">Playfair (Klasszikus)</option>
+                <option value="Inter">Inter</option>
+                <option value="Poppins">Poppins</option>
+                <option value="Cinzel">Cinzel</option>
               </select>
             </div>
             <div>
-              <label className="text-zinc-400 block mb-1">Ikonok Stílusa</label>
+              <label className="text-zinc-400 block mb-1">Ikonok</label>
               <select name="icon_style" defaultValue={settings.icon_style} className="w-full bg-black border border-zinc-800 rounded-lg p-2.5 text-white">
                 <option value="minimal">Letisztult</option>
                 <option value="neon">Izzó Neon</option>
-                <option value="glass-box">Színes üveg-dobozos (Prémium)</option>
+                <option value="glass-box">Glass-box</option>
               </select>
             </div>
           </div>
 
           <div className="space-y-3 pt-2">
-            <h3 className="text-xs font-bold text-emerald-400 uppercase tracking-wider border-b border-zinc-800/60 pb-1.5">📄 Szerződés Generátor Hivatalos Adatok</h3>
+            <h3 className="text-xs font-bold text-emerald-400 uppercase tracking-wider border-b border-zinc-800/60 pb-1.5">📄 Dokumentum Adatok</h3>
             <div>
-              <label className="text-zinc-400 block mb-1">Tenyésztő / Tulajdonos Neve</label>
-              <input type="text" name="owner_name" defaultValue={settings.owner_name} placeholder="Pl. Sz Krisztina" className="w-full bg-black border border-zinc-800 rounded-lg p-2.5 text-white" />
+              <label className="text-zinc-400 block mb-1">Tenyésztő Neve</label>
+              <input type="text" name="owner_name" defaultValue={settings.owner_name} className="w-full bg-black border border-zinc-800 rounded-lg p-2.5 text-white" />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -212,24 +197,15 @@ export default function BrandingClient({ settings, saveBrandingAction }: any) {
             </div>
           </div>
 
-          <button type="submit" disabled={isPending || uploading} className="w-full bg-emerald-500 text-black font-black p-3.5 rounded-xl uppercase tracking-wider transition-all duration-200 text-xs disabled:opacity-50">
-            {isPending ? "Mentés folyamatban..." : "🚀 TELJES ARCULAT MENTÉSE ÉS ALKALMAZÁSA"}
+          <button type="submit" disabled={isPending} className="w-full bg-emerald-500 text-black font-black p-3.5 rounded-xl uppercase tracking-wider text-xs">
+            🚀 TELJES ARCULAT MENTÉSE ÉS ALKALMAZÁSA
           </button>
         </div>
 
-        {/* ELŐNÉZET */}
         <div className="bg-zinc-950 p-5 rounded-2xl border border-zinc-800 h-fit sticky top-6 space-y-4">
           <span className="text-zinc-500 font-bold uppercase tracking-wider text-[10px]">✨ Élő Előnézet</span>
           <div className="p-5 rounded-xl space-y-4 border border-zinc-800" style={{ backgroundColor: activeBg }}>
-            <div className="flex items-center gap-2">
-              {logoUrl ? (
-                <img src={logoUrl} alt="Preview Logo" className="h-6 max-w-[120px] object-contain" />
-              ) : (
-                <span style={{ color: activeAccent }}>🐾</span>
-              )}
-              <h4 className="text-sm font-black m-0" style={{ color: activeHeading }}>{kennelName}</h4>
-            </div>
-            <p className="text-[11px] leading-relaxed opacity-80" style={{ color: activeBody }}>A betűk és a gombok azonnal frissülnek.</p>
+            <h4 className="text-sm font-black m-0" style={{ color: activeHeading }}>{kennelName}</h4>
             <button type="button" className="w-full p-2.5 rounded-xl font-bold text-black" style={{ backgroundColor: activeAccent }}>Minta Gomb</button>
           </div>
         </div>
