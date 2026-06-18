@@ -76,15 +76,16 @@ export async function deleteBuyerAction(buyerId: string) {
   }
 }
 
-// SZERZŐDÉS MENTÉSE ÉS E-MAIL SNEAK-PEEK
+// SZERZŐDÉS MENTÉSE, AUTOMATIKUS KÖNYVELÉS ÉS KUTYA STÁTUSZ VÁLTÁS
 export async function saveContractAction(data: {
   buyer_id: string; buyer_name: string; buyer_email: string;
-  puppy_name: string; price_amount: number; price_currency: string; contract_date: string;
+  puppy_id: string; puppy_name: string; price_amount: number; price_currency: string; contract_date: string;
 }) {
   try {
     const supabase = createServerSupabase();
     const { data: { user } } = await supabase.auth.getUser();
 
+    // 1. MENTÉS A CONTRACTS TÁBLÁBA
     const { data: newContract, error } = await supabase.from("contracts").insert({
       user_id: user?.id || null,
       buyer_id: data.buyer_id,
@@ -98,7 +99,33 @@ export async function saveContractAction(data: {
 
     if (error) return { success: false, error: error.message };
 
-    // IDE JÖHET A CONSOLE LOG VAGY LOGIKA AZ E-MAIL KÜLDÉSHEZ
+    // 2. AUTOMATIKUS KÖNYVELÉS (MENTÉS A PAYMENTS TÁBLÁBA)
+    const { error: paymentError } = await supabase.from("payments").insert({
+      user_id: user?.id || null,
+      amount: data.price_amount,
+      type: "income",
+      description: `Szerződéses eladás: ${data.puppy_name} ➔ ${data.buyer_name}`
+    });
+
+    if (paymentError) {
+      console.error("Pénzügyi mentés hiba, de a szerződés létrejött:", paymentError.message);
+    }
+
+    // 3. KUTYA STÁTUSZÁNAK AUTOMATIKUS FRISSÍTÉSE -> SOLD
+    if (data.puppy_id) {
+      const { error: puppyError } = await supabase
+        .from("puppies")
+        .update({
+          status: "Sold",
+          buyer_name: data.buyer_name
+        })
+        .eq("id", data.puppy_id);
+
+      if (puppyError) {
+        console.error("Kutya státusz frissítési hiba:", puppyError.message);
+      }
+    }
+
     console.log(`Szerződés e-mail küldése indítva: To: ${data.buyer_email}, Puppy: ${data.puppy_name}`);
 
     revalidatePath("/buyers");
@@ -107,6 +134,7 @@ export async function saveContractAction(data: {
     return { success: false, error: err.message };
   }
 }
+
 // Kiskutya leválasztása a gazdiról (visszaállítás elérhetőre)
 export async function removePuppyFromBuyerAction(puppyId: string) {
   try {
@@ -117,7 +145,7 @@ export async function removePuppyFromBuyerAction(puppyId: string) {
       .update({
         buyer_name: null,
         status: "Elérhető",
-        sale_price: null // opcionális: az árat is nullázhatjuk, ha szükséges
+        sale_price: null
       })
       .eq("id", puppyId);
 
