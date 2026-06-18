@@ -148,4 +148,79 @@ export default function BrandingClient({ settings, saveBrandingAction }: Brandin
 
             <div>
               <label className="text-zinc-400 block mb-1">Ikonok Stílusa</label>
-              <select name
+              <select name="icon_style" value={iconStyle} onChange={(e) => setIconStyle(e.target.value)} className="w-full rounded-lg bg-black border border-zinc-800 p-2.5 text-white">
+                <option value="minimal">Letisztult stílus</option>
+                <option value="neon">Izzó Neon</option>
+                <option value="glass-box">Színes dobozos (Prémium)</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <h3 className="text-sm font-bold text-emerald-400 uppercase tracking-wider border-b border-zinc-900 pb-2">📄 Hivatalos Dokumentum Adatok</h3>
+            <div>
+              <label className="text-zinc-400 block mb-1">Tenyésztő / Tulajdonos Neve</label>
+              <input name="owner_name" type="text" defaultValue={settings.owner_name} placeholder="Sz Krisztina" className="w-full rounded-lg bg-black border border-zinc-800 p-2.5 text-white" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-zinc-400 block mb-1">Székhely Cím</label>
+                <input name="kennel_address" type="text" defaultValue={settings.kennel_address} className="w-full rounded-lg bg-black border border-zinc-800 p-2.5 text-white" />
+              </div>
+              <div>
+                <label className="text-zinc-400 block mb-1">Adószám</label>
+                <input name="tax_number" type="text" defaultValue={settings.tax_number} className="w-full rounded-lg bg-black border border-zinc-800 p-2.5 text-white" />
+              </div>
+            </div>
+          </div>
+
+          <button type="submit" disabled={isPending} className="w-full rounded-lg py-3 font-bold text-black uppercase tracking-wider text-xs transition-all" style={{ backgroundColor: accent }}>
+            {isPending ? "Fájlok feltöltése és mentése..." : "🚀 Teljes Arculat Alkalmazása"}
+          </button>
+        </form>
+
+        {/* Dynamic preview block */}
+        <div className="lg:col-span-2 space-y-3 sticky top-6">
+          <span className="text-zinc-500 font-bold uppercase tracking-wider text-[10px]">✨ Valós Idejű Előnézet</span>
+          <div 
+            className="border p-6 rounded-2xl shadow-2xl space-y-6 border-zinc-800/40 transition-all duration-200" 
+            style={{ backgroundColor: bgColor, fontFamily: `'${fontName}', sans-serif` }}
+          >
+            <div className="flex justify-between items-center border-b border-zinc-800/40 pb-4">
+              <div className="flex items-center gap-2">
+                {previewLogo ? (
+                  <img src={previewLogo} alt="Logo" className="h-6 max-w-[120px] object-contain" />
+                ) : (
+                  <span className="text-xs" style={{ color: accent }}>🐾</span>
+                )}
+                <span className={`font-bold text-xs ${previewTextColor}`}>{kennelName}</span>
+              </div>
+              <span className={`text-[10px] font-mono opacity-80 ${previewTextColor}`}>Welcome back! 👋</span>
+            </div>
+
+            <div className="space-y-2">
+              <h2 className={`text-xl font-black ${previewTextColor}`}>Így néz ki a kenneled.</h2>
+              <p className={`text-[11px] opacity-70 leading-relaxed ${previewTextColor}`}>A szövegek kontrasztja automatikusan igazodik a háttérhez, akár sötét, akár tiszta világos módot választasz.</p>
+            </div>
+
+            <div className="flex gap-4 p-3 bg-zinc-900/10 rounded-xl border border-zinc-800/40">
+              {iconStyle === "minimal" && <span className={previewTextColor}>🐕 Kutyák listája</span>}
+              {iconStyle === "neon" && <span className="font-bold" style={{ color: accent, textShadow: `0 0 8px ${accent}` }}>🐕 Kutyák listája</span>}
+              {iconStyle === "glass-box" && (
+                <div className="flex items-center gap-2 bg-zinc-800/20 p-1.5 rounded-lg border border-zinc-700/30">
+                  <span className="p-1 rounded text-white text-xs" style={{ backgroundColor: accent }}>🐕</span>
+                  <span className={`font-bold ${previewTextColor}`}>Kutyák</span>
+                </div>
+              )}
+            </div>
+
+            <button className="w-full text-center py-2 rounded-lg font-bold text-black text-[11px]" style={{ backgroundColor: accent }}>
+              Interaktív Gomb Stílus
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  );
+}
