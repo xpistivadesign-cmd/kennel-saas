@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 export const dynamic = "force-dynamic";
 
 const SERVER_PRESETS = {
-  royal_purple: { bg: "#150b24", accent: "#eab308", heading: "#ffffff", body: "#e9d5ff" },
+  royal_purple: { bg: "#0d0814", accent: "#a855f7", heading: "#ffffff", body: "#e9d5ff" },
   midnight_neon: { bg: "#09090b", accent: "#6df73b", heading: "#ffffff", body: "#a1a1aa" },
   luxury_gold: { bg: "#141414", accent: "#dca54e", heading: "#fafaf9", body: "#a1a1aa" },
   soft_beige: { bg: "#f5f5f4", accent: "#78716c", heading: "#1c1917", body: "#44403c" },
@@ -61,79 +61,79 @@ export default async function ProtectedLayout({ children }: { children: React.Re
 
   return (
     <div className="min-h-screen flex transition-all duration-300" style={{ backgroundColor: bgColor, color: bodyColor }}>
-      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700;900&display=swap" />
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;700;900&display=swap" />
 
-      {/* 🛠️ A JAVÍTOTT, ERŐSEN KÜLÖNBÖZŐ KÁRTYASZÍN RENDSZER */}
+      {/* 🔮 PRÉMIUM WHITE-LABEL DIGITÁLIS SÉMA FELÜLBÍRÁLÁS */}
       <style dangerouslySetInnerHTML={{ __html: `
         body, html { background-color: ${bgColor} !important; font-family: 'Poppins', sans-serif !important; }
         
         h1, h2, h3, h4, .text-white, strong, b, th { color: ${headingColor} !important; }
         p, span, td, label, li, .text-zinc-400, .text-zinc-300 { color: ${bodyColor} !important; }
 
-        /* Fő akciógombok (Arculati kísérőszín) */
+        /* Fő gombok igazítása az arculati színhez */
         button[type="submit"], .bg-emerald-500, .bg-blue-500, .bg-blue-600, .bg-zinc-100, 
-        button.bg-black.text-white, .bg-indigo-600 {
+        button.bg-black.text-white, .bg-indigo-600, button:contains("MENTÉS"), button:contains("ESEMÉNY") {
           background-color: ${accentColor} !important;
           color: #000000 !important;
           border: none !important;
           font-weight: 900 !important;
           text-transform: uppercase !important;
-          box-shadow: 0 4px 15px ${accentColor}44 !important;
+          box-shadow: 0 4px 20px ${accentColor}33 !important;
         }
 
-        /* 1. ÁLTALÁNOS ALAP KÁRTYÁK (Sötétszürke / Grafit tömb, nem engedi át a hátteret) */
+        /* ⬛ ALAP KÁRTYÁK STÍLUSA (Zárt, mélygrafit kártyák, hogy elváljanak a háttértől) */
         .bg-zinc-950, .bg-zinc-900, .bg-black, .bg-zinc-800, .bg-zinc-800\\/50, .rounded-xl.border, .border-zinc-800 {
-          background-color: #1e1e24 !important;
-          border: 2px solid #2d2d35 !important;
-          backdrop-filter: none !important;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.5) !important;
+          background-color: #16161a !important;
+          border: 1px solid #24242b !important;
+          box-shadow: 0 4px 20px rgba(0,0,0,0.4) !important;
         }
 
-        /* 2. KAN KUTYÁK / MALE kártyák (Sötétkék tömb, kék szegéllyel) */
-        div:contains("Male"), [className*="Male"], td:contains("Male") {
-          background-color: #0f1c3f !important;
-          border: 2px solid #2563eb !important;
+        /* 🔲 PRÉMIUM IKON DOBOROK (Mint a RoyalPaws képen - kis színes boxok az emoji/ikon mögé) */
+        aside span[className*="rounded-lg"] {
+          background-color: ${accentColor}20 !important;
+          border: 1px solid ${accentColor}40 !important;
         }
 
-        /* 3. SZUKÁK / TÜZELÉSEK / HEATS / FEMALE kártyák (Mély bordó/magenta tömb, pink szegéllyel) */
-        div:contains("Female"), div:contains("Heats"), div:contains("🔴"), [className*="Female"], td:contains("Female") {
-          background-color: #2d0b1e !important;
-          border: 2px solid #db2777 !important;
+        /* 🐕 KAN KUTYÁK (Mély tengerészkék kártyák, intenzív kék kontúrral a directory-ban) */
+        div:contains("Male"), td:contains("Male"), div:contains("• Male") {
+          background-color: #0d1527 !important;
+          border-color: #2563eb !important;
         }
 
-        /* 4. FIGYELMEZTETÉSEK / SÜRGŐS / UPCOMING (Sötét borostyán/narancs tömb, sárga szegéllyel) */
-        div:contains("⚠️"), div:contains("SÜRGŐS"), div:contains("Optimal"), div:contains("Attention") {
-          background-color: #2a1a08 !important;
-          border: 2px solid #d97706 !important;
+        /* 🩸 SZUKÁK / TÜZELÉSEK / METRIKÁK (Mély fukszia/bordó tömb, pink kontúrral) */
+        div:contains("Female"), div:contains("Heats"), div:contains("🔴"), div:contains("Tüzelés"), div:contains("Active Dogs"), div:contains("Total Dogs") {
+          background-color: #1f0814 !important;
+          border-color: #db2777 !important;
         }
 
-        /* 5. BEVÉTELEK / FINANCE / REVENUE (Mély smaragdzöld tömb, zöld szegéllyel) */
-        div:contains("Income"), div:contains("Total Income"), div:contains("Revenue") {
-          background-color: #062419 !important;
-          border: 2px solid #059669 !important;
+        /* ⚠️ SÜRGŐS FIGYELMEZTETÉSEK / ATTENTION / TEENDŐK (Mély csokoládé barna, narancs kontúrral) */
+        div:contains("⚠️"), div:contains("SÜRGŐS"), div:contains("Optimal"), div:contains("Attention"), div:contains("TEENDŐ") {
+          background-color: #1f1105 !important;
+          border-left: 5px solid #d97706 !important;
+          border-color: #d97706 !important;
         }
 
-        /* 6. KIADÁSOK / EXPENSES (Mély vörös tömb, piros szegéllyel) */
-        div:contains("Expense"), div:contains("Total Expense") {
-          background-color: #2d0c0c !important;
-          border: 2px solid #dc2626 !important;
+        /* 🟢 BEVÉTELEK / FINANCE METRIKÁK (Mély erdőzöld tömb, smaragd kontúrral) */
+        div:contains("Income"), div:contains("Total Income"), div:contains("Revenue"), div:contains("🟢") {
+          background-color: #041910 !important;
+          border-color: #059669 !important;
         }
 
-        /* Hover animáció a kártyákon */
-        .bg-zinc-900:hover, .rounded-xl.border:hover {
-          transform: translateY(-3px) !important;
-          box-shadow: 0 8px 20px rgba(0,0,0,0.7) !important;
+        /* 🔴 KIADÁSOK / EXPENSES (Mély vörös tömb, skarlátvörös kontúrral) */
+        div:contains("Expense"), div:contains("Total Expense"), div:contains("Expenses") {
+          background-color: #1f0707 !important;
+          border-color: #dc2626 !important;
         }
 
-        /* Input mezők */
+        /* Inputok */
         input, select, textarea {
-          background-color: #121214 !important;
-          border: 1px solid #2d2d35 !important;
+          background-color: #0f0f12 !important;
+          border: 1px solid #24242b !important;
           color: #ffffff !important;
         }
       `}} />
 
-      <aside className="w-64 shrink-0 border-r flex flex-col justify-between p-6" style={{ backgroundColor: "rgba(0,0,0,0.4)", borderColor: "rgba(255,255,255,0.05)" }}>
+      <aside className="w-64 shrink-0 border-r flex flex-col justify-between p-6" style={{ backgroundColor: "rgba(0,0,0,0.5)", borderColor: "rgba(255,255,255,0.05)" }}>
         <div>
           <div className="mb-8 flex items-center gap-2 border-b border-white/5 pb-4">
             {logoUrl ? (
@@ -146,7 +146,7 @@ export default async function ProtectedLayout({ children }: { children: React.Re
           </div>
 
           <div className="mb-6 p-4 rounded-2xl bg-white/5 border border-white/5">
-            <span className="text-[10px] uppercase font-bold opacity-40 block">Bejelentkezve</span>
+            <span className="text-[10px] uppercase font-bold opacity-40 block">Tenyészet</span>
             <div className="text-sm font-black mt-1" style={{ color: headingColor }}>✨ {userGreetingName}</div>
           </div>
 
