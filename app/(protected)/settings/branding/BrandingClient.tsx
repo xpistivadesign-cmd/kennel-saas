@@ -29,7 +29,6 @@ export default function BrandingClient({ settings, saveBrandingAction }: Brandin
   const [iconStyle, setIconStyle] = useState(settings.icon_style || "minimal");
   const [previewLogo, setPreviewLogo] = useState<string | null>(settings.logo_url);
 
-  // Intelligens funkció: kiszámolja, hogy a választott háttérhez sötét vagy világos betű kell-e
   const getContrastYIQ = (hexcolor: string) => {
     const hex = hexcolor.replace("#", "");
     const r = parseInt(hex.substr(0, 2), 16);
@@ -54,7 +53,6 @@ export default function BrandingClient({ settings, saveBrandingAction }: Brandin
 
   return (
     <div className="space-y-8 text-white text-xs max-w-6xl mx-auto">
-      {/* Google Fonts betöltése az élő előnézethez */}
       <link rel="stylesheet" href={`https://fonts.googleapis.com/css2?family=${fontName.replace(/ /g, "+")}:wght@400;700;900&display=swap`} />
 
       <div>
@@ -64,7 +62,9 @@ export default function BrandingClient({ settings, saveBrandingAction }: Brandin
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 items-start">
         
+        {/* JAVÍTOTT FORM: Bekerült az encType a sikeres fájlküldéshez */}
         <form 
+          encType="multipart/form-data"
           onSubmit={(e) => {
             e.preventDefault();
             const fd = new FormData(e.currentTarget);
@@ -165,7 +165,7 @@ export default function BrandingClient({ settings, saveBrandingAction }: Brandin
           </button>
         </form>
 
-        {/* Jobb oldal: ÉLŐ ELŐNÉZET */}
+        {/* Előnézet */}
         <div className="lg:col-span-2 space-y-3 sticky top-6">
           <span className="text-zinc-500 font-bold uppercase tracking-wider text-[10px]">✨ Valós Idejű Előnézet</span>
           <div 
@@ -181,7 +181,7 @@ export default function BrandingClient({ settings, saveBrandingAction }: Brandin
                 )}
                 <span className={`font-bold text-xs ${previewTextColor}`}>{kennelName}</span>
               </div>
-              <span className={`text-[10px] font-mono opacity-80 ${previewTextColor}`}>Welcome back, Krisztina! 👋</span>
+              <span className={`text-[10px] font-mono opacity-80 ${previewTextColor}`}>Welcome back! 👋</span>
             </div>
 
             <div className="space-y-2">
