@@ -1,14 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { createClient } from "@supabase/supabase-js";
+
+// Létrehozzuk a klienst a környezeti változókból, ami Next.js alatt automatikusan elérhető a böngészőben is
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export default function GestationCalculator() {
   const [matingDate, setMatingDate] = useState<string>("");
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
-
-  const supabase = createClientComponentClient();
 
   // A kutya vemhességi ideje fixen ~63 nap
   const calculateMilestone = (days: number) => {
@@ -28,12 +31,13 @@ export default function GestationCalculator() {
     setSaveStatus(null);
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("No user found");
+      // Felhasználó lekérése a kliensből
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) throw new Error("Nem vagy bejelentkezve!");
 
       // Elmentjük a várható ellést a naptár események közé
       const { error } = await supabase.from("events").insert({
-        user_id: user.id,
+        user_id: session.user.id,
         title: "🐶 Várható ellési időpont (Alom)",
         event_type: "Vemhesség",
         date: dueDate,
@@ -43,9 +47,9 @@ export default function GestationCalculator() {
       if (error) throw error;
 
       setSaveStatus("Sikeresen mentve a naptárba! 🎉");
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setSaveStatus("Hiba történt a mentés során. ❌");
+      setSaveStatus(err.message || "Hiba történt a mentés során. ❌");
     } finally {
       setIsSaving(false);
     }
