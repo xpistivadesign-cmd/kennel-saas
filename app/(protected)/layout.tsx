@@ -4,12 +4,11 @@ import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
-// FIX ALAPÉRTELMEZETT DÁTUM (Ha minden kötél szakad, ez lesz a dizájn)
-const DEFAULT_THEME = {
-  bg: "#1a0b2e", // Mély sötétlila (Nem fekete!)
-  accent: "#eab308", // Arany/Sárga
-  heading: "#ffffff",
-  body: "#d8b4fe"
+const SERVER_PRESETS = {
+  royal_purple: { bg: "#150b24", accent: "#eab308", heading: "#ffffff", body: "#e9d5ff" },
+  midnight_neon: { bg: "#09090b", accent: "#6df73b", heading: "#ffffff", body: "#a1a1aa" },
+  luxury_gold: { bg: "#141414", accent: "#dca54e", heading: "#fafaf9", body: "#a1a1aa" },
+  soft_beige: { bg: "#f5f5f4", accent: "#78716c", heading: "#1c1917", body: "#44403c" },
 };
 
 export default async function ProtectedLayout({ children }: { children: React.ReactNode }) {
@@ -18,7 +17,6 @@ export default async function ProtectedLayout({ children }: { children: React.Re
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  // BIZTONSÁGOS LEKÉRDEZÉS (Nem használunk .single()-t, mert az crashelhet)
   const { data: brandingData } = await supabase
     .from("branding_settings")
     .select("*")
@@ -26,17 +24,21 @@ export default async function ProtectedLayout({ children }: { children: React.Re
 
   const branding = brandingData?.[0] || null;
 
-  // SZÍNEK KIVÁLASZTÁSA (Ha nincs mentve semmi, a DEFAULT_THEME-et használjuk)
-  const bgColor = branding?.bg_color && branding.bg_color !== "#000000" ? branding.bg_color : DEFAULT_THEME.bg;
-  const accentColor = branding?.accent_color && branding.accent_color !== "#000000" ? branding.accent_color : DEFAULT_THEME.accent;
-  const headingColor = branding?.text_heading_color || DEFAULT_THEME.heading;
-  const bodyColor = branding?.text_body_color || DEFAULT_THEME.body;
+  const currentPresetKey = branding?.preset_palette || "royal_purple";
+  const themeMode = branding?.theme_mode || "preset";
+  const isPreset = themeMode === "preset";
+  
+  const presetData = SERVER_PRESETS[currentPresetKey as keyof typeof SERVER_PRESETS] || SERVER_PRESETS.royal_purple;
+
+  const bgColor = (isPreset || !branding?.bg_color || branding.bg_color === "#000000") ? presetData.bg : branding.bg_color;
+  const accentColor = (isPreset || !branding?.accent_color || branding.accent_color === "#000000") ? presetData.accent : branding.accent_color;
+  const headingColor = branding?.text_heading_color || presetData.heading;
+  const bodyColor = branding?.text_body_color || presetData.body;
   
   const kennelName = branding?.kennel_name || "Kennel OS";
   const logoUrl = branding?.logo_url || null;
   const iconStyle = branding?.icon_style || "glass-box";
 
-  // ÜDVÖZLÉS FIXÁLÁSA
   const userGreetingName = branding?.owner_name || user.user_metadata?.full_name || user.email?.split("@")[0] || "Tenyésztő";
 
   const navItems = [
@@ -61,15 +63,14 @@ export default async function ProtectedLayout({ children }: { children: React.Re
     <div className="min-h-screen flex transition-all duration-300" style={{ backgroundColor: bgColor, color: bodyColor }}>
       <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700;900&display=swap" />
 
-      {/* 🛠️ ULTRA-AGRESSZÍV CSS INJEKCIÓ - MINDENT FELÜLÍRUNK */}
+      {/* 🛠️ A JAVÍTOTT, ERŐSEN KÜLÖNBÖZŐ KÁRTYASZÍN RENDSZER */}
       <style dangerouslySetInnerHTML={{ __html: `
         body, html { background-color: ${bgColor} !important; font-family: 'Poppins', sans-serif !important; }
         
-        /* Címek és Szövegek */
         h1, h2, h3, h4, .text-white, strong, b, th { color: ${headingColor} !important; }
         p, span, td, label, li, .text-zinc-400, .text-zinc-300 { color: ${bodyColor} !important; }
 
-        /* Gombok kényszerítése */
+        /* Fő akciógombok (Arculati kísérőszín) */
         button[type="submit"], .bg-emerald-500, .bg-blue-500, .bg-blue-600, .bg-zinc-100, 
         button.bg-black.text-white, .bg-indigo-600 {
           background-color: ${accentColor} !important;
@@ -77,36 +78,64 @@ export default async function ProtectedLayout({ children }: { children: React.Re
           border: none !important;
           font-weight: 900 !important;
           text-transform: uppercase !important;
-          box-shadow: 0 4px 20px ${accentColor}66 !important;
+          box-shadow: 0 4px 15px ${accentColor}44 !important;
         }
 
-        /* 🔮 VALÓDI ÜVEGHATÁSÚ LÜKTETŐ KÁRTYÁK */
+        /* 1. ÁLTALÁNOS ALAP KÁRTYÁK (Sötétszürke / Grafit tömb, nem engedi át a hátteret) */
         .bg-zinc-950, .bg-zinc-900, .bg-black, .bg-zinc-800, .bg-zinc-800\\/50, .rounded-xl.border, .border-zinc-800 {
-          background-color: rgba(255, 255, 255, 0.05) !important;
-          border-color: rgba(255, 255, 255, 0.1) !important;
-          backdrop-filter: blur(20px) !important;
-          box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37) !important;
-          color: ${bodyColor} !important;
+          background-color: #1e1e24 !important;
+          border: 2px solid #2d2d35 !important;
+          backdrop-filter: none !important;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.5) !important;
         }
 
-        /* Hover effekt */
+        /* 2. KAN KUTYÁK / MALE kártyák (Sötétkék tömb, kék szegéllyel) */
+        div:contains("Male"), [className*="Male"], td:contains("Male") {
+          background-color: #0f1c3f !important;
+          border: 2px solid #2563eb !important;
+        }
+
+        /* 3. SZUKÁK / TÜZELÉSEK / HEATS / FEMALE kártyák (Mély bordó/magenta tömb, pink szegéllyel) */
+        div:contains("Female"), div:contains("Heats"), div:contains("🔴"), [className*="Female"], td:contains("Female") {
+          background-color: #2d0b1e !important;
+          border: 2px solid #db2777 !important;
+        }
+
+        /* 4. FIGYELMEZTETÉSEK / SÜRGŐS / UPCOMING (Sötét borostyán/narancs tömb, sárga szegéllyel) */
+        div:contains("⚠️"), div:contains("SÜRGŐS"), div:contains("Optimal"), div:contains("Attention") {
+          background-color: #2a1a08 !important;
+          border: 2px solid #d97706 !important;
+        }
+
+        /* 5. BEVÉTELEK / FINANCE / REVENUE (Mély smaragdzöld tömb, zöld szegéllyel) */
+        div:contains("Income"), div:contains("Total Income"), div:contains("Revenue") {
+          background-color: #062419 !important;
+          border: 2px solid #059669 !important;
+        }
+
+        /* 6. KIADÁSOK / EXPENSES (Mély vörös tömb, piros szegéllyel) */
+        div:contains("Expense"), div:contains("Total Expense") {
+          background-color: #2d0c0c !important;
+          border: 2px solid #dc2626 !important;
+        }
+
+        /* Hover animáció a kártyákon */
         .bg-zinc-900:hover, .rounded-xl.border:hover {
-          background-color: rgba(255, 255, 255, 0.08) !important;
-          transform: translateY(-5px);
-          border-color: ${accentColor}88 !important;
+          transform: translateY(-3px) !important;
+          box-shadow: 0 8px 20px rgba(0,0,0,0.7) !important;
         }
 
-        /* Inputok */
+        /* Input mezők */
         input, select, textarea {
-          background-color: rgba(0, 0, 0, 0.3) !important;
-          border: 1px solid rgba(255, 255, 255, 0.1) !important;
+          background-color: #121214 !important;
+          border: 1px solid #2d2d35 !important;
           color: #ffffff !important;
         }
       `}} />
 
-      <aside className="w-64 shrink-0 border-r flex flex-col justify-between p-6" style={{ backgroundColor: "rgba(0,0,0,0.2)", borderColor: "rgba(255,255,255,0.1)" }}>
+      <aside className="w-64 shrink-0 border-r flex flex-col justify-between p-6" style={{ backgroundColor: "rgba(0,0,0,0.4)", borderColor: "rgba(255,255,255,0.05)" }}>
         <div>
-          <div className="mb-8 flex items-center gap-2 border-b border-white/10 pb-4">
+          <div className="mb-8 flex items-center gap-2 border-b border-white/5 pb-4">
             {logoUrl ? (
               <img src={logoUrl} alt="Logo" className="h-10 max-w-[180px] object-contain" />
             ) : (
@@ -116,15 +145,14 @@ export default async function ProtectedLayout({ children }: { children: React.Re
             )}
           </div>
 
-          {/* ÜDVÖZLŐ KÁRTYA */}
-          <div className="mb-6 p-4 rounded-2xl bg-white/5 border border-white/10">
-            <span className="text-[10px] uppercase font-bold opacity-50 block">Bejelentkezve</span>
-            <div className="text-sm font-black mt-1" style={{ color: headingColor }}>✨ Welcome, {userGreetingName}!</div>
+          <div className="mb-6 p-4 rounded-2xl bg-white/5 border border-white/5">
+            <span className="text-[10px] uppercase font-bold opacity-40 block">Bejelentkezve</span>
+            <div className="text-sm font-black mt-1" style={{ color: headingColor }}>✨ {userGreetingName}</div>
           </div>
 
           <nav className="flex flex-col gap-2">
             {navItems.map((item) => (
-              <Link key={item.href} href={item.href} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition-all hover:bg-white/10">
+              <Link key={item.href} href={item.href} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition-all hover:bg-white/5">
                 {iconStyle === "glass-box" ? (
                   <span className="w-8 h-8 rounded-lg flex items-center justify-center bg-white/5 border border-white/10">{item.icon}</span>
                 ) : (
