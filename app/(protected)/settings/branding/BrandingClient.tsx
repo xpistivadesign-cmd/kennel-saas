@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import { createClient } from "@supabase/supabase-js"; // Ha van saját kliensed, használd azt: import { supabase } from "@/lib/supabase/client";
 
 export const PRESETS = {
   royal_purple: { name: "Királyi Lila", bg: "#ba24ff", accent: "#eab308", heading: "#ffffff", body: "#f3e8ff" },
@@ -9,7 +10,15 @@ export const PRESETS = {
   soft_beige: { name: "Elegáns Bézs", bg: "#f5f5f4", accent: "#78716c", heading: "#1c1917", body: "#44403c" },
 };
 
+// Inicializáljuk a Supabase-t kliens oldalon (Next.js környezeti változókból)
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
 export default function BrandingClient({ settings, saveBrandingAction }: any) {
+  const [isPending, startTransition] = useTransition();
+  const [uploading, setUploading] = useState(false);
+
   const [themeMode, setThemeMode] = useState(settings.theme_mode || "preset");
   const [selectedPreset, setSelectedPreset] = useState(settings.preset_palette || "royal_purple");
 
@@ -18,11 +27,47 @@ export default function BrandingClient({ settings, saveBrandingAction }: any) {
   const [headingColor, setHeadingColor] = useState(settings.text_heading_color || "#ffffff");
   const [bodyColor, setBodyColor] = useState(settings.text_body_color || "#a1a1aa");
   const [kennelName, setKennelName] = useState(settings.kennel_name || "Saját Kennel");
+  
+  // Ebben tároljuk az éppen aktív vagy frissen feltöltött logó linket
+  const [logoUrl, setLogoUrl] = useState<string | null>(settings.logo_url);
 
   const activeBg = themeMode === "preset" ? PRESETS[selectedPreset as keyof typeof PRESETS].bg : bgColor;
   const activeAccent = themeMode === "preset" ? PRESETS[selectedPreset as keyof typeof PRESETS].accent : accentColor;
   const activeHeading = themeMode === "preset" ? PRESETS[selectedPreset as keyof typeof PRESETS].heading : headingColor;
   const activeBody = themeMode === "preset" ? PRESETS[selectedPreset as keyof typeof PRESETS].body : bodyColor;
+
+  // 🚀 KÖZVETLEN BÖNGÉSZŐS FELTÖLTÉS A SUPABASE STORAGE-BA
+  const handleClientFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `client-${Date.now()}.${fileExt}`;
+
+      // Feltöltés egyenesen a böngészőből
+      const { data, error } = await supabase.storage
+        .from("logos")
+        .upload(fileName, file, { cacheControl: "3600", upsert: true });
+
+      if (error) {
+        alert("Feltöltési hiba: " + error.message);
+        return;
+      }
+
+      // Publikus URL lekérése
+      const { data: { publicUrl } } = supabase.storage.from("logos").getPublicUrl(fileName);
+      
+      setLogoUrl(publicUrl); // Azonnal frissítjük az állapotot és az előnézetet
+      alert("Logó sikeresen feltöltve a felhőbe! Ne felejtsd el elmenteni az arculatot alul.");
+    } catch (err) {
+      console.error(err);
+      alert("Váratlan hiba történt a feltöltés során.");
+    } finally {
+      setUploading(false);
+    }
+  };
 
   return (
     <div className="max-w-5xl mx-auto space-y-6 text-white text-xs">
@@ -31,13 +76,20 @@ export default function BrandingClient({ settings, saveBrandingAction }: any) {
         <p className="text-zinc-500 text-xs mt-1">Alakítsd át a szoftvert prémium dizájn-kártyákkal és intelligens ikon-csoportokkal.</p>
       </div>
 
-      {/* NATÍV MEGBÍZHATÓ FORM BEKÜLDÉS */}
       <form 
-        action={saveBrandingAction} 
-        encType="multipart/form-data" 
+        onSubmit={(e) => {
+          e.preventDefault();
+          const fd = new FormData(e.currentTarget);
+          // Kényszerítjük a friss kliensoldali logo URL-t a form-ba mentés előtt
+          fd.set("logo_url", logoUrl || "");
+          startTransition(async () => {
+            await saveBrandingAction(fd);
+            alert("Minden változtatás élesítve lett a teljes rendszerben!");
+          });
+        }}
         className="grid grid-cols-1 lg:grid-cols-3 gap-6"
       >
-        <input type="hidden" name="current_logo_url" value={settings.logo_url || ""} />
+        <input type="hidden" name="current_logo_url" value={logoUrl || ""} />
         <input type="hidden" name="theme_mode" value={themeMode} />
         <input type="hidden" name="preset_palette" value={selectedPreset} />
 
@@ -52,8 +104,13 @@ export default function BrandingClient({ settings, saveBrandingAction }: any) {
                 <input type="text" name="kennel_name" value={kennelName} onChange={(e) => setKennelName(e.target.value)} className="w-full bg-black border border-zinc-800 rounded-lg p-2.5 text-white" />
               </div>
               <div>
-                <label className="text-zinc-400 block mb-1">Logó Kép Feltöltése (Gépről/Telóról)</label>
-                <input type="file" name="logo_file" accept="image/*" className="w-full bg-black border border-zinc-800 rounded-lg p-2 text-zinc-400" />
+                <label className="text-zinc-400 block mb-1">Logó Feltöltése {uploading && "⏳ (Feltöltés...)"}</label>
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  onChange={handleClientFileUpload}
+                  className="w-full bg-black border border-zinc-800 rounded-lg p-2 text-zinc-400 cursor-pointer file:bg-zinc-800 file:text-white file:border-0 file:rounded file:px-2 file:py-0.5 file:mr-2" 
+                />
               </div>
             </div>
           </div>
@@ -71,7 +128,7 @@ export default function BrandingClient({ settings, saveBrandingAction }: any) {
             </div>
           </div>
 
-          {/* FIX PALETTÁK */}
+          {/* PALETTÁK */}
           {themeMode === "preset" && (
             <div className="grid grid-cols-2 gap-3 animate-fadeIn">
               {Object.entries(PRESETS).map(([key, p]: any) => (
@@ -114,7 +171,6 @@ export default function BrandingClient({ settings, saveBrandingAction }: any) {
             </div>
           )}
 
-          {/* REJTETT ELKÜLDŐ ALAPÉRTELMEZÉSEK HA PRESET VAN */}
           {themeMode === "preset" && (
             <>
               <input type="hidden" name="bg_color" value={PRESETS[selectedPreset as keyof typeof PRESETS].bg} />
@@ -162,16 +218,23 @@ export default function BrandingClient({ settings, saveBrandingAction }: any) {
             </div>
           </div>
 
-          <button type="submit" className="w-full bg-emerald-500 text-black font-black p-3.5 rounded-xl uppercase tracking-wider transition-all duration-200 text-xs">
-            🚀 VÁLTOZTATÁSOK ÉLESÍTÉSE ÉS LOGÓ FELTÖLTÉSE
+          <button type="submit" disabled={isPending || uploading} className="w-full bg-emerald-500 text-black font-black p-3.5 rounded-xl uppercase tracking-wider transition-all duration-200 text-xs disabled:opacity-50">
+            {isPending ? "Mentés folyamatban..." : "🚀 TELJES ARCULAT MENTÉSE ÉS ALKALMAZÁSA"}
           </button>
         </div>
 
-        {/* ELŐNÉZET DOBOZ */}
+        {/* ELŐNÉZET */}
         <div className="bg-zinc-950 p-5 rounded-2xl border border-zinc-800 h-fit sticky top-6 space-y-4">
           <span className="text-zinc-500 font-bold uppercase tracking-wider text-[10px]">✨ Élő Előnézet</span>
           <div className="p-5 rounded-xl space-y-4 border border-zinc-800" style={{ backgroundColor: activeBg }}>
-            <h4 className="text-sm font-black" style={{ color: activeHeading }}>{kennelName}</h4>
+            <div className="flex items-center gap-2">
+              {logoUrl ? (
+                <img src={logoUrl} alt="Preview Logo" className="h-6 max-w-[120px] object-contain" />
+              ) : (
+                <span style={{ color: activeAccent }}>🐾</span>
+              )}
+              <h4 className="text-sm font-black m-0" style={{ color: activeHeading }}>{kennelName}</h4>
+            </div>
             <p className="text-[11px] leading-relaxed opacity-80" style={{ color: activeBody }}>A betűk és a gombok azonnal frissülnek.</p>
             <button type="button" className="w-full p-2.5 rounded-xl font-bold text-black" style={{ backgroundColor: activeAccent }}>Minta Gomb</button>
           </div>
