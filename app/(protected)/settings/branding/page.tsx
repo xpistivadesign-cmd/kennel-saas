@@ -11,24 +11,29 @@ async function saveBrandingAction(formData: FormData) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
 
-  const accent_color = String(formData.get("accent_color"));
+  const theme_mode = String(formData.get("theme_mode") || "preset");
+  const preset_palette = String(formData.get("preset_palette") || "obsidian_platinum");
   const bg_color = String(formData.get("bg_color"));
   const google_font_name = String(formData.get("google_font_name") || "Inter");
   const kennel_name = String(formData.get("kennel_name") || "Saját Kennel");
   const owner_name = String(formData.get("owner_name") || "");
   const kennel_address = String(formData.get("kennel_address") || "");
   const tax_number = String(formData.get("tax_number") || "");
-  const icon_style = String(formData.get("icon_style") || "minimal");
-  const theme_mode = String(formData.get("theme_mode") || "preset");
-  const preset_palette = String(formData.get("preset_palette") || "royal_purple");
-  const text_heading_color = String(formData.get("text_heading_color") || "#ffffff");
-  const text_body_color = String(formData.get("text_body_color") || "#a1a1aa");
+  const icon_style = String(formData.get("icon_style") || "glass-box");
 
-  // ÚJ EGYEDI KÁRTYASZÍNEK LEKÉRÉSE
-  const card_dashboard_color = String(formData.get("card_dashboard_color") || "#1f1c2c");
-  const card_dogs_color = String(formData.get("card_dogs_color") || "#111827");
-  const card_heats_color = String(formData.get("card_heats_color") || "#2d0b1e");
-  const card_finance_color = String(formData.get("card_finance_color") || "#062419");
+  // Kontrasztellenőrzés biztonsági funkció (WCAG szoftveres guardrail szerver oldalon is)
+  const hex = bg_color.replace("#", "");
+  const r = parseInt(hex.substr(0, 2), 16) || 0;
+  const g = parseInt(hex.substr(2, 2), 16) || 0;
+  const b = parseInt(hex.substr(4, 2), 16) || 0;
+  const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+  
+  // Ha a felhasználó egyedi módban tiszta fehéret vagy túl világos színt mentene háttérnek,
+  // de a betűszín logikánk sötét módot kényszerít, a szerver korrigálja, hogy olvasható maradjon
+  let accent_color = String(formData.get("accent_color"));
+  if (theme_mode === "custom" && yiq > 200 && accent_color.toLowerCase() === "#ffffff") {
+    accent_color = "#1c1917"; // Korrekció sötétre
+  }
 
   let logo_url = String(formData.get("current_logo_url") || "");
   const logo_file = formData.get("logo_file") as File;
@@ -49,8 +54,10 @@ async function saveBrandingAction(formData: FormData) {
 
   const payload = {
     user_id: user.id,
-    accent_color,
+    theme_mode,
+    preset_palette,
     bg_color,
+    accent_color,
     google_font_name,
     logo_url: logo_url || null,
     kennel_name,
@@ -58,14 +65,6 @@ async function saveBrandingAction(formData: FormData) {
     kennel_address,
     tax_number,
     icon_style,
-    theme_mode,
-    preset_palette,
-    text_heading_color,
-    text_body_color,
-    card_dashboard_color,
-    card_dogs_color,
-    card_heats_color,
-    card_finance_color,
     updated_at: new Date().toISOString(),
   };
 
@@ -88,23 +87,17 @@ export default async function BrandingPage() {
   const { data: settings } = await supabase.from("branding_settings").select("*").eq("user_id", user.id).single();
 
   const defaultSettings = settings || {
-    accent_color: "#3b82f6",
-    bg_color: "#09090b",
+    theme_mode: "preset",
+    preset_palette: "obsidian_platinum",
+    bg_color: "#0A0B0F",
+    accent_color: "#8B8D98",
     google_font_name: "Inter",
     logo_url: null,
     kennel_name: "Saját Kennel",
     owner_name: "",
     kennel_address: "",
     tax_number: "",
-    icon_style: "minimal",
-    theme_mode: "preset",
-    preset_palette: "royal_purple",
-    text_heading_color: "#ffffff",
-    text_body_color: "#a1a1aa",
-    card_dashboard_color: "#1f1c2c",
-    card_dogs_color: "#111827",
-    card_heats_color: "#2d0b1e",
-    card_finance_color: "#062419"
+    icon_style: "glass-box"
   };
 
   return <BrandingClient settings={defaultSettings} saveBrandingAction={saveBrandingAction} />;
