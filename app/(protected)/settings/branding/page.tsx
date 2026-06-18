@@ -12,14 +12,34 @@ async function saveBrandingAction(formData: FormData) {
   if (!user) return;
 
   const accent_color = String(formData.get("accent_color"));
-  const bg_style = String(formData.get("bg_style"));
-  const font_family = String(formData.get("font_family"));
-  const logo_url = String(formData.get("logo_url") || "");
+  const bg_color = String(formData.get("bg_color"));
+  const google_font_name = String(formData.get("google_font_name") || "Inter");
   const kennel_name = String(formData.get("kennel_name") || "Saját Kennel");
   const owner_name = String(formData.get("owner_name") || "");
   const kennel_address = String(formData.get("kennel_address") || "");
   const tax_number = String(formData.get("tax_number") || "");
   const icon_style = String(formData.get("icon_style") || "minimal");
+  const logo_file = formData.get("logo_file") as File;
+
+  let logo_url = String(formData.get("current_logo_url") || "");
+
+  // Ha a felhasználó feltöltött egy új képet
+  if (logo_file && logo_file.size > 0) {
+    const fileExt = logo_file.name.split('.').pop();
+    const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+    const filePath = `${fileName}`;
+
+    // Feltöltjük a 'logos' nevű storage bucketbe
+    const { error: uploadError } = await supabase.storage
+      .from("logos")
+      .upload(filePath, logo_file, { cacheControl: "3600", upsert: true });
+
+    if (!uploadError) {
+      // Megszerezzük a publikus URL-t
+      const { data: { publicUrl } } = supabase.storage.from("logos").getPublicUrl(filePath);
+      logo_url = publicUrl;
+    }
+  }
 
   const { data: existing } = await supabase
     .from("branding_settings")
@@ -30,9 +50,9 @@ async function saveBrandingAction(formData: FormData) {
   const payload = {
     user_id: user.id,
     accent_color,
-    bg_style,
-    font_family,
-    logo_url: logo_url.trim() || null,
+    bg_color,
+    google_font_name,
+    logo_url: logo_url || null,
     kennel_name,
     owner_name,
     kennel_address,
@@ -63,8 +83,8 @@ export default async function BrandingPage() {
 
   const defaultSettings = settings || {
     accent_color: "#3b82f6",
-    bg_style: "zinc",
-    font_family: "sans",
+    bg_color: "#09090b",
+    google_font_name: "Inter",
     logo_url: null,
     kennel_name: "Saját Kennel",
     owner_name: "",
