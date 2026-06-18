@@ -81,7 +81,7 @@ export default async function FinancePage({
   const payments = paymentsData || [];
   const editingTransaction = editId ? payments.find((p) => p.id === editId) : null;
 
-  // 2. BOMBABIZTOS ALOM LEKÉRÉS: Csak az ID-t és a Betűt kérjük el, így nincs hibalehetőség!
+  // 2. BOMBABIZTOS ALOM LEKÉRÉS: Csak az ID-t és a Betűt kérjük el, így nincs adatbázis-séma szinkron hiba!
   const { data: littersData } = await supabase
     .from("litters")
     .select("id, letter") 
@@ -105,7 +105,7 @@ export default async function FinancePage({
     expenseCategories[cat] = (expenseCategories[cat] || 0) + Number(p.amount);
   });
 
-  // Alomszintű megtérülés (Litter ROI)
+  // Alomszintű megtérülés (Litter ROI) - JAVÍTVA: törölve a hibás birth_date hivatkozás
   const litterStats = litters.map((l) => {
     const lIncome = payments.filter((p) => p.litter_id === l.id && p.type === "income").reduce((sum, p) => sum + Number(p.amount), 0);
     const lExpense = payments.filter((p) => p.litter_id === l.id && p.type === "expense").reduce((sum, p) => sum + Number(p.amount), 0);
@@ -197,6 +197,9 @@ export default async function FinancePage({
                   </span>
                 </div>
               ))}
+              {litterStats.length === 0 && (
+                <p className="text-zinc-600 italic py-2">Nincsenek még rögzített almok.</p>
+              )}
             </div>
           </div>
 
@@ -204,57 +207,62 @@ export default async function FinancePage({
           <div className="space-y-2">
             <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-wider">📜 Legutóbbi Tranzakciók</h3>
             <div className="space-y-2">
-              {payments.map((p) => (
-                <div 
-                  key={p.id} 
-                  className={`rounded-xl border p-4 flex justify-between items-center transition-all ${
-                    editId === p.id ? "border-amber-500 bg-amber-950/10" : "border-zinc-800 bg-zinc-950"
-                  }`}
-                >
-                  <div className="space-y-1">
-                    <div className="font-bold text-zinc-200 text-sm flex items-center gap-2">
-                      {p.category}
-                      {p.litter_id && (
-                        <span className="text-[10px] bg-amber-950/40 text-amber-400 border border-amber-900/50 px-1.5 py-0.5 rounded font-sans">
-                          "{litters.find((l) => l.id === p.litter_id)?.letter}" alom
-                        </span>
-                      )}
+              {payments.map((p) => {
+                // JAVÍTVA: Biztonságos alom-keresés opcionális láncolással (?.letter), ha az alom időközben törölve lett volna
+                const associatedLitter = litters.find((l) => l.id === p.litter_id);
+                
+                return (
+                  <div 
+                    key={p.id} 
+                    className={`rounded-xl border p-4 flex justify-between items-center transition-all ${
+                      editId === p.id ? "border-amber-500 bg-amber-950/10" : "border-zinc-800 bg-zinc-950"
+                    }`}
+                  >
+                    <div className="space-y-1">
+                      <div className="font-bold text-zinc-200 text-sm flex items-center gap-2">
+                        {p.category}
+                        {p.litter_id && associatedLitter && (
+                          <span className="text-[10px] bg-amber-950/40 text-amber-400 border border-amber-900/50 px-1.5 py-0.5 rounded font-sans">
+                            "{associatedLitter.letter}" alom
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-zinc-500 font-mono text-[11px]">
+                        {p.type === "income" ? "🟢 Bevétel" : "🔴 Kiadás"} • {p.date}
+                      </div>
+                      {p.description && <p className="text-zinc-400 italic text-[11px] font-sans">💬 {p.description}</p>}
                     </div>
-                    <div className="text-zinc-500 font-mono text-[11px]">
-                      {p.type === "income" ? "🟢 Bevétel" : "🔴 Kiadás"} • {p.date}
-                    </div>
-                    {p.description && <p className="text-zinc-400 italic text-[11px] font-sans">💬 {p.description}</p>}
-                  </div>
 
-                  <div className="flex items-center gap-4">
-                    <div className={`text-sm font-mono font-black ${p.type === "income" ? "text-emerald-400" : "text-red-400"}`}>
-                      {p.type === "income" ? "+" : "-"} {formatCurrency(p.amount)}
-                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className={`text-sm font-mono font-black ${p.type === "income" ? "text-emerald-400" : "text-red-400"}`}>
+                        {p.type === "income" ? "+" : "-"} {formatCurrency(p.amount)}
+                      </div>
 
-                    <div className="flex items-center gap-1.5 border-l border-zinc-800 pl-3">
-                      <a 
-                        href={`/finance?edit=${p.id}`}
-                        className="p-1.5 hover:bg-zinc-900 rounded text-zinc-400 hover:text-amber-400 transition-colors"
-                        title="Szerkesztés"
-                      >
-                        ✏️
-                      </a>
-                      <form action={deleteTransactionAction} onSubmit={(e) => {
-                        if(!confirm("Biztosan törölni szeretnéd ezt a tranzakciót?")) e.preventDefault();
-                      }}>
-                        <input type="hidden" name="id" value={p.id} />
-                        <button 
-                          type="submit" 
-                          className="p-1.5 hover:bg-zinc-900 rounded text-zinc-400 hover:text-red-500 transition-colors"
-                          title="Törlés"
+                      <div className="flex items-center gap-1.5 border-l border-zinc-800 pl-3">
+                        <a 
+                          href={`/finance?edit=${p.id}`}
+                          className="p-1.5 hover:bg-zinc-900 rounded text-zinc-400 hover:text-amber-400 transition-colors"
+                          title="Szerkesztés"
                         >
-                          🗑️
-                        </button>
-                      </form>
+                          ✏️
+                        </a>
+                        <form action={deleteTransactionAction} onSubmit={(e) => {
+                          if(!confirm("Biztosan törölni szeretnéd ezt a tranzakciót?")) e.preventDefault();
+                        }}>
+                          <input type="hidden" name="id" value={p.id} />
+                          <button 
+                            type="submit" 
+                            className="p-1.5 hover:bg-zinc-900 rounded text-zinc-400 hover:text-red-500 transition-colors"
+                            title="Törlés"
+                          >
+                            🗑️
+                          </button>
+                        </form>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
               {payments.length === 0 && <p className="text-zinc-600 italic">Nincsenek még könyvelt tranzakciók.</p>}
             </div>
           </div>
