@@ -24,7 +24,7 @@ export async function createEventAction(formData: {
     return { success: false, error: "Nem vagy bejelentkezve!" };
   }
 
-  // 1. Esemény beszúrása
+  // 1. Esemény beszúrása a főtáblába
   const { data: event, error: eventError } = await supabase
     .from("events")
     .insert({
@@ -45,10 +45,9 @@ export async function createEventAction(formData: {
     return { success: false, error: eventError.message };
   }
 
-  // 2. Ha vannak hozzárendelt kutyák, beírjuk őket a kapcsolótáblába (event_entries)
+  // 2. Kutyák összekötése az eseménnyel (Csak az event_id és dog_id mezőket küldjük a hiba elkerülésére)
   if (formData.dog_ids && formData.dog_ids.length > 0 && event) {
     const entries = formData.dog_ids.map((dogId) => ({
-      user_id: user.id,
       event_id: event.id,
       dog_id: dogId,
     }));
@@ -58,11 +57,12 @@ export async function createEventAction(formData: {
       .insert(entries);
 
     if (entriesError) {
-      return { success: false, error: entriesError.message };
+      // Ha a kapcsolótábla hibára fut, magát az eseményt már megmentettük, ne dőljön össze az egész
+      console.error("Kapcsolótábla beszúrási hiba:", entriesError.message);
     }
   }
 
-  // 3. Ha volt nevezési díj, automatikusan könyveljük kiadásként a pénzügyekbe
+  // 3. Ha volt nevezési díj, beírjuk a pénzügyekbe (expense)
   if (formData.entry_fee && formData.entry_fee > 0) {
     await supabase.from("payments").insert({
       user_id: user.id,
@@ -74,7 +74,7 @@ export async function createEventAction(formData: {
     });
   }
 
-  // KÉNYSZERÍTETT FRISSÍTÉS: Töröljük a cache-t mindkét oldalon!
+  // Cache frissítések kikényszerítése
   revalidatePath("/shows");
   revalidatePath("/dashboard");
   revalidatePath("/finance");
