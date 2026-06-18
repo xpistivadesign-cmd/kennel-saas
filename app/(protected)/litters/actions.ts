@@ -100,15 +100,15 @@ export async function deleteVaccinationAction(id: string) {
   revalidatePath("/litters", "page");
 }
 
-// JAVÍTOTT, A TE TÁBLASZERKEZETEDHEZ IGAZÍTOTT ELADÁS
+// BOMBABIZTOS, PAYMENTS TÁBLÁHOZ IGAZÍTOTT GYORS ELADÁS
 export async function sellPuppyAction(puppyId: string, litterId: string, formData: FormData) {
   const supabase = createServerSupabase();
   const { data: { user } } = await supabase.auth.getUser();
   
-  const buyer_name = String(formData.get("buyer_name")).trim();
+  const buyer_name = String(formData.get("buyer_name") || "").trim();
   const sale_price = parseFloat(String(formData.get("sale_price") || "0"));
 
-  // 1. Kiskutya adatainak frissítése
+  // 1. Kiskutya adatainak frissítése a puppies táblában
   const { error: pErr } = await supabase
     .from("puppies")
     .update({ buyer_name, sale_price, status: "Sold" })
@@ -116,27 +116,26 @@ export async function sellPuppyAction(puppyId: string, litterId: string, formDat
     
   if (pErr) return { success: false, error: "Kiskutya tábla frissítési hiba: " + pErr.message };
   
-  // 2. Összerakjuk az adatot PONTOSAN a te Supabase sémád szerint
-  const finData = {
+  // 2. Összerakjuk az adatot PONTOSAN a működő 'payments' sémád szerint (nincs currency és category!)
+  const paymentData = {
     user_id: user?.id || null, 
-    type: "income", 
-    category: "Puppy Sale", 
     amount: sale_price, 
-    currency: "EUR", 
+    type: "income", 
     description: `Kiskutya eladás: ${buyer_name}`,
     date: new Date().toISOString().split("T")[0]
   };
 
-  // 3. Beszúrás a finances táblába
-  const { error: fErr } = await supabase.from("finances").insert(finData);
+  // 3. Beszúrás a valós 'payments' táblába
+  const { error: fErr } = await supabase.from("payments").insert(paymentData);
   
   if (fErr) {
     return { 
       success: false, 
-      error: `Nem sikerült a pénzügyekbe írni. Supabase hiba: ${fErr.message}` 
+      error: `Kiskutya eladva, de a pénzügyekbe (payments) nem sikerült írni. Supabase hiba: ${fErr.message}` 
     };
   }
   
   revalidatePath("/litters", "page");
+  revalidatePath("/dashboard");
   return { success: true };
 }
