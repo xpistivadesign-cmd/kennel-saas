@@ -1,37 +1,23 @@
 import { createServerSupabase } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+// Beimportáljuk az új, interaktív kalkulátorunkat
+import GestationCalculator from "./GestationCalculator";
 
 export const dynamic = "force-dynamic";
-
-// 1. BEÉPÍTETT GESTATION CALCULATOR KOMPONENS (Nem kell külső import, így nem hibázik a Vercel!)
-function GestationCalculator() {
-  return (
-    <div className="bg-zinc-950 border border-zinc-800 p-4 rounded-xl space-y-3">
-      <h3 className="text-sm font-bold text-zinc-300">Gestation Calculator</h3>
-      <div className="space-y-3">
-        <input
-          type="date"
-          className="w-full bg-black border border-zinc-800 p-2 rounded text-white text-xs"
-        />
-        <div className="text-zinc-500 space-y-1 text-xs">
-          <div>Embryo Implantation: ~Day 21</div>
-          <div>Fetal Heartbeat: ~Day 28</div>
-          <div>Due Date: ~Day 63</div>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 export default async function DashboardPage() {
   const supabase = createServerSupabase();
 
-  // Felhasználó ellenőrzése a hibák elkerülése érdekében
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
     redirect("/login");
   }
+
+  // Ezres csoportosító függvény a prémium pénzügyi megjelenítéshez
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat("hu-HU", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(amount);
+  };
 
   // 1. Aktív kutyák száma
   const { count: activeDogsCount } = await supabase
@@ -73,9 +59,9 @@ export default async function DashboardPage() {
 
   const netProfit = totalRevenue - totalExpenses;
 
-  // 5. SÜRGŐS KÖZELGŐ ESEMÉNYEK (Mai naptól számított 3 napon belül)
+  // 5. SÜRGŐS KÖZELGŐ ESEMÉNYEK (Mai naptól számított 7 napon belülre növelve, hogy biztosan lásd az ellést is!)
   const limitDate = new Date();
-  limitDate.setDate(limitDate.getDate() + 3);
+  limitDate.setDate(limitDate.getDate() + 7);
   const limitStr = limitDate.toISOString().split("T")[0];
 
   const { data: urgentEvents } = await supabase
@@ -108,11 +94,11 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* SÜRGŐS RIASZTÁSOK BOX - FIXEN, VILLOGÁS NÉLKÜL */}
+      {/* SÜRGŐS RIASZTÁSOK BOX */}
       {urgentEvents && urgentEvents.length > 0 && (
         <div className="bg-amber-950/40 border border-amber-500/50 p-4 rounded-xl space-y-3">
           <h2 className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-2">
-            🚨 SÜRGŐS KÖZELGŐ ESEMÉNY / VIZSGA!
+            🚨 SÜRGŐS KÖZELGŐ ESEMÉNY / TEENDŐ!
           </h2>
           {urgentEvents.map((ev: any) => (
             <div key={ev.id} className="bg-black/40 p-3 rounded-lg border border-amber-500/20">
@@ -143,12 +129,24 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* METRIKÁK */}
+      {/* METRIKÁK FORMÁZOTT ÖSSZEGEKKEL */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-zinc-950 border border-zinc-800 p-4 rounded-xl"><span className="text-zinc-500 text-xs block">Active Dogs</span><strong className="text-xl text-white font-mono">{activeDogsCount || 0}</strong></div>
-        <div className="bg-zinc-950 border border-zinc-800 p-4 rounded-xl"><span className="text-emerald-500 text-xs block">Revenue</span><strong className="text-xl text-white font-mono">€{totalRevenue}</strong></div>
-        <div className="bg-zinc-950 border border-zinc-800 p-4 rounded-xl"><span className="text-red-500 text-xs block">Expenses</span><strong className="text-xl text-white font-mono">€{totalExpenses}</strong></div>
-        <div className="bg-zinc-950 border border-zinc-800 p-4 rounded-xl"><span className="text-blue-500 text-xs block">Net Profit</span><strong className="text-xl text-white font-mono">€{netProfit}</strong></div>
+        <div className="bg-zinc-950 border border-zinc-800 p-4 rounded-xl">
+          <span className="text-zinc-500 text-xs block">Active Dogs</span>
+          <strong className="text-xl text-white font-mono">{activeDogsCount || 0}</strong>
+        </div>
+        <div className="bg-zinc-950 border border-zinc-800 p-4 rounded-xl">
+          <span className="text-emerald-500 text-xs block">Revenue</span>
+          <strong className="text-xl text-emerald-400 font-mono">{formatCurrency(totalRevenue)}</strong>
+        </div>
+        <div className="bg-zinc-950 border border-zinc-800 p-4 rounded-xl">
+          <span className="text-red-500 text-xs block">Expenses</span>
+          <strong className="text-xl text-red-400 font-mono">{formatCurrency(totalExpenses)}</strong>
+        </div>
+        <div className="bg-zinc-950 border border-zinc-800 p-4 rounded-xl">
+          <span className="text-blue-500 text-xs block">Net Profit</span>
+          <strong className="text-xl text-blue-400 font-mono">{formatCurrency(netProfit)}</strong>
+        </div>
       </div>
 
       {/* ALSÓ SZEKCIÓ */}
@@ -170,12 +168,8 @@ export default async function DashboardPage() {
           <h3 className="text-sm font-bold text-zinc-300">Upcoming Heats</h3>
           <div className="space-y-2">
             {upcomingHeats?.map((heat: any) => {
-              // Megoldjuk a TypeScript hibát: biztonságosan kinyerjük a kutya nevét akár objektum, akár tömb formájában jön vissza
               const dogData = heat.dogs;
-              const dogName = Array.isArray(dogData) 
-                ? dogData[0]?.name 
-                : dogData?.name;
-
+              const dogName = Array.isArray(dogData) ? dogData[0]?.name : dogData?.name;
               return (
                 <div key={heat.id} className="bg-zinc-900/60 p-3 rounded-lg text-xs text-zinc-400 font-mono">
                   {heat.start_date} — <span className="text-zinc-200 font-sans font-bold">{dogName || "Unknown Dog"}</span>
@@ -186,7 +180,7 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        {/* BEÉPÍTETT KALKULÁTOR MEGJELENÍTÉSE */}
+        {/* AZ ÚJ INTERAKTÍV KALKULÁTORUNK */}
         <GestationCalculator />
       </div>
     </div>
