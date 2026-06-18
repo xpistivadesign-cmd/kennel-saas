@@ -19,32 +19,36 @@ async function saveBrandingAction(formData: FormData) {
   const kennel_address = String(formData.get("kennel_address") || "");
   const tax_number = String(formData.get("tax_number") || "");
   const icon_style = String(formData.get("icon_style") || "minimal");
-  
-  // ÚJ MEZŐK
   const theme_mode = String(formData.get("theme_mode") || "preset");
   const preset_palette = String(formData.get("preset_palette") || "royal_purple");
   const text_heading_color = String(formData.get("text_heading_color") || "#ffffff");
   const text_body_color = String(formData.get("text_body_color") || "#a1a1aa");
 
-  const logo_file = formData.get("logo_file") as File;
   let logo_url = String(formData.get("current_logo_url") || "");
+  const logo_file = formData.get("logo_file") as File;
 
+  // Ha valódi fájlt küldtek be
   if (logo_file && logo_file.size > 0 && logo_file.name !== "undefined") {
     const fileExt = logo_file.name.split('.').pop();
     const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+
     try {
       const bytes = await logo_file.arrayBuffer();
       const buffer = Buffer.from(bytes);
+
       const { error: uploadError } = await supabase.storage
         .from("logos")
-        .upload(fileName, buffer, { contentType: logo_file.type, upsert: true });
+        .upload(fileName, buffer, {
+          contentType: logo_file.type,
+          upsert: true
+        });
 
       if (!uploadError) {
         const { data: { publicUrl } } = supabase.storage.from("logos").getPublicUrl(fileName);
         logo_url = publicUrl;
       }
     } catch (e) {
-      console.error(e);
+      console.error("Feltöltési hiba:", e);
     }
   }
 
