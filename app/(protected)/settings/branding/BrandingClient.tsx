@@ -19,7 +19,6 @@ interface BrandingClientProps {
   saveBrandingAction: (formData: FormData) => Promise<void>;
 }
 
-// Prémium SaaS és Luxus betűtípus gyűjtemény
 const PREMIUM_FONTS = [
   { name: "Inter", desc: "Modern & Letisztult (SaaS Alapértelmezett)" },
   { name: "Poppins", desc: "Geometrikus & Fiatalos" },
@@ -104,4 +103,49 @@ export default function BrandingClient({ settings, saveBrandingAction }: Brandin
                   name="logo_file" 
                   accept="image/*" 
                   onChange={handleFileChange}
-                  className="w-full text-xs text-zinc-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-zinc-900 file:text-white hover:file:bg-zinc-800
+                  className="w-full text-xs text-zinc-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-zinc-900 file:text-white hover:file:bg-zinc-800 cursor-pointer" 
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <h3 className="text-sm font-bold text-blue-400 uppercase tracking-wider border-b border-zinc-900 pb-2">🎨 Színek & Tipográfia</h3>
+            
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <label className="text-zinc-400 block mb-1 font-bold">Egyedi Kísérőszín</label>
+                <div className="flex gap-2 items-center">
+                  <input type="color" name="accent_color" value={accent} onChange={(e) => setAccent(e.target.value)} className="w-9 h-9 bg-transparent border-0 cursor-pointer rounded" />
+                  <input type="text" value={accent} onChange={(e) => setAccent(e.target.value)} className="bg-black border border-zinc-800 rounded-lg p-2 font-mono text-center w-full text-white text-[10px]" />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-zinc-400 block mb-1 font-bold">Tetszőleges Háttérszín</label>
+                <div className="flex gap-2 items-center">
+                  <input type="color" name="bg_color" value={bgColor} onChange={(e) => setBgColor(e.target.value)} className="w-9 h-9 bg-transparent border-0 cursor-pointer rounded" />
+                  <input type="text" value={bgColor} onChange={(e) => setBgColor(e.target.value)} className="bg-black border border-zinc-800 rounded-lg p-2 font-mono text-center w-full text-white text-[10px]" />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-zinc-400 block mb-1 font-bold">Rendszer Betűtípusa</label>
+                <select 
+                  name="google_font_name" 
+                  value={fontName} 
+                  onChange={(e) => setFontName(e.target.value)} 
+                  className="w-full rounded-lg bg-black border border-zinc-800 p-2.5 text-white text-xs cursor-pointer"
+                >
+                  {PREMIUM_FONTS.map((font) => (
+                    <option key={font.name} value={font.name}>
+                      {font.name} — {font.desc}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className="text-zinc-400 block mb-1">Ikonok Stílusa</label>
+              <select name
