@@ -1,9 +1,16 @@
 import Link from "next/link";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { PRESETS } from "./settings/branding/BrandingClient";
 
 export const dynamic = "force-dynamic";
+
+// Szerveroldali másolat a palettákról, hogy ne kelljen kliens fájlból importálni!
+const SERVER_PRESETS = {
+  royal_purple: { bg: "#ba24ff", accent: "#6d17eb", heading: "#ffffff", body: "#f3e8ff" },
+  midnight_neon: { bg: "#09090b", accent: "#6df73b", heading: "#ffffff", body: "#a1a1aa" },
+  luxury_gold: { bg: "#1c1917", accent: "#eab308", heading: "#fafaf9", body: "#d6d3d1" },
+  soft_beige: { bg: "#f5f5f4", accent: "#78716c", heading: "#1c1917", body: "#44403c" },
+};
 
 export default async function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const supabase = createServerSupabase();
@@ -20,7 +27,7 @@ export default async function ProtectedLayout({ children }: { children: React.Re
   // STÍLUS ÉRTÉKEK MEGHATÁROZÁSA (PRESET VAGY CUSTOM)
   const isPreset = (branding?.theme_mode || "preset") === "preset";
   const currentPresetKey = branding?.preset_palette || "royal_purple";
-  const presetData = PRESETS[currentPresetKey as keyof typeof PRESETS] || PRESETS.royal_purple;
+  const presetData = SERVER_PRESETS[currentPresetKey as keyof typeof SERVER_PRESETS] || SERVER_PRESETS.royal_purple;
 
   const bgColor = isPreset ? presetData.bg : (branding?.bg_color || "#09090b");
   const accentColor = isPreset ? presetData.accent : (branding?.accent_color || "#3b82f6");
@@ -32,10 +39,10 @@ export default async function ProtectedLayout({ children }: { children: React.Re
   const kennelName = branding?.kennel_name || "Kennel OS";
   const iconStyle = branding?.icon_style || "minimal";
 
-  // 🛠️ FIX: ITT JAVÍTJUK A NEVEDET! Ha van elmentve owner_name, azt írja ki, ha nincs, a metadata-t!
+  // FIX: Az elmentett tenyésztő nevet írja ki üdvözlésként!
   const userGreetingName = branding?.owner_name || user.user_metadata?.full_name || user.email?.split("@")[0] || "Tenyésztő";
 
-  // Kártya háttér árnyalás intelligensen
+  // Kártya háttér árnyalás intelligensen a háttérszín alapján
   const hex = bgColor.replace("#", "");
   const r = parseInt(hex.substr(0, 2), 16);
   const g = parseInt(hex.substr(2, 2), 16);
@@ -74,7 +81,6 @@ export default async function ProtectedLayout({ children }: { children: React.Re
     >
       <link rel="stylesheet" href={`https://fonts.googleapis.com/css2?family=${googleFontName.replace(/ /g, "+")}:wght@400;500;700;900&display=swap`} />
 
-      {/* AGRESSZÍV CSS INJEKCIÓ A FELHASZNÁLÓ SZÍNEIVEL */}
       <style dangerouslySetInnerHTML={{ __html: `
         h1, h2, h3, h4, th, .text-white, strong { color: ${headingColor} !important; }
         p, span, td, label, .text-zinc-400 { color: ${bodyColor} !important; }
@@ -113,7 +119,6 @@ export default async function ProtectedLayout({ children }: { children: React.Re
             )}
           </div>
 
-          {/* ÜDVÖZLET DOCK - JAVÍTVA */}
           <div className="mb-6 p-3 rounded-xl border" style={{ backgroundColor: cardBgColor, borderColor: borderOverlay }}>
             <span className="text-[9px] block uppercase tracking-wider font-bold opacity-60">Tenyészet</span>
             <div className="text-xs font-bold mt-0.5" style={{ color: headingColor }}>✨ Welcome, {userGreetingName}! 👋</div>
