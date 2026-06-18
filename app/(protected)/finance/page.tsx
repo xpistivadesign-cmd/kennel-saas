@@ -30,11 +30,9 @@ async function saveTransactionAction(formData: FormData) {
   };
 
   if (id) {
-    // HA VAN ID -> SZERKESZTÉS/UPDATE
     const { error } = await supabase.from("payments").update(payload).eq("id", id);
     if (error) throw new Error(error.message);
   } else {
-    // HA NINCS ID -> ÚJ LÉTREHOZÁSA
     const { error } = await supabase.from("payments").insert(payload);
     if (error) throw new Error(error.message);
   }
@@ -70,7 +68,6 @@ export default async function FinancePage({
 
   if (!user) redirect("/login");
 
-  // Várjuk meg a keresési paramétereket az aktuálisan szerkesztett elemhez
   const resolvedParams = await searchParams;
   const editId = resolvedParams.edit || null;
 
@@ -82,14 +79,12 @@ export default async function FinancePage({
     .order("date", { ascending: false });
 
   const payments = paymentsData || [];
-
-  // Ha szerkesztési módban vagyunk, keressük ki az adott tranzakciót
   const editingTransaction = editId ? payments.find((p) => p.id === editId) : null;
 
-  // 2. Almok lekérése
+  // 2. BOMBABIZTOS ALOM LEKÉRÉS: Csak az ID-t és a Betűt kérjük el, így nincs hibalehetőség!
   const { data: littersData } = await supabase
     .from("litters")
-    .select("id, letter, birth_date")
+    .select("id, letter") 
     .eq("user_id", user.id);
 
   const litters = littersData || [];
@@ -117,7 +112,6 @@ export default async function FinancePage({
     return {
       id: l.id,
       letter: l.letter,
-      birth_date: l.birth_date,
       income: lIncome,
       expense: lExpense,
       profit: lIncome - lExpense,
@@ -195,7 +189,7 @@ export default async function FinancePage({
               </div>
               {litterStats.map((l) => (
                 <div key={l.id} className="grid grid-cols-4 items-center py-2.5 border-b border-zinc-900/60 font-mono">
-                  <span className="font-sans font-bold text-amber-400">"{l.letter}" alom <span className="text-[10px] text-zinc-600 block font-normal">{l.birth_date || "Nincs dátum"}</span></span>
+                  <span className="font-sans font-bold text-amber-400">"{l.letter}" alom</span>
                   <span className="text-right text-zinc-300">{formatCurrency(l.income)}</span>
                   <span className="text-right text-zinc-500">{formatCurrency(l.expense)}</span>
                   <span className={`text-right font-bold ${l.profit >= 0 ? "text-emerald-400" : "text-red-400"}`}>
@@ -206,7 +200,7 @@ export default async function FinancePage({
             </div>
           </div>
 
-          {/* UTOLSÓ TRANZAKCIÓK LISTÁJA SZERKESZTÉS ÉS TÖRLES FUNKCIÓVAL */}
+          {/* UTOLSÓ TRANZAKCIÓK LISTÁJA */}
           <div className="space-y-2">
             <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-wider">📜 Legutóbbi Tranzakciók</h3>
             <div className="space-y-2">
@@ -237,7 +231,6 @@ export default async function FinancePage({
                       {p.type === "income" ? "+" : "-"} {formatCurrency(p.amount)}
                     </div>
 
-                    {/* INTERAKCIÓS GOMBOK (EDIT & DELETE) */}
                     <div className="flex items-center gap-1.5 border-l border-zinc-800 pl-3">
                       <a 
                         href={`/finance?edit=${p.id}`}
