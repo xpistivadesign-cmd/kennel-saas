@@ -100,6 +100,7 @@ export default function BuyersClient({ buyers, puppies, contracts }: any) {
         buyer_id: buyer.id,
         buyer_name: buyer.name || buyer.full_name,
         buyer_email: buyer.email,
+        puppy_id: puppy.id,
         puppy_name: puppy.name || "Névtelen",
         price_amount: parseFloat(price),
         price_currency: currency,
@@ -111,7 +112,7 @@ export default function BuyersClient({ buyers, puppies, contracts }: any) {
         return;
       }
 
-      alert("Szerződés sikeresen archiválva az alkalmazásban, és az automatikus e-mail kiküldés elindult a Gazdinak és a Tenyésztőnek is! 📧✈️");
+      alert("Szerződés sikeresen archiválva! A bevétel automatikusan könyvelve lett a Finance menüpont alá, a kiskutya státusza 'Sold'-ra változott, és az e-mail kiküldés elindult! 💰🐶✈️");
       startTransition(() => { router.refresh(); setSubTab("documents"); });
     } catch (err: any) { alert(err.message); }
   };
@@ -139,7 +140,7 @@ export default function BuyersClient({ buyers, puppies, contracts }: any) {
             body { font-family: 'Times New Roman', serif; padding: 40px; line-height: 1.6; color: #000; font-size: 14px; }
             h1 { text-align: center; text-transform: uppercase; font-size: 20px; margin-bottom: 30px; }
             .section { margin-top: 20px; font-weight: bold; }
-            .grid { display: grid; grid-template-cols: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+            .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
             .footer-sign { margin-top: 80px; display: flex; justify-content: space-between; align-items: flex-end; }
             .sign-box { border-top: 1px solid #000; width: 220px; text-align: center; padding-top: 5px; position: relative; }
             .signature { font-family: 'Brush Script MT', cursive, serif; font-size: 24px; color: #002699; position: absolute; top: -30px; left: 30px; transform: rotate(-5deg); }
@@ -375,33 +376,4 @@ export default function BuyersClient({ buyers, puppies, contracts }: any) {
         <h3 className="font-bold text-zinc-400 uppercase text-xs border-b border-zinc-800 pb-2">Új tag rögzítése</h3>
         <div><label className="text-zinc-500 text-[11px] block mb-0.5">Teljes név *</label><input value={name} onChange={e => setName(e.target.value)} required className="w-full p-2 bg-black border border-zinc-800 rounded-lg text-white text-xs" /></div>
         <div><label className="text-zinc-500 text-[11px] block mb-0.5">Telefonszám</label><input value={phone} onChange={e => setPhone(e.target.value)} className="w-full p-2 bg-black border border-zinc-800 rounded-lg text-white text-xs" /></div>
-        <div><label className="text-zinc-500 text-[11px] block mb-0.5">E-mail</label><input type="email" value={email} onChange={e => setEmail(e.target.value)} className="w-full p-2 bg-black border border-zinc-800 rounded-lg text-white text-xs" /></div>
-        <div><label className="text-zinc-500 text-[11px] block mb-0.5">Lakcím (Szerződéshez)</label><input value={address} onChange={e => setAddress(e.target.value)} className="w-full p-2 bg-black border border-zinc-800 rounded-lg text-white text-xs" /></div>
-        <div><label className="text-zinc-500 text-[11px] block mb-0.5">Személyi ig. szám</label><input value={idCard} onChange={e => setIdCard(e.target.value)} className="w-full p-2 bg-black border border-zinc-800 rounded-lg text-white text-xs" /></div>
-        
-        <div>
-          <label className="text-zinc-500 text-[11px] block mb-0.5">Preferált nem</label>
-          <select value={genderPref} onChange={e => setGenderPref(e.target.value)} className="w-full p-2 bg-black border border-zinc-800 rounded-lg text-white text-xs">
-            <option value="No preference">Mindegy</option>
-            <option value="Male">Kan</option>
-            <option value="Female">Szuka</option>
-          </select>
-        </div>
-
-        <div>
-          <label className="text-zinc-500 text-[11px] block mb-0.5">Státusz</label>
-          <select value={status} onChange={e => setStatus(e.target.value)} className="w-full p-2 bg-black border border-zinc-800 rounded-lg text-white text-xs">
-            <option value="Waiting">Waiting (Várólista)</option>
-            <option value="Active Owner">Active Owner (Aktív Gazdi)</option>
-          </select>
-        </div>
-
-        <div><label className="text-zinc-500 text-[11px] block mb-0.5">Megjegyzés</label><textarea value={notes} onChange={e => setNotes(e.target.value)} className="w-full p-2 bg-black border border-zinc-800 rounded-lg text-white text-xs h-12" /></div>
-        
-        <button type="submit" disabled={load} className="w-full bg-amber-500 hover:bg-amber-400 text-black font-bold py-2 rounded-lg uppercase text-xs tracking-wider transition-all disabled:opacity-50">
-          {load ? "Mentés..." : "Mentés"}
-        </button>
-      </form>
-    </div>
-  );
-}
+        <div><label className="text-zinc-500 text-[11px] block mb-0.5">E-mail</label><input type="email" value={email} onChange={e => setEmail(
