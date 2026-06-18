@@ -27,12 +27,13 @@ async function saveBrandingAction(formData: FormData) {
   let logo_url = String(formData.get("current_logo_url") || "");
   const logo_file = formData.get("logo_file") as File;
 
-  // Ha valódi fájlt küldtek be
+  // Ha érkezett valódi fájl a beküldéssel
   if (logo_file && logo_file.size > 0 && logo_file.name !== "undefined") {
     const fileExt = logo_file.name.split('.').pop();
     const fileName = `${user.id}-${Date.now()}.${fileExt}`;
 
     try {
+      // Biztonságos bináris puffer átalakítás a szerveren
       const bytes = await logo_file.arrayBuffer();
       const buffer = Buffer.from(bytes);
 
@@ -48,7 +49,7 @@ async function saveBrandingAction(formData: FormData) {
         logo_url = publicUrl;
       }
     } catch (e) {
-      console.error("Feltöltési hiba:", e);
+      console.error("Szerver oldali feltöltési hiba:", e);
     }
   }
 
