@@ -38,14 +38,20 @@ export default async function ProtectedLayout({
     { href: "/settings/branding", label: "Branding & Style", icon: "🎨" },
   ];
 
-  // Automatikus szövegszín kalkuláció a főmenühöz és háttérhez
+  // Intelligens fényerő számítás
   const hex = bgColor.replace("#", "");
   const r = parseInt(hex.substr(0, 2), 16);
   const g = parseInt(hex.substr(2, 2), 16);
   const b = parseInt(hex.substr(4, 2), 16);
   const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+  
   const globalTextColor = (yiq >= 128) ? "#000000" : "#ffffff";
   const secondaryTextColor = (yiq >= 128) ? "rgba(0,0,0,0.6)" : "rgba(255,255,255,0.6)";
+  
+  // Kártyák belső színe: ha világos a háttér, picit sötétebb / ha sötét, picit világosabb áttetsző doboz
+  const cardBgColor = (yiq >= 128) ? "rgba(0,0,0,0.04)" : "rgba(255,255,255,0.04)";
+  const borderOverlay = (yiq >= 128) ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.08)";
+  const inputBgColor = (yiq >= 128) ? "rgba(0,0,0,0.02)" : "rgba(0,0,0,0.4)";
 
   async function signOut() {
     "use server";
@@ -65,42 +71,63 @@ export default async function ProtectedLayout({
         fontFamily: `'${googleFontName}', sans-serif`
       }}
     >
-      {/* 🌐 Google Fonts dinamikus betöltése az egész szoftverben */}
-      <link rel="stylesheet" href={`https://fonts.googleapis.com/css2?family=${googleFontName.replace(/ /g, "+")}:wght@400;700;900&display=swap`} />
+      <link rel="stylesheet" href={`https://fonts.googleapis.com/css2?family=${googleFontName.replace(/ /g, "+")}:wght@400;500;700;900&display=swap`} />
 
+      {/* 🛠️ RADIKÁLIS GLOBÁLIS CSS AUTOMATIZÁLÁS */}
       <style dangerouslySetInnerHTML={{ __html: `
+        /* 1. Alapvető kísérőszín osztályok */
         .custom-accent-bg { background-color: ${accentColor} !important; }
         .custom-accent-text { color: ${accentColor} !important; }
+        .custom-accent-border { border-color: ${accentColor} !important; }
         
-        /* Összes gomb és kártya igazítása a globális arculathoz */
+        /* 2. Gombok felülírása az összes aloldalon (mentés, hozzáadás gombok) */
         button[type="submit"]:not(.bg-zinc-900):not(.bg-red-500), 
-        .bg-emerald-500, .bg-blue-500 { 
+        .bg-emerald-500, .bg-blue-500, .bg-lime-500, 
+        button:contains("+"), button:contains("MENTÉS") { 
           background-color: ${accentColor} !important; 
           color: ${yiq >= 128 ? '#ffffff' : '#000000'} !important;
+          border-color: ${accentColor} !important;
         }
 
-        /* Automatikus kártya háttér korrekció a főoldalakon */
-        .bg-zinc-950, .bg-zinc-900 {
-          background-color: ${yiq >= 128 ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.03)'} !important;
-          border-color: ${yiq >= 128 ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)'} !important;
+        /* 3. KÁRTYÁK ÉS DOBOZOK HÁTTÉR KORREKCIÓJA (Eltüntetjük a beégetett feketéket) */
+        .bg-zinc-950, .bg-zinc-900, .bg-black, .bg-zinc-800,
+        div[className*="bg-zinc-950"], div[className*="bg-black"],
+        .rounded-xl.border, .rounded-2xl.border {
+          background-color: ${cardBgColor} !important;
+          border-color: ${borderOverlay} !important;
           color: ${globalTextColor} !important;
         }
         
-        /* Szövegek színének kényszerítése */
-        .text-white { color: ${globalTextColor} !important; }
-        .text-zinc-400, .text-zinc-500 { color: ${secondaryTextColor} !important; }
-        input, select, textarea { background-color: ${yiq >= 128 ? '#ffffff' : '#000000'} !important; color: ${globalTextColor} !important; border-color: ${yiq >= 128 ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)'} !important; }
+        /* 4. Szövegszínek kényszerítése az aloldalakon */
+        h1, h2, h3, h4, .text-white { color: ${globalTextColor} !important; }
+        p, .text-zinc-400, .text-zinc-500, .text-zinc-300 { color: ${secondaryTextColor} !important; }
+        
+        /* 5. Űrlap mezők (Inputs, Selects, Textareas) idomítása */
+        input, select, textarea { 
+          background-color: ${inputBgColor} !important; 
+          color: ${globalTextColor} !important; 
+          border-color: ${borderOverlay} !important; 
+        }
+        input:focus, select:focus, textarea:focus {
+          border-color: ${accentColor} !important;
+        }
+
+        /* 6. Pénzügyi grafikon belső konténerek javítása */
+        div[className*="bg-zinc-900/20"] {
+          background-color: rgba(0, 0, 0, 0.1) !important;
+        }
       `}} />
 
       <aside 
         className="w-64 shrink-0 border-r flex flex-col justify-between p-6"
         style={{ 
           backgroundColor: bgColor, 
-          borderColor: yiq >= 128 ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)' 
+          borderColor: borderOverlay 
         }}
       >
         <div>
-          <div className="mb-8 tracking-wide flex items-center gap-2 border-b pb-4" style={{ borderColor: yiq >= 128 ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)' }}>
+          {/* LOGÓ */}
+          <div className="mb-8 tracking-wide flex items-center gap-2 border-b pb-4" style={{ borderColor: borderOverlay }}>
             {logoUrl ? (
               <img src={logoUrl} alt="Logo" className="h-8 max-w-[180px] object-contain" onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
             ) : (
@@ -110,17 +137,19 @@ export default async function ProtectedLayout({
             )}
           </div>
 
-          <div className="mb-6 p-3 rounded-xl border" style={{ backgroundColor: yiq >= 128 ? 'rgba(0,0,0,0.02)' : 'rgba(255,255,255,0.02)', borderColor: yiq >= 128 ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)' }}>
+          {/* ÜDVÖZLET */}
+          <div className="mb-6 p-3 rounded-xl border" style={{ backgroundColor: cardBgColor, borderColor: borderOverlay }}>
             <span className="text-[9px] block uppercase tracking-wider font-bold" style={{ color: secondaryTextColor }}>Tenyészet</span>
             <div className="text-xs font-bold mt-0.5" style={{ color: globalTextColor }}>✨ Welcome, {userGreetingName}! 👋</div>
           </div>
 
+          {/* NAVIGÁCIÓ */}
           <nav className="flex flex-col gap-2">
             {navItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs transition-all duration-200"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs transition-all duration-200 hover:bg-zinc-800/10"
                 style={{ color: globalTextColor }}
               >
                 {iconStyle === "minimal" && <span className="text-sm opacity-70">{item.icon}</span>}
@@ -137,7 +166,7 @@ export default async function ProtectedLayout({
         </div>
 
         <form action={signOut}>
-          <button type="submit" className="w-full px-3 py-2 rounded-lg border text-xs transition-all" style={{ backgroundColor: yiq >= 128 ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)', borderColor: yiq >= 128 ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)', color: globalTextColor }}>
+          <button type="submit" className="w-full px-3 py-2 rounded-lg border text-xs transition-all" style={{ backgroundColor: cardBgColor, borderColor: borderOverlay, color: globalTextColor }}>
             Kijelentkezés
           </button>
         </form>
