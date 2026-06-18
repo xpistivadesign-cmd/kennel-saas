@@ -15,8 +15,12 @@ async function saveBrandingAction(formData: FormData) {
   const bg_style = String(formData.get("bg_style"));
   const font_family = String(formData.get("font_family"));
   const logo_url = String(formData.get("logo_url") || "");
+  const kennel_name = String(formData.get("kennel_name") || "Saját Kennel");
+  const owner_name = String(formData.get("owner_name") || "");
+  const kennel_address = String(formData.get("kennel_address") || "");
+  const tax_number = String(formData.get("tax_number") || "");
+  const icon_style = String(formData.get("icon_style") || "minimal");
 
-  // Megnézzük létezik-e már beállítás
   const { data: existing } = await supabase
     .from("branding_settings")
     .select("id")
@@ -29,6 +33,11 @@ async function saveBrandingAction(formData: FormData) {
     bg_style,
     font_family,
     logo_url: logo_url.trim() || null,
+    kennel_name,
+    owner_name,
+    kennel_address,
+    tax_number,
+    icon_style,
     updated_at: new Date().toISOString(),
   };
 
@@ -38,7 +47,7 @@ async function saveBrandingAction(formData: FormData) {
     await supabase.from("branding_settings").insert(payload);
   }
 
-  revalidatePath("/settings/branding");
+  revalidatePath("/", "layout");
 }
 
 export default async function BrandingPage() {
@@ -46,7 +55,6 @@ export default async function BrandingPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  // Lekérjük a meglévő beállításokat, ha nincsenek, alapértelmezett értékeket adunk
   const { data: settings } = await supabase
     .from("branding_settings")
     .select("*")
@@ -58,6 +66,11 @@ export default async function BrandingPage() {
     bg_style: "zinc",
     font_family: "sans",
     logo_url: null,
+    kennel_name: "Saját Kennel",
+    owner_name: "",
+    kennel_address: "",
+    tax_number: "",
+    icon_style: "minimal",
   };
 
   return (
