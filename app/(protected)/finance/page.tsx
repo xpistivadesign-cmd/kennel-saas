@@ -1,13 +1,12 @@
 import { createServerSupabase } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import FinanceClient from "./FinanceClient";
 
 export const dynamic = "force-dynamic";
 
-// 1. Tranzakció hozzáadása vagy frissítése
 async function saveTransactionAction(formData: FormData) {
   "use server";
-
   const supabase = createServerSupabase();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -19,213 +18,54 @@ async function saveTransactionAction(formData: FormData) {
   const notesText = String(formData.get("notes") || "");
   const litter_id = formData.get("litter_id") === "none" ? null : String(formData.get("litter_id"));
 
-  const payload = {
-    user_id: user?.id || null,
-    amount,
-    type,
-    category,
-    date,
-    description: notesText,
-    litter_id,
-  };
+  const payload = { user_id: user?.id || null, amount, type, category, date, description: notesText, litter_id };
 
   if (id) {
-    const { error } = await supabase.from("payments").update(payload).eq("id", id);
-    if (error) throw new Error(error.message);
+    await supabase.from("payments").update(payload).eq("id", id);
   } else {
-    const { error } = await supabase.from("payments").insert(payload);
-    if (error) throw new Error(error.message);
+    await supabase.from("payments").insert(payload);
   }
-
   revalidatePath("/finance");
 }
 
-// 2. Tranzakció törlése Action
 async function deleteTransactionAction(formData: FormData) {
   "use server";
-
   const supabase = createServerSupabase();
   const id = String(formData.get("id"));
-
-  const { error } = await supabase.from("payments").delete().eq("id", id);
-  if (error) {
-    throw new Error(error.message);
-  }
-
+  await supabase.from("payments").delete().eq("id", id);
   revalidatePath("/finance");
 }
 
-export default async function FinancePage({
-  searchParams,
-}: {
-  searchParams: Promise<{ edit?: string }>;
-}) {
-  // Először ellenőrizzük a felhasználót a try blokkon kívül, hogy a redirect jól működjön
+export default async function FinancePage({ searchParams }: { searchParams: Promise<{ edit?: string }> }) {
   const supabase = createServerSupabase();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  // A keresési paramétereket is biztonságosan megvárjuk
   const resolvedParams = await searchParams;
   const editId = resolvedParams.edit || null;
 
   try {
-    // 1. Összes tranzakció lekérése
-    const { data: paymentsData, error: paymentsError } = await supabase
-      .from("payments")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("date", { ascending: false });
+    const { data: paymentsData, error: pErr } = await supabase.from("payments").select("*").eq("user_id", user.id).order("date", { ascending: false });
+    if (pErr) throw new Error(pErr.message);
 
-    if (paymentsError) throw new Error(`Payments hiba: ${paymentsError.message}`);
-
-    const payments = paymentsData || [];
-    const editingTransaction = editId ? payments.find((p) => p.id === editId) : null;
-
-    // 2. Alom lekérés
-    const { data: littersData, error: littersError } = await supabase
-      .from("litters")
-      .select("id, letter") 
-      .eq("user_id", user.id);
-
-    if (littersError) throw new Error(`Litters hiba: ${littersError.message}`);
-
-    const litters = littersData || [];
-
-    const formatCurrency = (amount: number) => {
-      return new Intl.NumberFormat("hu-HU", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(amount);
-    };
-
-    // Globális Összesítők
-    const income = payments.filter((p) => p.type === "income").reduce((sum, p) => sum + Number(p.amount), 0);
-    const expense = payments.filter((p) => p.type === "expense").reduce((sum, p) => sum + Number(p.amount), 0);
-    const net = income - expense;
-
-    // Kiadások kategóriánkénti eloszlása
-    const expenseCategories: { [key: string]: number } = {};
-    payments.filter((p) => p.type === "expense").forEach((p) => {
-      const cat = p.category || "Egyéb";
-      expenseCategories[cat] = (expenseCategories[cat] || 0) + Number(p.amount);
-    });
-
-    // Alomszintű megtérülés (Litter ROI)
-    const litterStats = litters.map((l) => {
-      const lIncome = payments.filter((p) => p.litter_id === l.id && p.type === "income").reduce((sum, p) => sum + Number(p.amount), 0);
-      const lExpense = payments.filter((p) => p.litter_id === l.id && p.type === "expense").reduce((sum, p) => sum + Number(p.amount), 0);
-      return {
-        id: l.id,
-        letter: l.letter,
-        income: lIncome,
-        expense: lExpense,
-        profit: lIncome - lExpense,
-      };
-    });
+    const { data: littersData, error: lErr } = await supabase.from("litters").select("id, letter").eq("user_id", user.id);
+    if (lErr) throw new Error(lErr.message);
 
     return (
-      <div className="space-y-10 text-white text-xs">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight text-white font-sans">Finance & Analytics</h1>
-            <p className="text-zinc-500 text-xs mt-1">A kennel bevételeinek, kiadásainak módosítása, törlése és elemzése.</p>
-          </div>
-          {editId && (
-            <a href="/finance" className="bg-zinc-800 hover:bg-zinc-700 px-4 py-2 rounded-lg font-bold text-zinc-200 transition-colors">
-              ❌ Szerkesztési mód bezárása
-            </a>
-          )}
-        </div>
-
-        {/* METRIKÁK KÁRTYÁK */}
-        <div className="grid md:grid-cols-3 gap-4">
-          <div className="rounded-xl bg-zinc-950 border border-zinc-800 p-5 space-y-1">
-            <div className="text-emerald-500 font-medium uppercase tracking-wider text-[10px]">Total Income</div>
-            <div className="text-2xl font-black font-mono text-white">{formatCurrency(income)}</div>
-          </div>
-
-          <div className="rounded-xl bg-zinc-950 border border-zinc-800 p-5 space-y-1">
-            <div className="text-red-500 font-medium uppercase tracking-wider text-[10px]">Total Expense</div>
-            <div className="text-2xl font-black font-mono text-white">{formatCurrency(expense)}</div>
-          </div>
-
-          <div className="rounded-xl bg-zinc-950 border border-zinc-800 p-5 space-y-1">
-            <div className="text-blue-500 font-medium uppercase tracking-wider text-[10px]">Net Profit</div>
-            <div className="text-2xl font-black font-mono text-white">{formatCurrency(net)}</div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-          <div className="lg:col-span-2 space-y-6">
-            
-            {/* KIADÁSI KATEGÓRIÁK VIZUÁLIS ELOSZLÁSA */}
-            <div className="bg-zinc-950 border border-zinc-800 p-5 rounded-xl space-y-4">
-              <h3 className="text-sm font-bold text-zinc-300">📊 Kiadások kategóriák szerint elosztva</h3>
-              <div className="space-y-3">
-                {Object.entries(expenseCategories).map(([cat, amt]) => {
-                  const percentage = expense > 0 ? (amt / expense) * 100 : 0;
-                  return (
-                    <div key={cat} className="space-y-1.5">
-                      <div className="flex justify-between text-[11px]">
-                        <span className="text-zinc-400 font-medium">{cat}</span>
-                        <span className="text-zinc-300 font-mono font-bold">{formatCurrency(amt)} <span className="text-zinc-500 font-normal">({percentage.toFixed(0)}%)</span></span>
-                      </div>
-                      <div className="w-full bg-zinc-900 h-2 rounded-full overflow-hidden border border-zinc-800/40">
-                        <div className="bg-red-500 h-full transition-all" style={{ width: `${percentage}%` }}></div>
-                      </div>
-                    </div>
-                  );
-                })}
-                {Object.keys(expenseCategories).length === 0 && (
-                  <p className="text-zinc-600 italic">Nincs még rögzített kiadás a statisztikához.</p>
-                )}
-              </div>
-            </div>
-
-            {/* ALOMSZINTŰ MEGTÉRÜLÉS (LITTER ROI) */}
-            <div className="bg-zinc-950 border border-zinc-800 p-5 rounded-xl space-y-4">
-              <h3 className="text-sm font-bold text-zinc-300">🐶 Alomszintű Megtérülés (Litter ROI)</h3>
-              <div className="space-y-2">
-                <div className="grid grid-cols-4 text-zinc-500 font-bold uppercase tracking-wider text-[10px] border-b border-zinc-900 pb-2">
-                  <span>Alom</span>
-                  <span className="text-right">Bevétel</span>
-                  <span className="text-right">Kiadás</span>
-                  <span className="text-right">Tiszta Haszon</span>
-                </div>
-                {litterStats.map((l) => (
-                  <div key={l.id} className="grid grid-cols-4 items-center py-2.5 border-b border-zinc-900/60 font-mono">
-                    <span className="font-sans font-bold text-amber-400">"{l.letter}" alom</span>
-                    <span className="text-right text-zinc-300">{formatCurrency(l.income)}</span>
-                    <span className="text-right text-zinc-500">{formatCurrency(l.expense)}</span>
-                    <span className={`text-right font-bold ${l.profit >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-                      {formatCurrency(l.profit)}
-                    </span>
-                  </div>
-                ))}
-                {litterStats.length === 0 && (
-                  <p className="text-zinc-600 italic py-2">Nincsenek még rögzített almok.</p>
-                )}
-              </div>
-            </div>
-
-            {/* UTOLSÓ TRANZAKCIÓK LISTÁJA */}
-            <div className="space-y-2">
-              <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-wider">📜 Legutóbbi Tranzakciók</h3>
-              <div className="space-y-2">
-                {payments.map((p) => {
-                  const associatedLitter = litters.find((l) => l.id === p.litter_id);
-                  return (
-                    <div 
-                      key={p.id} 
-                      className={`rounded-xl border p-4 flex justify-between items-center transition-all ${
-                        editId === p.id ? "border-amber-500 bg-amber-950/10" : "border-zinc-800 bg-zinc-950"
-                      }`}
-                    >
-                      <div className="space-y-1">
-                        <div className="font-bold text-zinc-200 text-sm flex items-center gap-2">
-                          {p.category}
-                          {p.litter_id && associatedLitter && (
-                            <span className="text-[10px] bg-amber-950/40 text-amber-400 border border-amber-900/50 px-1.5 py-0.5 rounded font-sans">
-                              "{associatedLitter.letter}" alom
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-zinc-500 font-
+      <FinanceClient 
+        payments={paymentsData || []} 
+        litters={littersData || []} 
+        editId={editId}
+        saveTransactionAction={saveTransactionAction}
+        deleteTransactionAction={deleteTransactionAction}
+      />
+    );
+  } catch (err: any) {
+    return (
+      <div className="p-8 bg-zinc-950 border border-red-900 rounded-xl max-w-2xl mx-auto my-10 space-y-4 text-white text-xs">
+        <h1 className="text-red-500 text-xl font-bold">⚠️ Adatbázis szinkronizációs hiba történt</h1>
+        <pre className="bg-black p-4 rounded border border-zinc-800 text-red-400 font-mono overflow-auto whitespace-pre-wrap">{err.message || String(err)}</pre>
+      </div>
+    );
+  }
+}
