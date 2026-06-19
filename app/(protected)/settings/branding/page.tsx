@@ -12,24 +12,17 @@ async function saveBrandingAction(formData: FormData) {
   if (!user) return;
 
   const theme_mode = String(formData.get("theme_mode") || "dark");
+  const preset_palette = String(formData.get("preset_palette") || "midnight");
+  const ui_style = String(formData.get("ui_style") || "neon");
+  const ui_radius = String(formData.get("ui_radius") || "medium");
+  const ui_animation = String(formData.get("ui_animation") || "normal");
+  const ui_density = String(formData.get("ui_density") || "balanced");
+
+  const bg_color = String(formData.get("bg_color"));
   const primary_color = String(formData.get("primary_color"));
   const accent_color = String(formData.get("accent_color"));
-  const bg_color = String(formData.get("bg_color"));
   const card_color = String(formData.get("card_color"));
-  const success_color = String(formData.get("success_color"));
-  const warning_color = String(formData.get("warning_color"));
-  const danger_color = String(formData.get("danger_color"));
-
-  const ui_radius = Number(formData.get("ui_radius") || 12);
-  const ui_shadow = String(formData.get("ui_shadow") || "0 4px 20px rgba(0,0,0,0.5)");
-  const ui_glass_intensity = Number(formData.get("ui_glass_intensity") || 4);
-
-  const feat_gradient = formData.get("feat_gradient") === "true";
-  const feat_glass = formData.get("feat_glass") === "true";
-  const feat_neon = formData.get("feat_neon") === "true";
-  const feat_compact = formData.get("feat_compact") === "true";
-  const feat_contrast = formData.get("feat_contrast") === "true";
-
+  
   const kennel_name = String(formData.get("kennel_name") || "Saját Kennel");
   const owner_name = String(formData.get("owner_name") || "");
   const kennel_address = String(formData.get("kennel_address") || "");
@@ -38,21 +31,15 @@ async function saveBrandingAction(formData: FormData) {
   const payload = {
     user_id: user.id,
     theme_mode,
+    preset_palette,
+    ui_style,
+    ui_radius,
+    ui_animation,
+    ui_density,
+    bg_color,
     primary_color,
     accent_color,
-    bg_color,
     card_color,
-    success_color,
-    warning_color,
-    danger_color,
-    ui_radius,
-    ui_shadow,
-    ui_glass_intensity,
-    feat_gradient,
-    feat_glass,
-    feat_neon,
-    feat_compact,
-    feat_contrast,
     kennel_name,
     owner_name,
     kennel_address,
@@ -80,21 +67,15 @@ export default async function BrandingPage() {
 
   const defaultSettings = settings || {
     theme_mode: "dark",
+    preset_palette: "midnight",
+    ui_style: "neon",
+    ui_radius: "medium",
+    ui_animation: "normal",
+    ui_density: "balanced",
+    bg_color: "#000000",
     primary_color: "#7D39EB",
     accent_color: "#C6FF33",
-    bg_color: "#000000",
-    card_color: "rgba(125, 57, 235, 0.06)",
-    success_color: "#10B981",
-    warning_color: "#F59E0B",
-    danger_color: "#EF4444",
-    ui_radius: 12,
-    ui_shadow: "0 4px 20px rgba(0,0,0,0.5)",
-    ui_glass_intensity: 4,
-    feat_gradient: false,
-    feat_glass: false,
-    feat_neon: true,
-    feat_compact: false,
-    feat_contrast: false,
+    card_color: "#090A0F",
     kennel_name: "Saját Kennel",
     owner_name: "",
     kennel_address: "",
