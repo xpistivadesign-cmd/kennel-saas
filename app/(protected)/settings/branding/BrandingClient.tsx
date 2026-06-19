@@ -90,22 +90,22 @@ export default function BrandingClient({ settings, saveBrandingAction }: Props) 
     <form onSubmit={submit} className="max-w-7xl mx-auto space-y-8">
       <div>
         <h1 className="text-4xl font-black">Appearance & Branding</h1>
-        <p className="opacity-60">Prémium white-label architektúra és központi téma tokenizálás.</p>
+        <p className="opacity-60">Prémium white-label törzsadatok és tokenizált felületvezérlés.</p>
       </div>
 
       <div className="grid lg:grid-cols-2 gap-8">
         <section className="space-y-6">
           
-          {/* TÖRZSDATOK (White-label) */}
+          {/* TÖRZSDATOK */}
           <div className="p-5 rounded-2xl bg-zinc-900/40 border border-zinc-800 space-y-4">
-            <h3 className="font-bold text-amber-400">🏢 Hivatalos Törzsadatok & Szerződés alapok</h3>
+            <h3 className="font-bold text-amber-400">🏢 Hivatalos Törzsadatok (Dokumentumgeneráláshoz)</h3>
             <div>
               <label className="text-[11px] block mb-1">Kennel Megjelenítési Neve</label>
               <input type="text" value={kennelName} onChange={(e) => setKennelName(e.target.value)} className="w-full p-3 bg-black rounded-xl text-white border border-zinc-800" />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-[11px] block mb-1">Logó Módosítása</label>
+                <label className="text-[11px] block mb-1">Logó Cseréje</label>
                 <input type="file" name="logo_file" accept="image/*" className="w-full p-2 bg-black rounded-xl text-zinc-400 border border-zinc-800 cursor-pointer" />
                 <input type="hidden" name="current_logo_url" value={settings.logo_url || ""} />
               </div>
@@ -137,7 +137,7 @@ export default function BrandingClient({ settings, saveBrandingAction }: Props) 
               </select>
             </div>
             <div>
-              <h3 className="font-bold mb-2">Betűtípus (Font)</h3>
+              <h3 className="font-bold mb-2">Betűtípus (Font Stílus)</h3>
               <select value={font} onChange={(e) => setFont(e.target.value)} className="w-full p-3 bg-black rounded-xl border border-zinc-800 text-white">
                 <option value="inter">Inter (Letisztult modern)</option>
                 <option value="poppins">Poppins (Geometrikus tech)</option>
@@ -147,7 +147,7 @@ export default function BrandingClient({ settings, saveBrandingAction }: Props) 
             </div>
           </div>
 
-          {/* PALETTA SELECTION */}
+          {/* PALETTÁK DOBOZAI */}
           <div>
             <h3 className="font-bold mb-3">Márka Paletták</h3>
             <div className="grid grid-cols-2 gap-3">
@@ -201,9 +201,9 @@ export default function BrandingClient({ settings, saveBrandingAction }: Props) 
             </div>
           </div>
 
-          {/* IGAZI, AKTÍV SUBMIT GOMB */}
-          <button type="submit" disabled={pending} className="w-full h-14 rounded-2xl text-black font-black uppercase tracking-wider text-xs transition-all hover:opacity-90">
-            {pending ? "Élesítés folyamatban..." : "🚀 ARCULATI STRATÉGIA ÉLESÍTÉSE"}
+          {/* IGAZI, STRUKTURÁLIS SUBMIT GOMB */}
+          <button type="submit" disabled={pending} className="w-full h-14 rounded-2xl bg-lime-300 text-black font-black uppercase tracking-wider text-xs transition-all hover:opacity-95">
+            {pending ? "Rendszer frissítése..." : "🚀 ARCULATI STRATÉGIA ÉLESÍTÉSE"}
           </button>
 
         </section>
