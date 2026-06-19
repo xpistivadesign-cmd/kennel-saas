@@ -8,49 +8,43 @@ export const THEMES = {
   },
 
   aurora: {
-    primary: "#4F46E5",
-    accent: "#22D3EE",
+    primary: "#0EA5E9",
+    accent: "#2DD4BF",
     bg: "#050816",
-    surface: "#0D1325",
+    surface: "#0B1329",
     text: "#FFFFFF",
   },
 
   emerald: {
     primary: "#10B981",
-    accent: "#6EE7B7",
-    bg: "#03110E",
-    surface: "#08231D",
+    accent: "#34D399",
+    bg: "#022C22",
+    surface: "#064E3B",
     text: "#FFFFFF",
   },
 
   royal: {
-    primary: "#A855F7",
-    accent: "#FACC15",
-    bg: "#070707",
-    surface: "#111111",
+    primary: "#D4AF37",
+    accent: "#F3E5AB",
+    bg: "#0B0C10",
+    surface: "#1F2833",
     text: "#FFFFFF",
   },
 } as const;
 
-type ThemeName = keyof typeof THEMES;
+type ThemeKey = keyof typeof THEMES;
 
 type BrandingSettings = {
   preset_palette?: string | null;
-
   theme_mode?: string | null;
 
   primary_color?: string | null;
-
   accent_color?: string | null;
-
   bg_color?: string | null;
-
   card_color?: string | null;
 
   ui_radius?: string | null;
-
   ui_animation?: string | null;
-
   ui_style?: string | null;
 };
 
@@ -59,10 +53,8 @@ export function buildThemeTokens(
 ) {
   const selected =
     THEMES[
-      (
-        settings?.preset_palette ??
-        "midnight"
-      ) as ThemeName
+      (settings?.preset_palette ??
+        "midnight") as ThemeKey
     ] ?? THEMES.midnight;
 
   const custom =
@@ -70,6 +62,35 @@ export function buildThemeTokens(
 
   const dark =
     settings?.theme_mode !== "light";
+
+  const primary =
+    custom
+      ? settings?.primary_color || "#7D39EB"
+      : selected.primary;
+
+  const accent =
+    custom
+      ? settings?.accent_color || "#C6FF33"
+      : selected.accent;
+
+  const bg =
+    custom
+      ? settings?.bg_color || "#000000"
+      : dark
+      ? selected.bg
+      : "#FFFFFF";
+
+  const surface =
+    custom
+      ? settings?.card_color || "#090A0F"
+      : dark
+      ? selected.surface
+      : "#F8FAFC";
+
+  const text =
+    dark
+      ? "#FFFFFF"
+      : "#111827";
 
   const radius =
     settings?.ui_radius === "sharp"
@@ -82,55 +103,37 @@ export function buildThemeTokens(
     settings?.ui_animation === "minimal"
       ? "0s"
       : settings?.ui_animation === "dynamic"
-      ? "420ms cubic-bezier(.2,.8,.2,1)"
-      : "220ms ease";
+      ? "400ms cubic-bezier(.2,.8,.2,1)"
+      : "240ms ease";
 
   const glass =
     settings?.ui_style === "glass"
-      ? "blur(20px)"
-      : "blur(0px)";
-
-  const shadow =
-    settings?.ui_style === "neon"
-      ? `0 0 50px ${
-          custom
-            ? settings.primary_color
-            : selected.primary
-        }22`
+      ? "blur(18px)"
       : "none";
 
-  const bg = custom
-    ? settings?.bg_color || "#000000"
-    : dark
-    ? selected.bg
-    : "#FFFFFF";
+  const glow =
+    settings?.ui_style === "neon"
+      ? `${primary}55`
+      : "transparent";
 
-  const surface = custom
-    ? settings?.card_color || "#090A0F"
-    : dark
-    ? selected.surface
-    : "#F8FAFC";
+  const shadow =
+    settings?.ui_style === "glass"
+      ? "0 10px 40px rgba(0,0,0,.15)"
+      : settings?.ui_style === "neon"
+      ? `0 0 40px ${primary}25`
+      : "none";
 
-  const text = dark
-    ? "#FFFFFF"
-    : "#0F172A";
-
-  const primary = custom
-    ? settings?.primary_color || "#7D39EB"
-    : selected.primary;
-
-  const accent = custom
-    ? settings?.accent_color || "#C6FF33"
-    : selected.accent;
+  const sidebar =
+    dark
+      ? "rgba(255,255,255,.03)"
+      : "rgba(255,255,255,.92)";
 
   return {
     primary,
     accent,
 
     bg,
-
     surface,
-
     text,
 
     border:
@@ -138,21 +141,17 @@ export function buildThemeTokens(
         ? "rgba(255,255,255,.08)"
         : "rgba(0,0,0,.08)",
 
-    card1:
-      `${primary}18`,
-
-    card2:
-      `${accent}18`,
-
-    card3:
-      `${primary}10`,
+    card1: `${primary}18`,
+    card2: `${accent}18`,
+    card3: `${primary}0C`,
 
     radius,
-
     transition,
 
     glass,
-
+    glow,
     shadow,
+
+    sidebar,
   };
 }
