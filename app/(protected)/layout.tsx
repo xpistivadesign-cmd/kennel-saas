@@ -28,7 +28,9 @@ export default async function ProtectedLayout({ children }: { children: React.Re
   ];
 
   return (
-    <div className="app-shell">
+    <div className="app-shell" style={{ display: "flex", minHeight: "100vh", backgroundColor: theme.bg, color: theme.text, fontFamily: theme.font }}>
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;900&family=Poppins:wght@400;600;900&family=Cinzel:wght@400;700;900&family=Montserrat:wght@400;600;900&display=swap" />
+
       <style dangerouslySetInnerHTML={{ __html: `
         :root {
           --primary: ${theme.primary};
@@ -38,25 +40,23 @@ export default async function ProtectedLayout({ children }: { children: React.Re
           --text: ${theme.text};
           --radius: ${theme.radius};
           --transition: ${theme.transition};
-          --font-family: ${theme.font};
           --border: ${theme.border};
         }
 
-        /* 🚨 RADIKÁLIS TAILWIND UTILITY MAPPING: Minden aloldal kényszerítése */
-        html, body, .app-shell, main, 
-        .bg-black, .bg-zinc-950, [className*="bg-slate-950"] {
+        /* 🚨 BIZTONSÁGOS GENERÁLT TÉMASZABÁLYZAT (NEM BÁNTSA A FLEXBOX-OT) */
+        html, body, .app-shell {
           background-color: var(--bg) !important;
           color: var(--text) !important;
-          font-family: var(--font-family) !important;
           transition: background var(--transition), color var(--transition);
         }
 
-        /* Minden Tailwind alapú kártya, szekció és konténer átkötése a központi felületre */
-        .card, 
-        div[className*="bg-zinc-900"], 
-        div[className*="bg-zinc-800"], 
-        section[className*="bg-zinc-"], 
-        div[className*="rounded-xl"] {
+        /* A meglévő Tailwind háttérszínek felülírása tokenre */
+        main, [className*="bg-zinc-950"], [className*="bg-black"], [className*="bg-slate-950"] {
+          background-color: var(--bg) !important;
+        }
+
+        /* Minden kártyaelem és táblázat háttér átkötése */
+        .card, div[className*="bg-zinc-900"], div[className*="bg-zinc-800"], section[className*="bg-zinc-"], div[className*="rounded-xl"] {
           background: ${theme.style === "glass" ? `rgba(255, 255, 255, 0.03)` : "var(--surface)"} !important;
           backdrop-filter: ${theme.glass} !important;
           border: 1px solid var(--border) !important;
@@ -65,22 +65,21 @@ export default async function ProtectedLayout({ children }: { children: React.Re
           ${theme.style === "neon" ? `box-shadow: ${theme.glow} !important;` : ""}
         }
 
-        /* 📊 Dashboard Grid kártyák: 3 teljesen különálló, elegáns Violet/Lime gradiens árnyalat */
+        /* Dashboard grid: 3 különálló, gyönyörű Violet / Lime márka-gradiens */
         .dashboard-grid > div:nth-child(1), .dashboard-grid > a:nth-child(1) { background: ${theme.card1} !important; }
         .dashboard-grid > div:nth-child(2), .dashboard-grid > a:nth-child(2) { background: ${theme.card2} !important; }
         .dashboard-grid > div:nth-child(3), .dashboard-grid > a:nth-child(3) { background: ${theme.card3} !important; }
 
-        /* Szövegszínek kényszerítése a meglévő Tailwind text osztályokon */
+        /* Szövegek kényszerítése */
         h1, h2, h3, h4, th, .text-white, [className*="text-zinc-100"], [className*="text-zinc-200"] { 
           color: var(--text) !important; 
         }
-        p, span, label, td, option, [className*="text-zinc-400"], [className*="text-zinc-300"], [className*="text-gray-400"] { 
-          color: var(--text) !important; 
-          opacity: 0.9 !important;
+        p, span, label, td, option, [className*="text-zinc-400"], [className*="text-zinc-300"] { 
+          color: var(--text) !important;
         }
 
-        /* Gombok kényszerítése az Accent (Lime) színre */
-        button, button[type="submit"], .bg-emerald-500, .bg-purple-600, .bg-amber-500, button[className*="bg-"] {
+        /* Globális akciógombok és a mentés gomb igazítása az Accent (Lime) színre */
+        button, button[type="submit"], .bg-emerald-500, .bg-purple-600, .bg-amber-500, button[className*="bg-"], .bg-primary-btn {
           background: var(--accent) !important;
           color: #000000 !important;
           border-radius: var(--radius) !important;
@@ -89,13 +88,12 @@ export default async function ProtectedLayout({ children }: { children: React.Re
           box-shadow: 0 4px 15px ${theme.accent}30 !important;
         }
 
-        /* Inputok és select panelek idomítása, hogy látható és olvasható legyen a szöveg */
+        /* Beviteli panelek idomítása */
         input, textarea, select {
           background: ${theme.text}08 !important;
           color: var(--text) !important;
-          border: 1px solid ${theme.text}20 !important;
+          border: 1px solid ${theme.text}15 !important;
           border-radius: var(--radius) !important;
-          padding: 14px !important;
         }
 
         .sidebar {
@@ -104,6 +102,9 @@ export default async function ProtectedLayout({ children }: { children: React.Re
           border-right: 1px solid var(--border);
           backdrop-filter: blur(20px);
           padding: 30px;
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
         }
 
         .sidebar-link {
@@ -118,9 +119,11 @@ export default async function ProtectedLayout({ children }: { children: React.Re
           transition: all var(--transition);
         }
         .sidebar-link:hover { background: ${theme.text}05; transform: translateX(3px); }
-        .main { flex: 1; padding: 36px; }
+        
+        .main { flex: 1; padding: 36px; min-width: 0; }
       `}} />
 
+      {/* SIDEBAR FIX POZÍCIÓBAN */}
       <aside className="sidebar">
         <div className="mb-10 font-black text-2xl tracking-tight" style={{ color: "var(--text)" }}>
           {logoUrl ? <img src={logoUrl} alt="Logo" className="h-9 max-w-[180px] object-contain" /> : `⚡ ${kennelName}`}
@@ -132,6 +135,7 @@ export default async function ProtectedLayout({ children }: { children: React.Re
         </nav>
       </aside>
 
+      {/* MAIN TARTALOM FONTOSABB OSZTÁLLYAL */}
       <main className="main">{children}</main>
     </div>
   );
