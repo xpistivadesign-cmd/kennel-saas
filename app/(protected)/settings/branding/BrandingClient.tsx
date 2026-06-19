@@ -152,7 +152,7 @@ export default function BrandingClient({ settings, saveBrandingAction }: any) {
               </div>
             )}
 
-            {/* TABS 2: APPEARANCE (VÁLASZTHATÓ BETŰSZÍNEKKEL!) */}
+            {/* TABS 2: APPEARANCE */}
             {activeTab === "appearance" && (
               <div className="space-y-4 animate-fadeIn">
                 <h3 className="text-sm font-bold text-blue-400 border-b border-zinc-900 pb-2">🎨 Színpaletták & 3-Szintű Betűszín Választó</h3>
@@ -194,7 +194,6 @@ export default function BrandingClient({ settings, saveBrandingAction }: any) {
                       </div>
                     </div>
 
-                    {/* FÜGGETLEN BETŰSZÍN PICKEREK */}
                     <h4 className="text-[10px] uppercase font-bold text-zinc-500 pt-2 border-t border-zinc-900">🔤 3-Szintű Betűszín Szabályzás</h4>
                     <div className="grid grid-cols-3 gap-2">
                       <div>
@@ -286,9 +285,9 @@ export default function BrandingClient({ settings, saveBrandingAction }: any) {
           <span className="text-zinc-500 font-bold uppercase tracking-wider text-[10px]">👁️ Valós Idejű Előnézet</span>
           <div 
             className="border rounded-2xl shadow-2xl p-5 space-y-5 transition-all duration-300"
-            style={{ backgroundColor: currentBg, borderColor: `${currentPrimary}15`, fontFamily: `'${fontName}', sans-serif` }}
+            style={{ backgroundColor: currentBg, borderColor: `${currentHeading}15`, fontFamily: `'${fontName}', sans-serif` }}
           >
-            <div className="flex justify-between items-center border-b pb-3" style={{ borderColor: `${currentPrimary}10` }}>
+            <div className="flex justify-between items-center border-b pb-3" style={{ borderColor: `${currentHeading}10` }}>
               <span className="font-bold text-xs" style={{ color: currentHeading }}>🐾 {kennelName}</span>
               <span className="text-[10px]" style={{ color: currentBody }}>Preview Mode</span>
             </div>
