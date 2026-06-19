@@ -3,216 +3,585 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
-export default function BrandingClient({ settings, saveBrandingAction }: any) {
+type BrandingSettings = {
+  theme_mode: string;
+  preset_palette: string;
+
+  primary_color: string;
+  accent_color: string;
+  bg_color: string;
+  card_color: string;
+
+  ui_style: string;
+  ui_radius: string;
+  ui_animation: string;
+  ui_density: string;
+
+  ui_font?: string;
+  ui_gradient?: string;
+  glass_intensity?: string;
+  card_style?: string;
+
+  kennel_name: string;
+  owner_name: string;
+  kennel_address: string;
+  tax_number: string;
+};
+
+type Props = {
+  settings: BrandingSettings;
+  saveBrandingAction: (fd: FormData) => Promise<void>;
+};
+
+const PALETTES = [
+  {
+    id: "midnight",
+    name: "Midnight Neon",
+    primary: "#7D39EB",
+    accent: "#C6FF33",
+    bg: "#000000",
+    card: "#090A0F",
+  },
+
+  {
+    id: "aurora",
+    name: "Aurora",
+    primary: "#6D28D9",
+    accent: "#22D3EE",
+    bg: "#030712",
+    card: "#111827",
+  },
+
+  {
+    id: "electric",
+    name: "Electric",
+    primary: "#4F46E5",
+    accent: "#00FFA3",
+    bg: "#050505",
+    card: "#111111",
+  },
+
+  {
+    id: "royal",
+    name: "Royal",
+    primary: "#D4AF37",
+    accent: "#FFF4CC",
+    bg: "#080808",
+    card: "#181818",
+  },
+
+  {
+    id: "lime",
+    name: "Violet Lime",
+    primary: "#7D39EB",
+    accent: "#C6FF33",
+    bg: "#000",
+    card: "#101010",
+  },
+
+  {
+    id: "custom",
+    name: "Custom",
+    primary: "#7D39EB",
+    accent: "#C6FF33",
+    bg: "#000",
+    card: "#090A0F",
+  },
+];
+
+export default function BrandingClient({
+  settings,
+  saveBrandingAction,
+}: Props) {
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
-  const [activeTab, setActiveTab] = useState("my-kennel");
 
-  // A kért 6 fő strukturális választóállapot
-  const [themeMode, setThemeMode] = useState(settings.theme_mode || "dark"); // dark, light, system
-  const [presetPalette, setPresetPalette] = useState(settings.preset_palette || "midnight"); // midnight, aurora, emerald, royal, custom
-  const [uiStyle, setUiStyle] = useState(settings.ui_style || "neon"); // flat, glass, neon
-  const [uiRadius, setUiRadius] = useState(settings.ui_radius || "medium"); // sharp, medium, soft
-  const [uiAnimation, setUiAnimation] = useState(settings.ui_animation || "normal"); // minimal, normal, dynamic
-  const [uiDensity, setUiDensity] = useState(settings.ui_density || "balanced"); // compact, balanced, luxury
+  const [pending, startTransition] = useTransition();
 
-  // Custom színek, ha a téma "custom"
-  const [customBg, setCustomBg] = useState(settings.bg_color || "#000000");
-  const [customPrimary, setCustomPrimary] = useState(settings.primary_color || "#7D39EB");
-  const [customAccent, setCustomAccent] = useState(settings.accent_color || "#C6FF33");
-  const [customCard, setCustomCard] = useState(settings.card_color || "#090A0F");
+  const [themeMode, setThemeMode] = useState(
+    settings.theme_mode ?? "dark"
+  );
 
-  const [kennelName, setKennelName] = useState(settings.kennel_name || "Saját Kennel");
+  const [palette, setPalette] = useState(
+    settings.preset_palette
+  );
 
-  const subTabs = [
-    { id: "my-kennel", label: "🏢 My Kennel (White-Label)" },
-    { id: "appearance", label: "🎨 Appearance & Architecture" },
-  ];
+  const [primary, setPrimary] = useState(
+    settings.primary_color
+  );
+
+  const [accent, setAccent] = useState(
+    settings.accent_color
+  );
+
+  const [bg, setBg] = useState(
+    settings.bg_color
+  );
+
+  const [card, setCard] = useState(
+    settings.card_color
+  );
+
+  const [style, setStyle] = useState(
+    settings.ui_style
+  );
+
+  const [radius, setRadius] = useState(
+    settings.ui_radius
+  );
+
+  const [animation, setAnimation] = useState(
+    settings.ui_animation
+  );
+
+  const [density, setDensity] = useState(
+    settings.ui_density
+  );
+
+  const [font, setFont] = useState(
+    settings.ui_font || "inter"
+  );
+
+  const [gradient, setGradient] = useState(
+    settings.ui_gradient || "soft"
+  );
+
+  const [glass, setGlass] = useState(
+    settings.glass_intensity || "medium"
+  );
+
+  const [cardStyle, setCardStyle] = useState(
+    settings.card_style || "tinted"
+  );
+
+  const [kennelName, setKennelName] =
+    useState(settings.kennel_name);
+
+  function selectPalette(id: string) {
+    setPalette(id);
+
+    const p =
+      PALETTES.find((x) => x.id === id);
+
+    if (!p || id === "custom")
+      return;
+
+    setPrimary(p.primary);
+    setAccent(p.accent);
+
+    setBg(
+      themeMode === "light"
+        ? "#FFFFFF"
+        : p.bg
+    );
+
+    setCard(p.card);
+  }
+
+  async function submit(
+    e: React.FormEvent
+  ) {
+    e.preventDefault();
+
+    const fd = new FormData();
+
+    fd.set(
+      "theme_mode",
+      themeMode
+    );
+
+    fd.set(
+      "preset_palette",
+      palette
+    );
+
+    fd.set(
+      "primary_color",
+      primary
+    );
+
+    fd.set(
+      "accent_color",
+      accent
+    );
+
+    fd.set(
+      "bg_color",
+      bg
+    );
+
+    fd.set(
+      "card_color",
+      card
+    );
+
+    fd.set(
+      "ui_style",
+      style
+    );
+
+    fd.set(
+      "ui_radius",
+      radius
+    );
+
+    fd.set(
+      "ui_animation",
+      animation
+    );
+
+    fd.set(
+      "ui_density",
+      density
+    );
+
+    fd.set(
+      "ui_font",
+      font
+    );
+
+    fd.set(
+      "ui_gradient",
+      gradient
+    );
+
+    fd.set(
+      "glass_intensity",
+      glass
+    );
+
+    fd.set(
+      "card_style",
+      cardStyle
+    );
+
+    fd.set(
+      "kennel_name",
+      kennelName
+    );
+
+    startTransition(async () => {
+      await saveBrandingAction(fd);
+
+      router.refresh();
+
+      location.reload();
+    });
+  }
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6 text-white text-xs">
-      <div className="border-b border-zinc-900 pb-4">
-        <h1 className="text-3xl font-black tracking-tight">🎛️ Architecture Control Panel</h1>
-        <p className="text-zinc-500 text-xs mt-1">Token alapú központi témakezelés és white-label konfiguráció.</p>
+    <form
+      onSubmit={submit}
+      className="max-w-7xl mx-auto space-y-8"
+    >
+      <div>
+
+        <h1 className="text-4xl font-black">
+          Appearance
+        </h1>
+
+        <p className="opacity-60">
+          Premium Theme System
+        </p>
+
       </div>
 
-      <form 
-        onSubmit={(e) => {
-          e.preventDefault();
-          const fd = new FormData(e.currentTarget);
-          fd.set("theme_mode", themeMode);
-          fd.set("preset_palette", presetPalette);
-          fd.set("ui_style", uiStyle);
-          fd.set("ui_radius", uiRadius);
-          fd.set("ui_animation", uiAnimation);
-          fd.set("ui_density", uiDensity);
+      <div className="grid lg:grid-cols-2 gap-8">
 
-          fd.set("bg_color", customBg);
-          fd.set("primary_color", customPrimary);
-          fd.set("accent_color", customAccent);
-          fd.set("card_color", customCard);
-          fd.set("kennel_name", kennelName);
+        <section className="space-y-6">
 
-          startTransition(async () => {
-            await saveBrandingAction(fd);
-            router.refresh();
-            window.location.reload();
-          });
-        }}
-        className="grid grid-cols-1 lg:grid-cols-4 gap-6"
-      >
-        {/* BAL MENÜ */}
-        <div className="flex flex-col gap-1 bg-black/40 p-2 rounded-2xl border border-zinc-900 h-fit">
-          {subTabs.map((t) => (
-            <button key={t.id} type="button" onClick={() => setActiveTab(t.id)} className={`w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs transition-all ${activeTab === t.id ? "bg-zinc-900 text-white" : "text-zinc-400 hover:bg-zinc-900/40"}`}>{t.label}</button>
-          ))}
-        </div>
+          <div>
 
-        {/* KÖZÉPSŐ PANEL */}
-        <div className="lg:col-span-2 bg-zinc-950 border border-zinc-900 p-6 rounded-2xl space-y-5">
-          
-          {activeTab === "my-kennel" && (
-            <div className="space-y-4 animate-fadeIn">
-              <h3 className="text-sm font-bold text-amber-400 border-b border-zinc-900 pb-2">🏢 Kennel Törzsadatok</h3>
-              <div>
-                <label className="text-zinc-500 block mb-1 font-bold">Kennel Menü Neve</label>
-                <input type="text" value={kennelName} onChange={(e) => setKennelName(e.target.value)} className="w-full bg-black border border-zinc-900 rounded-lg p-2.5 text-white" />
-              </div>
-              <div className="grid grid-cols-3 gap-2 pt-2">
-                <input type="text" name="owner_name" defaultValue={settings.owner_name} placeholder="Tenyésztő Neve" className="bg-black border border-zinc-900 rounded-lg p-2 text-white" />
-                <input type="text" name="kennel_address" defaultValue={settings.kennel_address} placeholder="Székhely Cím" className="bg-black border border-zinc-900 rounded-lg p-2 text-white" />
-                <input type="text" name="tax_number" defaultValue={settings.tax_number} placeholder="Adószám" className="bg-black border border-zinc-900 rounded-lg p-2 text-white" />
-              </div>
-            </div>
-          )}
+            <h3 className="font-bold mb-3">
+              Mode
+            </h3>
 
-          {activeTab === "appearance" && (
-            <div className="space-y-5 animate-fadeIn text-zinc-300">
-              <h3 className="text-sm font-bold text-blue-400 border-b border-zinc-900 pb-2">🎨 Theme Architecture Settings</h3>
+            <select
+              value={themeMode}
+              onChange={(e)=>
+                setThemeMode(
+                  e.target.value
+                )
+              }
+              className="w-full p-4 rounded-xl bg-black"
+            >
+              <option>
+                dark
+              </option>
 
-              {/* 1. MODE választó */}
-              <div>
-                <span className="text-zinc-500 font-bold block mb-1.5 uppercase text-[10px]">Mode</span>
-                <div className="flex gap-4">
-                  {["dark", "light", "system"].map((m) => (
-                    <label key={m} className="flex items-center gap-2 cursor-pointer capitalize font-bold">
-                      <input type="radio" checked={themeMode === m} onChange={() => setThemeMode(m)} className="accent-purple-500" /> {m}
-                    </label>
-                  ))}
-                </div>
-              </div>
+              <option>
+                light
+              </option>
 
-              {/* 2. THEME választó */}
-              <div>
-                <span className="text-zinc-500 font-bold block mb-1.5 uppercase text-[10px]">Theme</span>
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { id: "midnight", name: "● Midnight Neon" },
-                    { id: "aurora", name: "○ Aurora Arctic" },
-                    { id: "emerald", name: "○ Emerald Forest" },
-                    { id: "royal", name: "○ Royal Gold" },
-                    { id: "custom", name: "⚙️ Custom Theme" }
-                  ].map((t) => (
-                    <button key={t.id} type="button" onClick={() => setPresetPalette(t.id)} className={`p-2 rounded-xl text-left border text-[11px] font-bold ${presetPalette === t.id ? "border-purple-500 bg-zinc-900" : "border-zinc-900 bg-black"}`}>
-                      {t.name}
-                    </button>
-                  ))}
-                </div>
-              </div>
+              <option>
+                system
+              </option>
 
-              {/* Custom Builder, ha be van kapcsolva */}
-              {presetPalette === "custom" && (
-                <div className="p-3 bg-black rounded-xl border border-zinc-900 grid grid-cols-2 gap-2 animate-slideDown">
-                  <div><label className="text-zinc-500 block text-[9px] mb-0.5">Primary (Violet)</label><input type="color" value={customPrimary} onChange={(e) => setCustomPrimary(e.target.value)} className="w-full h-7 bg-transparent cursor-pointer" /></div>
-                  <div><label className="text-zinc-500 block text-[9px] mb-0.5">Accent (Lime)</label><input type="color" value={customAccent} onChange={(e) => setCustomAccent(e.target.value)} className="w-full h-7 bg-transparent cursor-pointer" /></div>
-                  <div><label className="text-zinc-500 block text-[9px] mb-0.5">Background</label><input type="color" value={customBg} onChange={(e) => setCustomBg(e.target.value)} className="w-full h-7 bg-transparent cursor-pointer" /></div>
-                  <div><label className="text-zinc-500 block text-[9px] mb-0.5">Card Base</label><input type="color" value={customCard} onChange={(e) => setCustomCard(e.target.value)} className="w-full h-7 bg-transparent cursor-pointer" /></div>
-                </div>
+            </select>
+
+          </div>
+
+          <div>
+
+            <h3 className="font-bold mb-3">
+              Palette
+            </h3>
+
+            <div className="grid grid-cols-2 gap-3">
+
+              {PALETTES.map(
+                (p)=>(
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={()=>
+                      selectPalette(
+                        p.id
+                      )
+                    }
+                    className={`rounded-2xl p-5 border ${
+                      palette===p.id
+                        ? "border-violet-500"
+                        : "border-zinc-800"
+                    }`}
+                  >
+                    <div className="flex gap-2">
+
+                      <div
+                        className="w-6 h-6 rounded-full"
+                        style={{
+                          background:
+                            p.primary,
+                        }}
+                      />
+
+                      <div
+                        className="w-6 h-6 rounded-full"
+                        style={{
+                          background:
+                            p.accent,
+                        }}
+                      />
+
+                    </div>
+
+                    <div className="mt-3">
+
+                      {p.name}
+
+                    </div>
+
+                  </button>
+                )
               )}
 
-              {/* 3. STYLE választó */}
-              <div>
-                <span className="text-zinc-500 font-bold block mb-1.5 uppercase text-[10px]">Style</span>
-                <div className="flex gap-4">
-                  {["flat", "glass", "neon"].map((s) => (
-                    <label key={s} className="flex items-center gap-2 cursor-pointer capitalize font-bold">
-                      <input type="radio" checked={uiStyle === s} onChange={() => setUiStyle(s)} className="accent-purple-500" /> {s}
-                    </label>
-                  ))}
-                </div>
-              </div>
+            </div>
 
-              {/* 4. RADIUS választó */}
-              <div>
-                <span className="text-zinc-500 font-bold block mb-1.5 uppercase text-[10px]">Radius</span>
-                <div className="flex gap-4">
-                  {["sharp", "medium", "soft"].map((r) => (
-                    <label key={r} className="flex items-center gap-2 cursor-pointer capitalize font-bold">
-                      <input type="radio" checked={uiRadius === r} onChange={() => setUiRadius(r)} className="accent-purple-500" /> {r}
-                    </label>
-                  ))}
-                </div>
-              </div>
+          </div>
 
-              {/* 5. ANIMATION választó */}
-              <div>
-                <span className="text-zinc-500 font-bold block mb-1.5 uppercase text-[10px]">Animation</span>
-                <div className="flex gap-4">
-                  {["minimal", "normal", "dynamic"].map((a) => (
-                    <label key={a} className="flex items-center gap-2 cursor-pointer capitalize font-bold">
-                      <input type="radio" checked={uiAnimation === a} onChange={() => setUiAnimation(a)} className="accent-purple-500" /> {a}
-                    </label>
-                  ))}
-                </div>
-              </div>
+          {palette==="custom" && (
+            <div className="grid grid-cols-2 gap-3">
 
-              {/* 6. DENSITY (Density / Spacing) választó */}
-              <div>
-                <span className="text-zinc-500 font-bold block mb-1.5 uppercase text-[10px]">Density & Layout Spacing</span>
-                <div className="flex gap-4">
-                  {["compact", "balanced", "luxury"].map((d) => (
-                    <label key={d} className="flex items-center gap-2 cursor-pointer capitalize font-bold">
-                      <input type="radio" checked={uiDensity === d} onChange={() => setUiDensity(d)} className="accent-purple-500" /> {d}
-                    </label>
-                  ))}
-                </div>
-              </div>
+              <input
+                type="color"
+                value={primary}
+                onChange={(e)=>
+                  setPrimary(
+                    e.target.value
+                  )
+                }
+              />
+
+              <input
+                type="color"
+                value={accent}
+                onChange={(e)=>
+                  setAccent(
+                    e.target.value
+                  )
+                }
+              />
+
+              <input
+                type="color"
+                value={bg}
+                onChange={(e)=>
+                  setBg(
+                    e.target.value
+                  )
+                }
+              />
+
+              <input
+                type="color"
+                value={card}
+                onChange={(e)=>
+                  setCard(
+                    e.target.value
+                  )
+                }
+              />
 
             </div>
           )}
 
-          <button type="submit" disabled={isPending} className="w-full font-black p-3 rounded-xl uppercase tracking-wider text-xs transition-all bg-primary-btn">
-            {isPending ? "Tokenek mentése..." : "🚀 TELJES STRATÉGIA ÉLESÍTÉSE"}
-          </button>
-        </div>
+          <div>
 
-        {/* JOBB OSZLOP: VALÓS IDEJŰ TOKEN ALAPÚ ELŐNÉZET */}
-        <div className="space-y-3 sticky top-6">
-          <span className="text-zinc-500 font-bold uppercase tracking-wider text-[10px]">👁️ Token Live Preview</span>
-          <div className="border p-5 space-y-4" style={{ backgroundColor: "var(--bg)", borderRadius: "var(--radius)", borderColor: "var(--border)" }}>
-            <div className="flex justify-between items-center border-b pb-2" style={{ borderColor: "var(--border)" }}>
-              <span className="font-black text-xs" style={{ color: "var(--text)" }}>🐾 {kennelName}</span>
-              <span className="text-[9px] uppercase tracking-wider px-2 py-0.5 rounded-full" style={{ backgroundColor: "var(--primary)20", color: "var(--primary)" }}>PREVIEW</span>
-            </div>
+            <label>
 
-            {/* Kártyák különböző dinamikus árnyalatai bemutatva hardcoded színek nélkül */}
-            <div className="space-y-2">
-              <div className="p-3 border" style={{ borderRadius: "var(--radius)", backgroundColor: "var(--surface-1)", borderColor: "var(--border)" }}>
-                <span className="font-bold text-[10px] block" style={{ color: "var(--primary)" }}>1. sz. Kártya (Violet tónus)</span>
-                <span className="text-[11px]" style={{ color: "var(--text)", opacity: 0.7 }}>Dinamikus márka-árnyalat.</span>
-              </div>
-              <div className="p-3 border" style={{ borderRadius: "var(--radius)", backgroundColor: "var(--surface-2)", borderColor: "var(--border)" }}>
-                <span className="font-bold text-[10px] block" style={{ color: "var(--accent)" }}>2. sz. Kártya (Lime tónus)</span>
-                <span className="text-[11px]" style={{ color: "var(--text)", opacity: 0.7 }}>Alternatív árnyalat-mátrix.</span>
-              </div>
-            </div>
+              Font
 
-            <div className="w-full text-center py-2 rounded-xl font-black text-xs" style={{ backgroundColor: "var(--accent)", color: "#000000", borderRadius: "var(--radius)" }}>
-              Gomb Előnézet
-            </div>
+            </label>
+
+            <select
+              value={font}
+              onChange={(e)=>
+                setFont(
+                  e.target.value
+                )
+              }
+              className="w-full p-4 rounded-xl"
+            >
+              <option>
+                inter
+              </option>
+
+              <option>
+                outfit
+              </option>
+
+              <option>
+                manrope
+              </option>
+
+              <option>
+                sf
+              </option>
+
+            </select>
+
           </div>
-        </div>
-      </form>
-    </div>
+
+          <div>
+
+            <label>
+
+              Glass
+
+            </label>
+
+            <select
+              value={glass}
+              onChange={(e)=>
+                setGlass(
+                  e.target.value
+                )
+              }
+              className="w-full p-4 rounded-xl"
+            >
+              <option>
+                off
+              </option>
+
+              <option>
+                soft
+              </option>
+
+              <option>
+                medium
+              </option>
+
+              <option>
+                strong
+              </option>
+
+            </select>
+
+          </div>
+
+          <button
+            disabled={pending}
+            className="w-full h-14 rounded-2xl bg-lime-300 text-black font-black"
+          >
+            {pending
+              ? "Saving..."
+              : "Save Theme"}
+          </button>
+
+        </section>
+
+        <section>
+
+          <div
+            className="rounded-[32px] p-8"
+            style={{
+              background:
+                `linear-gradient(135deg,
+                ${primary}22,
+                ${accent}11)`,
+
+              border:
+                "1px solid #ffffff20",
+            }}
+          >
+
+            <div
+              className="rounded-3xl p-6"
+              style={{
+                background:
+                  card,
+              }}
+            >
+              <h2
+                style={{
+                  color:
+                    primary,
+                }}
+              >
+                {kennelName}
+              </h2>
+
+              <div className="grid gap-3 mt-5">
+
+                <div
+                  className="p-5 rounded-2xl"
+                  style={{
+                    background:
+                      `${primary}18`,
+                  }}
+                >
+                  Dashboard Card 1
+                </div>
+
+                <div
+                  className="p-5 rounded-2xl"
+                  style={{
+                    background:
+                      `${accent}18`,
+                  }}
+                >
+                  Dashboard Card 2
+                </div>
+
+                <div
+                  className="p-5 rounded-2xl"
+                  style={{
+                    background:
+                      `${primary}10`,
+                  }}
+                >
+                  Dashboard Card 3
+                </div>
+
+              </div>
+
+            </div>
+
+          </div>
+
+        </section>
+
+      </div>
+
+    </form>
   );
 }
