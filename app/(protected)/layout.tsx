@@ -28,8 +28,9 @@ export default async function ProtectedLayout({ children }: { children: React.Re
   ];
 
   return (
-    <div className="app-shell" style={{ display: "flex", minHeight: "100vh", backgroundColor: theme.bg, color: theme.text, fontFamily: theme.font }}>
-      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;900&family=Poppins:wght@400;600;900&family=Cinzel:wght@400;700;900&family=Montserrat:wght@400;600;900&display=swap" />
+    <div className="app-shell" style={{ display: "flex", minHeight: "100vh", backgroundColor: theme.bg, color: theme.textBody, fontFamily: theme.font }}>
+      {/* Mind a 10 prémium Google font család importálása */}
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Inter:wght@400;600;900&family=Manrope:wght@400;600;800&family=Montserrat:wght@400;600;900&family=Oswald:wght@400;600&family=Outfit:wght@400;600;800&family=Playfair+Display:wght@400;700;900&family=Poppins:wght@400;600;900&family=Roboto:wght@400;700&family=Ubuntu:wght@400;700&display=swap" />
 
       <style dangerouslySetInnerHTML={{ __html: `
         :root {
@@ -37,25 +38,24 @@ export default async function ProtectedLayout({ children }: { children: React.Re
           --accent: ${theme.accent};
           --bg: ${theme.bg};
           --surface: ${theme.surface};
-          --text: ${theme.text};
+          --text-heading: ${theme.textHeading};
+          --text-body: ${theme.textBody};
           --radius: ${theme.radius};
           --transition: ${theme.transition};
           --border: ${theme.border};
         }
 
-        /* 🚨 BIZTONSÁGOS GENERÁLT TÉMASZABÁLYZAT (NEM BÁNTSA A FLEXBOX-OT) */
         html, body, .app-shell {
           background-color: var(--bg) !important;
-          color: var(--text) !important;
+          color: var(--text-body) !important;
+          font-family: ${theme.font} !important;
           transition: background var(--transition), color var(--transition);
         }
 
-        /* A meglévő Tailwind háttérszínek felülírása tokenre */
         main, [className*="bg-zinc-950"], [className*="bg-black"], [className*="bg-slate-950"] {
           background-color: var(--bg) !important;
         }
 
-        /* Minden kártyaelem és táblázat háttér átkötése */
         .card, div[className*="bg-zinc-900"], div[className*="bg-zinc-800"], section[className*="bg-zinc-"], div[className*="rounded-xl"] {
           background: ${theme.style === "glass" ? `rgba(255, 255, 255, 0.03)` : "var(--surface)"} !important;
           backdrop-filter: ${theme.glass} !important;
@@ -65,67 +65,41 @@ export default async function ProtectedLayout({ children }: { children: React.Re
           ${theme.style === "neon" ? `box-shadow: ${theme.glow} !important;` : ""}
         }
 
-        /* Dashboard grid: 3 különálló, gyönyörű Violet / Lime márka-gradiens */
-        .dashboard-grid > div:nth-child(1), .dashboard-grid > a:nth-child(1) { background: ${theme.card1} !important; }
-        .dashboard-grid > div:nth-child(2), .dashboard-grid > a:nth-child(2) { background: ${theme.card2} !important; }
-        .dashboard-grid > div:nth-child(3), .dashboard-grid > a:nth-child(3) { background: ${theme.card3} !important; }
+        .dashboard-grid > div:nth-child(1) { background: ${theme.card1} !important; }
+        .dashboard-grid > div:nth-child(2) { background: ${theme.card2} !important; }
+        .dashboard-grid > div:nth-child(3) { background: ${theme.card3} !important; }
 
-        /* Szövegek kényszerítése */
-        h1, h2, h3, h4, th, .text-white, [className*="text-zinc-100"], [className*="text-zinc-200"] { 
-          color: var(--text) !important; 
+        /* 🚨 BETŰSZÍN KÉNYSZERÍTÉS: Itt fehérednek ki a láthatatlan szövegek a kutyáknál és a dashboardon */
+        h1, h2, h3, h4, th, .text-white, strong, [className*="text-zinc-100"], [className*="text-zinc-200"], div[className*="font-bold"] { 
+          color: var(--text-heading) !important; 
         }
-        p, span, label, td, option, [className*="text-zinc-400"], [className*="text-zinc-300"] { 
-          color: var(--text) !important;
+        p, span, label, td, option, li, [className*="text-zinc-400"], [className*="text-zinc-300"], [className*="text-gray-"] { 
+          color: var(--text-body) !important;
         }
 
-        /* Globális akciógombok és a mentés gomb igazítása az Accent (Lime) színre */
-        button, button[type="submit"], .bg-emerald-500, .bg-purple-600, .bg-amber-500, button[className*="bg-"], .bg-primary-btn {
+        button, button[type="submit"], .bg-emerald-500, .bg-purple-600, .bg-amber-500, button[className*="bg-"] {
           background: var(--accent) !important;
           color: #000000 !important;
           border-radius: var(--radius) !important;
           font-weight: 900 !important;
           border: none !important;
-          box-shadow: 0 4px 15px ${theme.accent}30 !important;
         }
 
-        /* Beviteli panelek idomítása */
         input, textarea, select {
-          background: ${theme.text}08 !important;
-          color: var(--text) !important;
-          border: 1px solid ${theme.text}15 !important;
+          background: rgba(255,255,255,0.04) !important;
+          color: var(--text-heading) !important;
+          border: 1px solid var(--border) !important;
           border-radius: var(--radius) !important;
         }
 
-        .sidebar {
-          width: 270px;
-          background: ${theme.sidebar};
-          border-right: 1px solid var(--border);
-          backdrop-filter: blur(20px);
-          padding: 30px;
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
-        }
-
-        .sidebar-link {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          padding: 14px;
-          border-radius: var(--radius);
-          color: var(--text);
-          text-decoration: none;
-          font-weight: 600;
-          transition: all var(--transition);
-        }
-        .sidebar-link:hover { background: ${theme.text}05; transform: translateX(3px); }
-        
+        .sidebar { width: 270px; background: ${theme.sidebar}; border-right: 1px solid var(--border); backdrop-filter: blur(20px); padding: 30px; }
+        .sidebar-link { display: flex; align-items: center; gap: 12px; padding: 14px; border-radius: var(--radius); color: var(--text-heading); text-decoration: none; font-weight: 600; }
+        .sidebar-link:hover { background: rgba(255,255,255,0.04); }
         .main { flex: 1; padding: 36px; min-width: 0; }
       `}} />
 
-      {/* SIDEBAR FIX POZÍCIÓBAN */}
       <aside className="sidebar">
-        <div className="mb-10 font-black text-2xl tracking-tight" style={{ color: "var(--text)" }}>
+        <div className="mb-10 font-black text-2xl tracking-tight" style={{ color: "var(--text-heading)" }}>
           {logoUrl ? <img src={logoUrl} alt="Logo" className="h-9 max-w-[180px] object-contain" /> : `⚡ ${kennelName}`}
         </div>
         <nav style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -135,7 +109,6 @@ export default async function ProtectedLayout({ children }: { children: React.Re
         </nav>
       </aside>
 
-      {/* MAIN TARTALOM FONTOSABB OSZTÁLLYAL */}
       <main className="main">{children}</main>
     </div>
   );
