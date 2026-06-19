@@ -8,55 +8,32 @@ export default function BrandingClient({ settings, saveBrandingAction }: any) {
   const [isPending, startTransition] = useTransition();
   const [activeTab, setActiveTab] = useState("my-kennel");
 
-  // Alap módválasztó: dark, light, custom
-  const [themeMode, setThemeMode] = useState(settings.theme_mode || "dark");
+  // A kért 6 fő strukturális választóállapot
+  const [themeMode, setThemeMode] = useState(settings.theme_mode || "dark"); // dark, light, system
+  const [presetPalette, setPresetPalette] = useState(settings.preset_palette || "midnight"); // midnight, aurora, emerald, royal, custom
+  const [uiStyle, setUiStyle] = useState(settings.ui_style || "neon"); // flat, glass, neon
+  const [uiRadius, setUiRadius] = useState(settings.ui_radius || "medium"); // sharp, medium, soft
+  const [uiAnimation, setUiAnimation] = useState(settings.ui_animation || "normal"); // minimal, normal, dynamic
+  const [uiDensity, setUiDensity] = useState(settings.ui_density || "balanced"); // compact, balanced, luxury
 
-  // Custom színek & UI paraméterek állapota
-  const [primaryColor, setPrimaryColor] = useState(settings.primary_color || "#7D39EB");
-  const [accentColor, setAccentColor] = useState(settings.accent_color || "#C6FF33");
-  const [bgColor, setBgColor] = useState(settings.bg_color || "#000000");
-  const [cardColor, setCardColor] = useState(settings.card_color || "rgba(125, 57, 235, 0.06)");
-  const [successColor, setSuccessColor] = useState(settings.success_color || "#10B981");
-  const [warningColor, setWarningColor] = useState(settings.warning_color || "#F59E0B");
-  const [dangerColor, setDangerColor] = useState(settings.danger_color || "#EF4444");
-  
-  const [uiRadius, setUiRadius] = useState(settings.ui_radius || 12);
-  const [uiShadow, setUiShadow] = useState(settings.ui_shadow || "0 4px 20px rgba(0,0,0,0.5)");
-  const [uiGlass, setUiGlass] = useState(settings.ui_glass_intensity || 4);
-
-  // Kapcsolók (Feature Flags)
-  const [featGradient, setFeatGradient] = useState(settings.feat_gradient === true);
-  const [featGlass, setFeatGlass] = useState(settings.feat_glass === true);
-  const [featNeon, setFeatNeon] = useState(settings.feat_neon !== false);
-  const [featCompact, setFeatCompact] = useState(settings.feat_compact === true);
-  const [featContrast, setFeatContrast] = useState(settings.feat_contrast === true);
+  // Custom színek, ha a téma "custom"
+  const [customBg, setCustomBg] = useState(settings.bg_color || "#000000");
+  const [customPrimary, setCustomPrimary] = useState(settings.primary_color || "#7D39EB");
+  const [customAccent, setCustomAccent] = useState(settings.accent_color || "#C6FF33");
+  const [customCard, setCustomCard] = useState(settings.card_color || "#090A0F");
 
   const [kennelName, setKennelName] = useState(settings.kennel_name || "Saját Kennel");
 
   const subTabs = [
     { id: "my-kennel", label: "🏢 My Kennel (White-Label)" },
-    { id: "appearance", label: "🎨 App Brand & Theme Control" },
+    { id: "appearance", label: "🎨 Appearance & Architecture" },
   ];
-
-  // Gyorsváltó a kép alapú brand sémákhoz
-  const handleModeChange = (mode: string) => {
-    setThemeMode(mode);
-    if (mode === "dark") {
-      setBgColor("#000000");
-      setPrimaryColor("#7D39EB");
-      setAccentColor("#C6FF33");
-    } else if (mode === "light") {
-      setBgColor("#FFFFFF");
-      setPrimaryColor("#7D39EB");
-      setAccentColor("#C6FF33");
-    }
-  };
 
   return (
     <div className="max-w-6xl mx-auto space-y-6 text-white text-xs">
       <div className="border-b border-zinc-900 pb-4">
-        <h1 className="text-3xl font-black tracking-tight">🎛️ App Brand Configuration</h1>
-        <p className="text-zinc-500 text-xs mt-1">A kép alapján hangolt hivatalos márkaszínek és haladó téma-illesztő builder.</p>
+        <h1 className="text-3xl font-black tracking-tight">🎛️ Architecture Control Panel</h1>
+        <p className="text-zinc-500 text-xs mt-1">Token alapú központi témakezelés és white-label konfiguráció.</p>
       </div>
 
       <form 
@@ -64,22 +41,16 @@ export default function BrandingClient({ settings, saveBrandingAction }: any) {
           e.preventDefault();
           const fd = new FormData(e.currentTarget);
           fd.set("theme_mode", themeMode);
-          fd.set("primary_color", primaryColor);
-          fd.set("accent_color", accentColor);
-          fd.set("bg_color", bgColor);
-          fd.set("card_color", cardColor);
-          fd.set("success_color", successColor);
-          fd.set("warning_color", warningColor);
-          fd.set("danger_color", dangerColor);
-          fd.set("ui_radius", String(uiRadius));
-          fd.set("ui_shadow", uiShadow);
-          fd.set("ui_glass_intensity", String(uiGlass));
+          fd.set("preset_palette", presetPalette);
+          fd.set("ui_style", uiStyle);
+          fd.set("ui_radius", uiRadius);
+          fd.set("ui_animation", uiAnimation);
+          fd.set("ui_density", uiDensity);
 
-          fd.set("feat_gradient", String(featGradient));
-          fd.set("feat_glass", String(featGlass));
-          fd.set("feat_neon", String(featNeon));
-          fd.set("feat_compact", String(featCompact));
-          fd.set("feat_contrast", String(featContrast));
+          fd.set("bg_color", customBg);
+          fd.set("primary_color", customPrimary);
+          fd.set("accent_color", customAccent);
+          fd.set("card_color", customCard);
           fd.set("kennel_name", kennelName);
 
           startTransition(async () => {
@@ -97,119 +68,146 @@ export default function BrandingClient({ settings, saveBrandingAction }: any) {
           ))}
         </div>
 
-        {/* BEÁLLÍTÁSOK KÖZÉPEN */}
-        <div className="lg:col-span-2 bg-zinc-950 border border-zinc-900 p-6 rounded-2xl space-y-6">
+        {/* KÖZÉPSŐ PANEL */}
+        <div className="lg:col-span-2 bg-zinc-950 border border-zinc-900 p-6 rounded-2xl space-y-5">
           
           {activeTab === "my-kennel" && (
             <div className="space-y-4 animate-fadeIn">
-              <h3 className="text-sm font-bold text-purple-400 border-b border-zinc-900 pb-2">🏢 Kennel Alapadatok</h3>
+              <h3 className="text-sm font-bold text-amber-400 border-b border-zinc-900 pb-2">🏢 Kennel Törzsadatok</h3>
               <div>
-                <label className="text-zinc-500 block mb-1 font-bold">Kennel Megjelenítési Neve</label>
+                <label className="text-zinc-500 block mb-1 font-bold">Kennel Menü Neve</label>
                 <input type="text" value={kennelName} onChange={(e) => setKennelName(e.target.value)} className="w-full bg-black border border-zinc-900 rounded-lg p-2.5 text-white" />
               </div>
               <div className="grid grid-cols-3 gap-2 pt-2">
                 <input type="text" name="owner_name" defaultValue={settings.owner_name} placeholder="Tenyésztő Neve" className="bg-black border border-zinc-900 rounded-lg p-2 text-white" />
-                <input type="text" name="kennel_address" defaultValue={settings.kennel_address} placeholder="Székhely" className="bg-black border border-zinc-900 rounded-lg p-2 text-white" />
+                <input type="text" name="kennel_address" defaultValue={settings.kennel_address} placeholder="Székhely Cím" className="bg-black border border-zinc-900 rounded-lg p-2 text-white" />
                 <input type="text" name="tax_number" defaultValue={settings.tax_number} placeholder="Adószám" className="bg-black border border-zinc-900 rounded-lg p-2 text-white" />
               </div>
             </div>
           )}
 
           {activeTab === "appearance" && (
-            <div className="space-y-6 animate-fadeIn">
-              
-              {/* BRAND MÓDVÁLASZTÓ DOBOZOK */}
+            <div className="space-y-5 animate-fadeIn text-zinc-300">
+              <h3 className="text-sm font-bold text-blue-400 border-b border-zinc-900 pb-2">🎨 Theme Architecture Settings</h3>
+
+              {/* 1. MODE választó */}
               <div>
-                <label className="text-zinc-500 block mb-2 font-bold uppercase tracking-wider text-[10px]">Hivatalos App Brand Módok</label>
-                <div className="grid grid-cols-2 gap-3">
-                  <button type="button" onClick={() => handleModeChange("dark")} className={`p-4 rounded-xl border text-left transition-all relative overflow-hidden ${themeMode === "dark" ? "border-purple-500 bg-zinc-900" : "border-zinc-900 bg-black"}`}>
-                    <div className="font-bold text-xs mb-1">⚫ Midnight Neon (Dark)</div>
-                    <div className="text-[10px] text-zinc-500">Kép alapú prémium sötét mód violet és lime színekkel.</div>
-                    {themeMode === "dark" && <span className="absolute top-2 right-2 text-xs text-purple-400">●</span>}
-                  </button>
-                  <button type="button" onClick={() => handleModeChange("light")} className={`p-4 rounded-xl border text-left transition-all relative overflow-hidden ${themeMode === "light" ? "border-purple-500 bg-zinc-900" : "border-zinc-900 bg-black"}`}>
-                    <div className="font-bold text-xs mb-1">⚪ Midnight Neon (Light)</div>
-                    <div className="text-[10px] text-zinc-500">Tiszta fehér háttér a GridsterGP arculati színeivel.</div>
-                    {themeMode === "light" && <span className="absolute top-2 right-2 text-xs text-purple-400">●</span>}
-                  </button>
+                <span className="text-zinc-500 font-bold block mb-1.5 uppercase text-[10px]">Mode</span>
+                <div className="flex gap-4">
+                  {["dark", "light", "system"].map((m) => (
+                    <label key={m} className="flex items-center gap-2 cursor-pointer capitalize font-bold">
+                      <input type="radio" checked={themeMode === m} onChange={() => setThemeMode(m)} className="accent-purple-500" /> {m}
+                    </label>
+                  ))}
                 </div>
-                <button type="button" onClick={() => setThemeMode("custom")} className={`w-full mt-2 p-2.5 rounded-xl border text-center font-bold text-xs transition-all ${themeMode === "custom" ? "border-purple-500 bg-zinc-900 text-white" : "border-zinc-900 bg-black text-zinc-400"}`}>
-                  ⚙️ Custom Theme (Haladó Egyedi Builder)
-                </button>
               </div>
 
-              {/* HALADÓ CUSTOM BUILDER PANEL */}
-              {themeMode === "custom" && (
-                <div className="p-4 bg-black rounded-xl border border-zinc-900 space-y-4 animate-slideDown">
-                  <h4 className="text-[10px] uppercase font-bold text-purple-400">Színcsatornák testreszabása</h4>
-                  <div className="grid grid-cols-3 gap-2">
-                    <div><label className="text-zinc-500 block text-[9px] mb-0.5">Primary (Violet)</label><input type="color" value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)} className="w-full h-8 rounded bg-transparent cursor-pointer" /></div>
-                    <div><label className="text-zinc-500 block text-[9px] mb-0.5">Accent (Lime)</label><input type="color" value={accentColor} onChange={(e) => setAccentColor(e.target.value)} className="w-full h-8 rounded bg-transparent cursor-pointer" /></div>
-                    <div><label className="text-zinc-500 block text-[9px] mb-0.5">Background</label><input type="color" value={bgColor} onChange={(e) => setBgColor(e.target.value)} className="w-full h-8 rounded bg-transparent cursor-pointer" /></div>
-                  </div>
-                  <div className="grid grid-cols-4 gap-2 border-t border-zinc-900/60 pt-3">
-                    <div><label className="text-zinc-500 block text-[9px] mb-0.5">Card Base</label><input type="color" value={cardColor} onChange={(e) => setCardColor(e.target.value)} className="w-full h-7 rounded bg-transparent cursor-pointer" /></div>
-                    <div><label className="text-zinc-500 block text-[9px] mb-0.5">Success</label><input type="color" value={successColor} onChange={(e) => setSuccessColor(e.target.value)} className="w-full h-7 rounded bg-transparent cursor-pointer" /></div>
-                    <div><label className="text-zinc-500 block text-[9px] mb-0.5">Warning</label><input type="color" value={warningColor} onChange={(e) => setWarningColor(e.target.value)} className="w-full h-7 rounded bg-transparent cursor-pointer" /></div>
-                    <div><label className="text-zinc-500 block text-[9px] mb-0.5">Danger</label><input type="color" value={dangerColor} onChange={(e) => setDangerColor(e.target.value)} className="w-full h-7 rounded bg-transparent cursor-pointer" /></div>
-                  </div>
+              {/* 2. THEME választó */}
+              <div>
+                <span className="text-zinc-500 font-bold block mb-1.5 uppercase text-[10px]">Theme</span>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { id: "midnight", name: "● Midnight Neon" },
+                    { id: "aurora", name: "○ Aurora Arctic" },
+                    { id: "emerald", name: "○ Emerald Forest" },
+                    { id: "royal", name: "○ Royal Gold" },
+                    { id: "custom", name: "⚙️ Custom Theme" }
+                  ].map((t) => (
+                    <button key={t.id} type="button" onClick={() => setPresetPalette(t.id)} className={`p-2 rounded-xl text-left border text-[11px] font-bold ${presetPalette === t.id ? "border-purple-500 bg-zinc-900" : "border-zinc-900 bg-black"}`}>
+                      {t.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
-                  <h4 className="text-[10px] uppercase font-bold text-purple-400 pt-2 border-t border-zinc-900">Stílusjegyek & Intenzitás</h4>
-                  <div className="space-y-2">
-                    <div>
-                      <div className="flex justify-between text-[10px] text-zinc-500 mb-0.5"><span>Lekerekítések (Radius)</span><span>{uiRadius}px</span></div>
-                      <input type="range" min="0" max="24" value={uiRadius} onChange={(e) => setUiRadius(Number(e.target.value))} className="w-full accent-purple-500" />
-                    </div>
-                    <div>
-                      <div className="flex justify-between text-[10px] text-zinc-500 mb-0.5"><span>Glassmorphism elmosás (Blur)</span><span>{uiGlass}px</span></div>
-                      <input type="range" min="0" max="20" value={uiGlass} onChange={(e) => setUiGlass(Number(e.target.value))} className="w-full accent-purple-500" />
-                    </div>
-                  </div>
+              {/* Custom Builder, ha be van kapcsolva */}
+              {presetPalette === "custom" && (
+                <div className="p-3 bg-black rounded-xl border border-zinc-900 grid grid-cols-2 gap-2 animate-slideDown">
+                  <div><label className="text-zinc-500 block text-[9px] mb-0.5">Primary (Violet)</label><input type="color" value={customPrimary} onChange={(e) => setCustomPrimary(e.target.value)} className="w-full h-7 bg-transparent cursor-pointer" /></div>
+                  <div><label className="text-zinc-500 block text-[9px] mb-0.5">Accent (Lime)</label><input type="color" value={customAccent} onChange={(e) => setCustomAccent(e.target.value)} className="w-full h-7 bg-transparent cursor-pointer" /></div>
+                  <div><label className="text-zinc-500 block text-[9px] mb-0.5">Background</label><input type="color" value={customBg} onChange={(e) => setCustomBg(e.target.value)} className="w-full h-7 bg-transparent cursor-pointer" /></div>
+                  <div><label className="text-zinc-500 block text-[9px] mb-0.5">Card Base</label><input type="color" value={customCard} onChange={(e) => setCustomCard(e.target.value)} className="w-full h-7 bg-transparent cursor-pointer" /></div>
                 </div>
               )}
 
-              {/* INTEGRÁLT EXTRA STRATÉGIAI KAPCSOLÓK */}
+              {/* 3. STYLE választó */}
               <div>
-                <label className="text-zinc-500 block mb-2 font-bold uppercase tracking-wider text-[10px]">Arculati Hatásfokozók</label>
-                <div className="grid grid-cols-2 gap-2 bg-black/40 p-3 rounded-xl border border-zinc-900">
-                  <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={featGradient} onChange={(e) => setFeatGradient(e.target.checked)} className="w-4 h-4 rounded border-zinc-800 bg-black text-purple-600 focus:ring-0" /> <span className="text-zinc-300">☑ Gradient mode</span></label>
-                  <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={featGlass} onChange={(e) => setFeatGlass(e.target.checked)} className="w-4 h-4 rounded border-zinc-800 bg-black text-purple-600 focus:ring-0" /> <span className="text-zinc-300">☑ Glassmorphism</span></label>
-                  <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={featNeon} onChange={(e) => setFeatNeon(e.target.checked)} className="w-4 h-4 rounded border-zinc-800 bg-black text-purple-600 focus:ring-0" /> <span className="text-zinc-300">☑ Neon glow</span></label>
-                  <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={featCompact} onChange={(e) => setFeatCompact(e.target.checked)} className="w-4 h-4 rounded border-zinc-800 bg-black text-purple-600 focus:ring-0" /> <span className="text-zinc-300">☑ Compact UI</span></label>
-                  <label className="flex items-center gap-2 cursor-pointer col-span-2 border-t border-zinc-900/60 pt-2"><input type="checkbox" checked={featContrast} onChange={(e) => setFeatContrast(e.target.checked)} className="w-4 h-4 rounded border-zinc-800 bg-black text-purple-600 focus:ring-0" /> <span className="text-zinc-300">☑ High contrast mód</span></label>
+                <span className="text-zinc-500 font-bold block mb-1.5 uppercase text-[10px]">Style</span>
+                <div className="flex gap-4">
+                  {["flat", "glass", "neon"].map((s) => (
+                    <label key={s} className="flex items-center gap-2 cursor-pointer capitalize font-bold">
+                      <input type="radio" checked={uiStyle === s} onChange={() => setUiStyle(s)} className="accent-purple-500" /> {s}
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* 4. RADIUS választó */}
+              <div>
+                <span className="text-zinc-500 font-bold block mb-1.5 uppercase text-[10px]">Radius</span>
+                <div className="flex gap-4">
+                  {["sharp", "medium", "soft"].map((r) => (
+                    <label key={r} className="flex items-center gap-2 cursor-pointer capitalize font-bold">
+                      <input type="radio" checked={uiRadius === r} onChange={() => setUiRadius(r)} className="accent-purple-500" /> {r}
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* 5. ANIMATION választó */}
+              <div>
+                <span className="text-zinc-500 font-bold block mb-1.5 uppercase text-[10px]">Animation</span>
+                <div className="flex gap-4">
+                  {["minimal", "normal", "dynamic"].map((a) => (
+                    <label key={a} className="flex items-center gap-2 cursor-pointer capitalize font-bold">
+                      <input type="radio" checked={uiAnimation === a} onChange={() => setUiAnimation(a)} className="accent-purple-500" /> {a}
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* 6. DENSITY (Density / Spacing) választó */}
+              <div>
+                <span className="text-zinc-500 font-bold block mb-1.5 uppercase text-[10px]">Density & Layout Spacing</span>
+                <div className="flex gap-4">
+                  {["compact", "balanced", "luxury"].map((d) => (
+                    <label key={d} className="flex items-center gap-2 cursor-pointer capitalize font-bold">
+                      <input type="radio" checked={uiDensity === d} onChange={() => setUiDensity(d)} className="accent-purple-500" /> {d}
+                    </label>
+                  ))}
                 </div>
               </div>
 
             </div>
           )}
 
-          <button type="submit" disabled={isPending} className="w-full font-black p-3 rounded-xl uppercase tracking-wider text-xs bg-purple-600 text-white shadow-lg transition-all" style={{ backgroundColor: accentColor, color: "#000000" }}>
-            {isPending ? "Rendszer frissítése..." : "🚀 TELJES STRATÉGIA ÉLESÍTÉSE"}
+          <button type="submit" disabled={isPending} className="w-full font-black p-3 rounded-xl uppercase tracking-wider text-xs transition-all bg-primary-btn">
+            {isPending ? "Tokenek mentése..." : "🚀 TELJES STRATÉGIA ÉLESÍTÉSE"}
           </button>
         </div>
 
-        {/* JOBB OSZLOP: VALÓS IDEJŰ PREVIEW */}
+        {/* JOBB OSZLOP: VALÓS IDEJŰ TOKEN ALAPÚ ELŐNÉZET */}
         <div className="space-y-3 sticky top-6">
-          <span className="text-zinc-500 font-bold uppercase tracking-wider text-[10px]">👁️ Valós Idejű Live Preview</span>
-          <div className="border p-5 space-y-4 transition-all duration-300" style={{ backgroundColor: bgColor, borderRadius: `${uiRadius}px`, borderColor: `${primaryColor}20` }}>
-            <div className="flex justify-between items-center border-b pb-2" style={{ borderColor: `${primaryColor}10` }}>
-              <span className="font-black text-xs" style={{ color: themeMode === "light" ? "#000000" : "#FFFFFF" }}>🐾 {kennelName}</span>
-              <span className="text-[9px] uppercase tracking-wider px-2 py-0.5 rounded-full" style={{ backgroundColor: `${accentColor}20`, color: accentColor }}>Preview</span>
+          <span className="text-zinc-500 font-bold uppercase tracking-wider text-[10px]">👁️ Token Live Preview</span>
+          <div className="border p-5 space-y-4" style={{ backgroundColor: "var(--bg)", borderRadius: "var(--radius)", borderColor: "var(--border)" }}>
+            <div className="flex justify-between items-center border-b pb-2" style={{ borderColor: "var(--border)" }}>
+              <span className="font-black text-xs" style={{ color: "var(--text)" }}>🐾 {kennelName}</span>
+              <span className="text-[9px] uppercase tracking-wider px-2 py-0.5 rounded-full" style={{ backgroundColor: "var(--primary)20", color: "var(--primary)" }}>PREVIEW</span>
             </div>
 
-            {/* Kártyák különböző árnyalatai demonstrálva */}
+            {/* Kártyák különböző dinamikus árnyalatai bemutatva hardcoded színek nélkül */}
             <div className="space-y-2">
-              <div className="p-3 border transition-all" style={{ borderRadius: `${uiRadius}px`, backgroundColor: `${primaryColor}15`, borderColor: `${primaryColor}30` }}>
-                <span className="font-bold text-[10px] block" style={{ color: primaryColor }}>1. sz. Kártya (Violet tónus)</span>
-                <span className="text-[11px]" style={{ color: themeMode === "light" ? "#4B5563" : "#9CA3AF" }}>Dinamikus márka-árnyalat.</span>
+              <div className="p-3 border" style={{ borderRadius: "var(--radius)", backgroundColor: "var(--surface-1)", borderColor: "var(--border)" }}>
+                <span className="font-bold text-[10px] block" style={{ color: "var(--primary)" }}>1. sz. Kártya (Violet tónus)</span>
+                <span className="text-[11px]" style={{ color: "var(--text)", opacity: 0.7 }}>Dinamikus márka-árnyalat.</span>
               </div>
-              <div className="p-3 border transition-all" style={{ borderRadius: `${uiRadius}px`, backgroundColor: `${accentColor}10`, borderColor: `${accentColor}25` }}>
-                <span className="font-bold text-[10px] block" style={{ color: accentColor }}>2. sz. Kártya (Lime tónus)</span>
-                <span className="text-[11px]" style={{ color: themeMode === "light" ? "#4B5563" : "#9CA3AF" }}>Alternatív árnyalat-mátrix.</span>
+              <div className="p-3 border" style={{ borderRadius: "var(--radius)", backgroundColor: "var(--surface-2)", borderColor: "var(--border)" }}>
+                <span className="font-bold text-[10px] block" style={{ color: "var(--accent)" }}>2. sz. Kártya (Lime tónus)</span>
+                <span className="text-[11px]" style={{ color: "var(--text)", opacity: 0.7 }}>Alternatív árnyalat-mátrix.</span>
               </div>
             </div>
 
-            <div className="w-full text-center py-2 rounded-xl font-black text-xs transition-all" style={{ backgroundColor: accentColor, color: "#000000", borderRadius: `${uiRadius}px`, boxShadow: featNeon ? `0 0 10px ${accentColor}50` : "none" }}>
+            <div className="w-full text-center py-2 rounded-xl font-black text-xs" style={{ backgroundColor: "var(--accent)", color: "#000000", borderRadius: "var(--radius)" }}>
               Gomb Előnézet
             </div>
           </div>
