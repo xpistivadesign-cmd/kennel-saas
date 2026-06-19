@@ -1,82 +1,107 @@
+import type { Database } from "@/lib/db/types";
+
+type Branding =
+  Database["public"]["Tables"]["branding_settings"]["Row"];
+
 export const THEMES = {
   midnight: {
     primary: "#7D39EB",
     accent: "#C6FF33",
-    bgDark: "#000000",
-    bgLight: "#FFFFFF",
+    bg: "#000000",
+    surface: "#090A0F",
+    text: "#FFFFFF",
   },
 
   aurora: {
-    primary: "#2563EB",
-    accent: "#2DD4BF",
-    bgDark: "#020617",
-    bgLight: "#F8FAFC",
+    primary: "#4F46E5",
+    accent: "#06B6D4",
+    bg: "#050816",
+    surface: "#111827",
+    text: "#FFFFFF",
   },
 
   emerald: {
     primary: "#10B981",
     accent: "#A3E635",
-    bgDark: "#02140F",
-    bgLight: "#F7FFF9",
+    bg: "#02120D",
+    surface: "#06261C",
+    text: "#FFFFFF",
   },
 
   royal: {
-    primary: "#A855F7",
-    accent: "#FACC15",
-    bgDark: "#050505",
-    bgLight: "#FFFFFF",
+    primary: "#D4AF37",
+    accent: "#FFE082",
+    bg: "#090909",
+    surface: "#171717",
+    text: "#FFFFFF",
   },
-};
+} as const;
 
-export function createTheme(settings:any){
+export function buildThemeTokens(
+  settings: Partial<Branding> | null
+) {
+  const palette =
+    (settings?.preset_palette ??
+      "midnight") as keyof typeof THEMES;
 
-const dark=settings.theme_mode!=="light";
+  const selected =
+    THEMES[palette] ??
+    THEMES.midnight;
 
-const base=
-THEMES[
-(settings.preset_palette||
-"midnight")
-as keyof typeof THEMES
-];
+  const mode =
+    settings?.theme_mode ??
+    "dark";
 
-return{
+  const isLight =
+    mode === "light";
 
-bg:
-dark
-? settings.bg_color||base.bgDark
-: "#FFFFFF",
+  const bg =
+    isLight
+      ? "#FFFFFF"
+      : settings?.bg_color ||
+        selected.bg;
 
-surface:
-dark
-? settings.card_color||"#090A0F"
-: "#FFFFFF",
+  const surface =
+    isLight
+      ? "#F7F8FA"
+      : settings?.card_color ||
+        selected.surface;
 
-text:
-dark
-? "#FFFFFF"
-: "#111111",
+  return {
+    primary:
+      settings?.primary_color ||
+      selected.primary,
 
-primary:
-settings.primary_color||
-base.primary,
+    accent:
+      settings?.accent_color ||
+      selected.accent,
 
-accent:
-settings.accent_color||
-base.accent,
+    bg,
 
-radius:
-settings.ui_radius==="soft"
-? "28px"
-:
-settings.ui_radius==="sharp"
-? "0px"
-:
-"18px",
+    surface,
 
-font:
-settings.font_family||
-"Inter"
+    text:
+      isLight
+        ? "#111111"
+        : selected.text,
 
-};
+    card1:
+      settings?.primary_color
+        ? `${settings.primary_color}14`
+        : `${selected.primary}14`,
 
+    card2:
+      settings?.accent_color
+        ? `${settings.accent_color}14`
+        : `${selected.accent}14`,
+
+    card3:
+      settings?.primary_color
+        ? `${settings.primary_color}22`
+        : `${selected.primary}22`,
+
+    border: isLight
+      ? "#00000010"
+      : "#FFFFFF10",
+  };
 }
