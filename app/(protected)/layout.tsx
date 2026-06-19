@@ -41,57 +41,77 @@ export default async function ProtectedLayout({ children }: { children: React.Re
   const googleFontName = branding?.google_font_name || "Inter";
   const kennelName = branding?.kennel_name || "Kennel OS";
   const logoUrl = branding?.logo_url || null;
+  const userGreetingName = branding?.owner_name || user.user_metadata?.full_name || "Tenyésztő";
+
+  const navItems = [
+    { href: "/dashboard", label: "Dashboard", icon: "📊" },
+    { href: "/dogs", label: "Dogs", icon: "🐕" },
+    { href: "/heats", label: "Heats", icon: "🩸" },
+    { href: "/litters", label: "Litters", icon: "🐾" },
+    { href: "/shows", label: "Shows", icon: "🏆" },
+    { href: "/buyers", label: "Buyers & Waitlist", icon: "👥" },
+    { href: "/finance", label: "Finance", icon: "💰" },
+    { href: "/settings/branding", label: "Branding & Style", icon: "🎨" },
+  ];
+
+  async function signOut() {
+    "use server";
+    const supabase = createServerSupabase();
+    await supabase.auth.signOut();
+    redirect("/login");
+  }
 
   return (
-    <div className="min-h-screen flex" style={{ backgroundColor: bgColor, color: bodyColor, fontFamily: `'${googleFontName}', sans-serif` }}>
+    <div className="min-h-screen flex transition-all duration-300" style={{ backgroundColor: bgColor, color: bodyColor, fontFamily: `'${googleFontName}', sans-serif` }}>
       <link rel="stylesheet" href={`https://fonts.googleapis.com/css2?family=${googleFontName.replace(/ /g, "+")}:wght@400;600;900&display=swap`} />
 
       <style dangerouslySetInnerHTML={{ __html: `
-        /* Globális kényszerített Tailwind felülírások */
-        body, html, main, div[className*="bg-zinc-"], div[className*="bg-slate-"] { 
+        /* 🚨 RADIKÁLIS TAILWIND FELÜLÍRÓ RENDSZER */
+        body, html, main, .min-h-screen, div[className*="bg-zinc-950"], div[className*="bg-black"] { 
           background-color: ${bgColor} !important; 
         }
         
-        /* Szövegek kényszerítése szintenként */
-        h1, h2, h3, h4, th, td[className*="text-white"], .text-white, h1 *, h2 *, h3 * { 
+        /* Címek és kiemelt elemek kényszerítése */
+        h1, h2, h3, h4, th, .text-white, strong, b, [className*="text-zinc-100"], [className*="text-zinc-200"] { 
           color: ${headingColor} !important; 
         }
-        p, span:not([className*="rounded-"]), label, li, td, .text-zinc-400, .text-zinc-300 { 
+        
+        /* Leírások és normál szövegek */
+        p, span:not([className*="rounded-"]), label, li, td, [className*="text-zinc-400"], [className*="text-zinc-300"], [className*="text-gray-400"] { 
           color: ${bodyColor} !important; 
         }
         
-        /* Kártyák belső feliratainak kényszerítése */
-        div[className*="rounded-xl"] span, div[className*="rounded-2xl"] p, .card-text {
-          color: ${cardTextColor} !important;
-        }
-
-        /* Akciógombok, mentések, hozzáadások kényszerítése */
-        button[type="submit"], .bg-emerald-500, .bg-blue-600, .bg-purple-600, 
-        button:contains("+"), button:contains("Hozzáadás"), button:contains("Mentés") {
+        /* Gombok idomítása az accent színre */
+        button[type="submit"], .bg-emerald-500, .bg-blue-600, .bg-purple-600, .bg-amber-500,
+        button[className*="bg-"], [className*="bg-zinc-100"], a[className*="bg-amber"] {
           background-color: ${accentColor} !important;
           color: ${btnTextColor} !important;
           font-weight: 900 !important;
           border: none !important;
+          box-shadow: 0 4px 20px ${accentColor}20 !important;
         }
 
-        /* Kártyák transzparens beolvasztása a háttérbe a főcímszín 8%-os vetületével */
-        .bg-zinc-950, .bg-zinc-900, .bg-zinc-900\\/50, .bg-black, .bg-zinc-800, .border-zinc-800, div[className*="border-zinc-"] {
-          background-color: ${headingColor}0d !important;
-          border-color: ${headingColor}15 !important;
+        /* Luxus transzparens kártyák a főcímszín 6%-os tónusával */
+        .bg-zinc-900, .bg-zinc-900\\/50, .bg-zinc-800, .border-zinc-800, div[className*="rounded-xl"] {
+          background-color: ${headingColor}0a !important;
+          border: 1px solid ${headingColor}12 !important;
+        }
+        
+        /* Kártya szövegek színe */
+        div[className*="rounded-xl"] span, div[className*="rounded-xl"] p, div[className*="rounded-2xl"] div {
+          color: ${cardTextColor};
         }
 
-        /* Inputok és select mezők idomítása */
+        /* Beviteli panelek */
         input, select, textarea {
           background-color: ${headingColor}05 !important;
           border: 1px solid ${headingColor}1a !important;
           color: ${headingColor} !important;
         }
-        input:focus, select:focus {
-          border-color: ${accentColor} !important;
-        }
       `}} />
 
-      <aside className="w-64 shrink-0 p-6 flex flex-col justify-between border-r" style={{ backgroundColor: "rgba(0,0,0,0.1)", borderColor: `${headingColor}0d` }}>
+      {/* BAL MENÜSÁV */}
+      <aside className="w-64 shrink-0 p-6 flex flex-col justify-between border-r" style={{ backgroundColor: "rgba(0,0,0,0.15)", borderColor: `${headingColor}0d` }}>
         <div>
           <div className="mb-8 flex items-center gap-2 border-b pb-4" style={{ borderColor: `${headingColor}0d` }}>
             {logoUrl ? (
@@ -102,14 +122,29 @@ export default async function ProtectedLayout({ children }: { children: React.Re
               </span>
             )}
           </div>
+
+          <div className="mb-6 p-3.5 rounded-xl border text-xs font-bold" style={{ backgroundColor: `${headingColor}03`, borderColor: `${headingColor}0a` }}>
+            <span className="text-[9px] block uppercase tracking-wider opacity-40" style={{ color: headingColor }}>Tenyészet</span>
+            <div className="text-xs font-black mt-0.5" style={{ color: headingColor }}>✨ Welcome, {userGreetingName}!</div>
+          </div>
+
           <nav className="flex flex-col gap-1.5">
-            <Link href="/dashboard" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold" style={{ color: headingColor }}>📊 Dashboard</Link>
-            <Link href="/dogs" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold" style={{ color: headingColor }}>🐕 Kutyák</Link>
-            <Link href="/heats" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold" style={{ color: headingColor }}>🩸 Tüzelések</Link>
-            <Link href="/litters" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold" style={{ color: headingColor }}>🐾 Almok</Link>
-            <Link href="/settings/branding" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold" style={{ color: headingColor }}>🎨 Branding & Stílus</Link>
+            {navItems.map((item) => (
+              <Link key={item.href} href={item.href} className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all hover:bg-white/5">
+                <span className="w-7 h-7 rounded-lg flex items-center justify-center transition-all" style={{ backgroundColor: `${accentColor}12`, border: `1px solid ${accentColor}20`, color: accentColor }}>
+                  {item.icon}
+                </span>
+                <span style={{ color: headingColor }}>{item.label}</span>
+              </Link>
+            ))}
           </nav>
         </div>
+
+        <form action={signOut}>
+          <button type="submit" className="w-full p-2.5 rounded-xl border text-xs font-bold transition-all" style={{ backgroundColor: `${headingColor}03`, borderColor: `${headingColor}0d`, color: headingColor }}>
+            Kijelentkezés
+          </button>
+        </form>
       </aside>
 
       <main className="flex-1 min-w-0 p-10 overflow-y-auto">{children}</main>
