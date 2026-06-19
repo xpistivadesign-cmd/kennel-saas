@@ -2,20 +2,14 @@
 
 import { useState, useTransition } from "react";
 
-// Az új inspirációs képek alapján prémium szintre finomhangolt luxus paletta-mátrix
+// A képeid alapján kinyert, szigorúan 3-3 színből álló prémium paletták
 export const BRANDING_PRESETS = {
-  obsidian_platinum: { name: "Obsidian Platinum (Mérnöki)", bg: "#0D0E12", heading: "#F3F4F6", body: "#9CA3AF", accent: "#9CA3AF" },
-  royal_gold: { name: "Royal Navy & Gold (Luxus)", bg: "#0A1128", heading: "#F4E4C1", body: "#94A3B8", accent: "#D4AF37" },
-  creme_burgundy: { name: "Creme & Deep Burgundy", bg: "#FAF6F0", heading: "#3B0A11", body: "#6B5A58", accent: "#801020" },
-  cyber_neon: { name: "Cyberpunk Tech (Élénk)", bg: "#080511", heading: "#00FFCC", body: "#E0A0FF", accent: "#6366F1" },
-  swiss_emerald: { name: "Swiss Green (Letisztult)", bg: "#081612", heading: "#E6F7F4", body: "#80A199", accent: "#10B981" },
-  sandstone_cosy: { name: "Sandstone Beige (Meleg)", bg: "#1C1816", heading: "#EED6B3", body: "#A89A8D", accent: "#CDA275" },
-  arctic_white: { name: "Arctic Minimal (Világos)", bg: "#F8FAFC", heading: "#0F172A", body: "#475569", accent: "#0EA5E9" },
-  burnt_peach: { name: "Burnt Peach & Sage", bg: "#1F1916", heading: "#FBBF24", body: "#A7F3D0", accent: "#F59E0B" },
-  inkwell_eclipse: { name: "Inkwell Dark Chrome", bg: "#111217", heading: "#FFFFFF", body: "#94949E", accent: "#F1F5F9" },
-  forest_heritage: { name: "Forest Prestige", bg: "#0C1712", heading: "#D1E7DD", body: "#829E90", accent: "#4ADE80" },
-  monetto_flat: { name: "Warm Terracotta Studio", bg: "#FCFAF7", heading: "#C2410C", body: "#4B5563", accent: "#2DD4BF" },
-  graphite_monochrome: { name: "Graphite Studio", bg: "#09090B", heading: "#FFFFFF", body: "#A1A1AA", accent: "#FFFFFF" },
+  deep_burgundy: { name: "Mély Burgundi & Krém", bg: "#0E0D0D", heading: "#EEDCC1", accent: "#5E001A" },
+  royal_navy: { name: "Navy & Elegáns Arany", bg: "#1F2A44", heading: "#E8DCC8", accent: "#C6A75E" },
+  cyber_neon: { name: "Cyberpunk Kék & Lila", bg: "#0E48C1", heading: "#3DF8F8", accent: "#E23AFB" },
+  neon_lime: { name: "High-Tech Sötét & Lime", bg: "#8116E0", heading: "#FEFFFC", accent: "#DDFF00" },
+  behance_pastel: { name: "Behance Pasztell", bg: "#F5F5F5", heading: "#5A4EFF", accent: "#EEA0FF" },
+  travel_app: { name: "Travel App Minimal", bg: "#F5F5F5", heading: "#4B5563", accent: "#E2F4A6" },
 };
 
 export default function BrandingClient({ settings, saveBrandingAction }: any) {
@@ -23,14 +17,11 @@ export default function BrandingClient({ settings, saveBrandingAction }: any) {
   const [activeTab, setActiveTab] = useState("my-kennel");
 
   const [themeMode, setThemeMode] = useState(settings.theme_mode || "preset");
-  const [selectedPreset, setSelectedPreset] = useState(settings.preset_palette || "obsidian_platinum");
+  const [selectedPreset, setSelectedPreset] = useState(settings.preset_palette || "deep_burgundy");
 
   const [customBg, setCustomBg] = useState(settings.bg_color || "#0A0B0F");
   const [customAccent, setCustomAccent] = useState(settings.accent_color || "#8B8D98");
-
   const [customHeading, setCustomHeading] = useState(settings.text_heading_color || "#FFFFFF");
-  const [customBody, setCustomBody] = useState(settings.text_body_color || "#A1A1AA");
-  const [customCardText, setCustomCardText] = useState(settings.text_card_color || "#FFFFFF");
 
   const [kennelName, setKennelName] = useState(settings.kennel_name || "Saját Kennel");
   const [fontName, setFontName] = useState(settings.google_font_name || "Inter");
@@ -52,12 +43,10 @@ export default function BrandingClient({ settings, saveBrandingAction }: any) {
     alert(`Workspace átváltva: ${mode.toUpperCase()} MODE.`);
   };
 
-  const pData = BRANDING_PRESETS[selectedPreset as keyof typeof BRANDING_PRESETS] || BRANDING_PRESETS.obsidian_platinum;
+  const pData = BRANDING_PRESETS[selectedPreset as keyof typeof BRANDING_PRESETS] || BRANDING_PRESETS.deep_burgundy;
   const currentBg = themeMode === "preset" ? pData.bg : customBg;
   const currentAccent = themeMode === "preset" ? pData.accent : customAccent;
   const currentHeading = themeMode === "preset" ? pData.heading : customHeading;
-  const currentBody = themeMode === "preset" ? pData.body : customBody;
-  const currentCardText = themeMode === "preset" ? pData.heading : customCardText;
 
   const checkContrastValid = (bgHex: string, textHex: string) => {
     const getRGB = (c: string) => {
@@ -91,7 +80,7 @@ export default function BrandingClient({ settings, saveBrandingAction }: any) {
 
       <div className="border-b border-zinc-900 pb-4">
         <h1 className="text-3xl font-black tracking-tight">🎛️ Advanced Control Panel</h1>
-        <p className="text-zinc-500 text-xs mt-1">Személyre szabott 3-szintű tipográfia és luxus inspirációjú vizuális paletták.</p>
+        <p className="text-zinc-500 text-xs mt-1">Saját vizuális paletták a beküldött minták alapján.</p>
       </div>
 
       <form 
@@ -104,14 +93,12 @@ export default function BrandingClient({ settings, saveBrandingAction }: any) {
           fd.set("bg_color", currentBg);
           fd.set("accent_color", currentAccent);
           fd.set("text_heading_color", currentHeading);
-          fd.set("text_body_color", currentBody);
-          fd.set("text_card_color", currentCardText);
 
           Object.entries(widgets).forEach(([k, v]) => fd.set(`widget_${k}`, String(v)));
 
           startTransition(async () => {
             await saveBrandingAction(fd);
-            alert("Minden konfiguráció, fájl és dokumentum adat sikeresen elmentve!");
+            alert("Minden konfiguráció sikeresen elmentve!");
           });
         }}
         className="grid grid-cols-1 lg:grid-cols-4 gap-6"
@@ -140,16 +127,6 @@ export default function BrandingClient({ settings, saveBrandingAction }: any) {
                   <div>
                     <label className="text-zinc-500 block mb-1 font-bold">Logó Feltöltése</label>
                     <input type="file" name="logo_file" accept="image/*" className="w-full bg-black border border-zinc-900 rounded-lg p-2 text-zinc-500 cursor-pointer" />
-                    <input type="hidden" name="current_logo_url" value={settings.logo_url || ""} />
-                  </div>
-                </div>
-
-                <div className="space-y-2 pt-2">
-                  <h4 className="text-[10px] uppercase font-bold text-zinc-500">📄 Szerződés & PDF Export Törzsadatok</h4>
-                  <div className="grid grid-cols-3 gap-2">
-                    <input type="text" name="owner_name" defaultValue={settings.owner_name} placeholder="Tenyésztő Neve" className="bg-black border border-zinc-900 rounded-lg p-2 w-full text-white" />
-                    <input type="text" name="kennel_address" defaultValue={settings.kennel_address} placeholder="Székhely Cím" className="bg-black border border-zinc-900 rounded-lg p-2 w-full text-white" />
-                    <input type="text" name="tax_number" defaultValue={settings.tax_number} placeholder="Adószám" className="bg-black border border-zinc-900 rounded-lg p-2 w-full text-white" />
                   </div>
                 </div>
               </div>
@@ -158,11 +135,11 @@ export default function BrandingClient({ settings, saveBrandingAction }: any) {
             {/* TABS 2: APPEARANCE */}
             {activeTab === "appearance" && (
               <div className="space-y-4 animate-fadeIn">
-                <h3 className="text-sm font-bold text-blue-400 border-b border-zinc-900 pb-2">🎨 Színpaletták & 3-Szintű Betűszín Választó</h3>
+                <h3 className="text-sm font-bold text-blue-400 border-b border-zinc-900 pb-2">🎨 3-Színű Egyedi Paletták</h3>
                 
                 <div className="flex gap-2 p-1 bg-black rounded-xl border border-zinc-900">
-                  <button type="button" onClick={() => setThemeMode("preset")} className={`flex-1 py-1.5 rounded-lg font-bold text-[11px] ${themeMode === 'preset' ? 'bg-zinc-900 text-white' : 'text-zinc-500'}`}>12 Újragondolt Preset</button>
-                  <button type="button" onClick={() => setThemeMode("custom")} className={`flex-1 py-1.5 rounded-lg font-bold text-[11px] ${themeMode === 'custom' ? 'bg-zinc-900 text-white' : 'text-zinc-500'}`}>Haladó Custom Builder</button>
+                  <button type="button" onClick={() => setThemeMode("preset")} className={`flex-1 py-1.5 rounded-lg font-bold text-[11px] ${themeMode === 'preset' ? 'bg-zinc-900 text-white' : 'text-zinc-500'}`}>Kép Alapú Presetek</button>
+                  <button type="button" onClick={() => setThemeMode("custom")} className={`flex-1 py-1.5 rounded-lg font-bold text-[11px] ${themeMode === 'custom' ? 'bg-zinc-900 text-white' : 'text-zinc-500'}`}>Custom Builder</button>
                 </div>
 
                 {themeMode === "preset" && (
@@ -171,7 +148,7 @@ export default function BrandingClient({ settings, saveBrandingAction }: any) {
                       <button key={key} type="button" onClick={() => setSelectedPreset(key)} className={`p-2.5 rounded-xl border text-left transition-all flex flex-col justify-between ${selectedPreset === key ? 'border-zinc-400 bg-zinc-900' : 'border-zinc-900 bg-black/40'}`}>
                         <span className="font-bold text-white mb-2 text-[10px] truncate">{p.name}</span>
                         <div className="flex gap-1 h-3 w-full rounded overflow-hidden bg-zinc-950 p-0.5 border border-zinc-900">
-                          <div className="w-3 rounded-sm" style={{ backgroundColor: p.bg }} />
+                          <div className="w-4 rounded-sm" style={{ backgroundColor: p.bg }} />
                           <div className="flex-1 rounded-sm" style={{ backgroundColor: p.heading }} />
                           <div className="flex-1 rounded-sm" style={{ backgroundColor: p.accent }} />
                         </div>
@@ -182,84 +159,36 @@ export default function BrandingClient({ settings, saveBrandingAction }: any) {
 
                 {themeMode === "custom" && (
                   <div className="p-4 bg-black rounded-xl border border-zinc-900 space-y-4">
-                    <div className="grid grid-cols-2 gap-3">
-                      <div><label className="text-zinc-500 block mb-0.5">Háttérszín (Base)</label><div className="flex gap-2"><input type="color" value={customBg} onChange={(e) => setCustomBg(e.target.value)} className="w-8 h-8 rounded border-0 bg-transparent" /><input type="text" value={customBg} className="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-1 text-center font-mono" /></div></div>
-                      <div><label className="text-zinc-500 block mb-0.5">Gombok & Kiemelés (Accent)</label><div className="flex gap-2"><input type="color" value={customAccent} onChange={(e) => setCustomAccent(e.target.value)} className="w-8 h-8 rounded border-0 bg-transparent" /><input type="text" value={customAccent} className="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-1 text-center font-mono" /></div></div>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div><label className="text-zinc-500 block text-[10px] mb-0.5">Háttér</label><input type="color" value={customBg} onChange={(e) => setCustomBg(e.target.value)} className="w-full h-8 rounded bg-transparent cursor-pointer" /></div>
+                      <div><label className="text-zinc-500 block text-[10px] mb-0.5">Szöveg</label><input type="color" value={customHeading} onChange={(e) => setCustomHeading(e.target.value)} className="w-full h-8 rounded bg-transparent cursor-pointer" /></div>
+                      <div><label className="text-zinc-500 block text-[10px] mb-0.5">Accent</label><input type="color" value={customAccent} onChange={(e) => setCustomAccent(e.target.value)} className="w-full h-8 rounded bg-transparent cursor-pointer" /></div>
                     </div>
-                    <div className="grid grid-cols-3 gap-2 pt-2 border-t border-zinc-900">
-                      <div><label className="text-zinc-500 block text-[10px] mb-0.5">Főcímek</label><input type="color" value={customHeading} onChange={(e) => setCustomHeading(e.target.value)} className="w-full h-8 rounded cursor-pointer bg-transparent" /></div>
-                      <div><label className="text-zinc-500 block text-[10px] mb-0.5">Leírások</label><input type="color" value={customBody} onChange={(e) => setCustomBody(e.target.value)} className="w-full h-8 rounded cursor-pointer bg-transparent" /></div>
-                      <div><label className="text-zinc-500 block text-[10px] mb-0.5">Kártyák</label><input type="color" value={customCardText} onChange={(e) => setCustomCardText(e.target.value)} className="w-full h-8 rounded cursor-pointer bg-transparent" /></div>
-                    </div>
-                    {!isContrastValid && <div className="p-2 bg-red-950/40 border border-red-900 text-red-400 rounded-lg text-[10px] font-bold">⚠️ AI Kontraszt-Lock aktív!</div>}
+                    {!isContrastValid && <div className="p-2 bg-red-950/40 border border-red-900 text-red-400 rounded-lg text-[10px] font-bold">⚠️ Kontraszt figyelmeztetés!</div>}
                   </div>
                 )}
 
                 <div className="grid grid-cols-2 gap-3">
                   <div><label className="text-zinc-500 block mb-1">Betűtípus</label><select name="google_font_name" value={fontName} onChange={(e) => setFontName(e.target.value)} className="w-full bg-black border border-zinc-900 rounded-lg p-2 text-white"><option value="Inter">Inter</option><option value="Poppins">Poppins</option><option value="Cinzel">Cinzel</option></select></div>
-                  <div><label className="text-zinc-500 block mb-1">Ikonok stílusa</label><select name="icon_style" defaultValue={settings.icon_style} className="w-full bg-black border border-zinc-900 rounded-lg p-2 text-white"><option value="minimal">Letisztult minimal</option><option value="glass-box">Glass-box (Kontúros)</option></select></div>
+                  <div><label className="text-zinc-500 block mb-1">Ikonok stílusa</label><select name="icon_style" defaultValue={settings.icon_style} className="w-full bg-black border border-zinc-900 rounded-lg p-2 text-white"><option value="minimal">Minimal</option></select></div>
                 </div>
               </div>
             )}
 
-            {/* TABS 3: DASHBOARD */}
-            {activeTab === "dashboard" && (
-              <div className="space-y-4 animate-fadeIn">
-                <h3 className="text-sm font-bold text-purple-400 border-b border-zinc-900 pb-2">🚀 Workspace Presets</h3>
-                <div className="grid grid-cols-4 gap-2">
-                  <button type="button" onClick={() => applyWorkspacePreset("all")} className="p-2 bg-zinc-900 border border-zinc-800 rounded-xl font-bold text-[10px]">🌟 All Mode</button>
-                  <button type="button" onClick={() => applyWorkspacePreset("breeding")} className="p-2 bg-zinc-900 border border-zinc-800 rounded-xl font-bold text-[10px]">🍼 Breeding</button>
-                  <button type="button" onClick={() => applyWorkspacePreset("show")} className="p-2 bg-zinc-900 border border-zinc-800 rounded-xl font-bold text-[10px]">🏆 Show Mode</button>
-                  <button type="button" onClick={() => applyWorkspacePreset("finance")} className="p-2 bg-zinc-900 border border-zinc-800 rounded-xl font-bold text-[10px]">💰 Finance</button>
-                </div>
-              </div>
-            )}
-
-            {/* TABS 4: NOTIFICATIONS */}
-            {activeTab === "notifications" && (
-              <div className="space-y-4 animate-fadeIn">
-                <h3 className="text-sm font-bold text-blue-400 border-b border-zinc-900 pb-2">🔔 Okos Értesítések</h3>
-                <div className="p-4 bg-black/40 rounded-xl border border-zinc-900 space-y-2">
-                  <label className="flex items-center justify-between cursor-pointer"><span className="text-zinc-300">🩸 Közelgő tüzelések és ciklusok</span><input type="checkbox" defaultChecked className="w-4 h-4 rounded border-zinc-800 bg-black text-purple-600" /></label>
-                </div>
-              </div>
-            )}
-
-            {/* TABS 5: AUTOMATIONS */}
-            {activeTab === "automations" && (
-              <div className="space-y-4 animate-fadeIn">
-                <h3 className="text-sm font-bold text-emerald-400 border-b border-zinc-900 pb-2">⚙️ Advanced Workflow & Automations</h3>
-                <div className="p-4 bg-emerald-950/20 border border-emerald-900/40 text-emerald-400 rounded-xl text-[11px]">✨ Az összes háttér-automatizmus be van építve a licencedbe!</div>
-              </div>
-            )}
+            {/* TABS 3, 4, 5 STUB */}
+            {activeTab === "dashboard" && <div className="p-4 bg-zinc-900 text-zinc-400 rounded-xl">Munkaterület nézetek kezelése.</div>}
+            {activeTab === "notifications" && <div className="p-4 bg-zinc-900 text-zinc-400 rounded-xl">Értesítések beállításai.</div>}
+            {activeTab === "automations" && <div className="p-4 bg-zinc-900 text-zinc-400 rounded-xl">Automatizált munkafolyamatok.</div>}
 
           </div>
 
           <button type="submit" disabled={isPending || !isContrastValid} className="w-full font-black p-3 rounded-xl uppercase tracking-wider text-xs transition-all mt-4" style={{ backgroundColor: isContrastValid ? currentAccent : "#27272a", color: isContrastValid ? currentBg : "#71717a" }}>
-            {isPending ? "Konfiguráció mentése..." : "🚀 TELJES ARCULATI STRATÉGIA MENTÉSE"}
+            {isPending ? "Mentés..." : "🚀 ARCULAT MENTÉSE"}
           </button>
         </div>
 
-        {/* JOBB OSZLOP: LIVE PREVIEW */}
+        {/* JOBB OSZLOP: ELŐNÉZET */}
         <div className="space-y-3 sticky top-6">
-          <span className="text-zinc-500 font-bold uppercase tracking-wider text-[10px]">👁️ Valós Idejű Előnézet</span>
+          <span className="text-zinc-500 font-bold uppercase tracking-wider text-[10px]">👁️ Élő Előnézet</span>
           <div className="border rounded-2xl shadow-2xl p-5 space-y-5 transition-all duration-300" style={{ backgroundColor: currentBg, borderColor: `${currentHeading}15`, fontFamily: `'${fontName}', sans-serif` }}>
-            <div className="flex justify-between items-center border-b pb-3" style={{ borderColor: `${currentHeading}10` }}>
-              <span className="font-bold text-xs" style={{ color: currentHeading }}>🐾 {kennelName}</span>
-              <span className="text-[10px]" style={{ color: currentBody }}>Preview Mode</span>
-            </div>
-            <div className="space-y-1">
-              <h3 className="text-base font-black tracking-tight" style={{ color: currentHeading }}>Főcím Teszt</h3>
-              <p className="text-[11px] leading-relaxed" style={{ color: currentBody }}>Ez a leírások és magyarázó szövegek betűszíne.</p>
-            </div>
-            <div className="p-3 rounded-xl border flex justify-between items-center" style={{ backgroundColor: `${currentHeading}06`, borderColor: `${currentHeading}10` }}>
-              <span style={{ color: currentCardText }} className="font-bold">Kártya betűszín teszt</span>
-              <span className="font-black text-xs" style={{ color: currentAccent }}>#OK</span>
-            </div>
-            <div className="w-full text-center py-2.5 rounded-xl font-bold text-xs" style={{ backgroundColor: currentAccent, color: currentBg }}>Gomb Előnézet</div>
-          </div>
-        </div>
-      </form>
-    </div>
-  );
-}
+            <div className="flex justify-between items-center border-b pb-3"
