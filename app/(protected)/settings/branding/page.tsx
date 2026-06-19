@@ -14,26 +14,19 @@ async function saveBrandingAction(formData: FormData) {
   const theme_mode = String(formData.get("theme_mode") || "preset");
   const preset_palette = String(formData.get("preset_palette") || "obsidian_platinum");
   const bg_color = String(formData.get("bg_color"));
+  const accent_color = String(formData.get("accent_color"));
+  
+  // HÁROM KÜLÖNÁLLÓ BETŰSZÍN FORM ADAT
+  const text_heading_color = String(formData.get("text_heading_color") || "#FFFFFF");
+  const text_body_color = String(formData.get("text_body_color") || "#A1A1AA");
+  const text_card_color = String(formData.get("text_card_color") || "#FFFFFF");
+
   const google_font_name = String(formData.get("google_font_name") || "Inter");
   const kennel_name = String(formData.get("kennel_name") || "Saját Kennel");
   const owner_name = String(formData.get("owner_name") || "");
   const kennel_address = String(formData.get("kennel_address") || "");
   const tax_number = String(formData.get("tax_number") || "");
   const icon_style = String(formData.get("icon_style") || "glass-box");
-
-  // Kontrasztellenőrzés biztonsági funkció (WCAG szoftveres guardrail szerver oldalon is)
-  const hex = bg_color.replace("#", "");
-  const r = parseInt(hex.substr(0, 2), 16) || 0;
-  const g = parseInt(hex.substr(2, 2), 16) || 0;
-  const b = parseInt(hex.substr(4, 2), 16) || 0;
-  const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
-  
-  // Ha a felhasználó egyedi módban tiszta fehéret vagy túl világos színt mentene háttérnek,
-  // de a betűszín logikánk sötét módot kényszerít, a szerver korrigálja, hogy olvasható maradjon
-  let accent_color = String(formData.get("accent_color"));
-  if (theme_mode === "custom" && yiq > 200 && accent_color.toLowerCase() === "#ffffff") {
-    accent_color = "#1c1917"; // Korrekció sötétre
-  }
 
   let logo_url = String(formData.get("current_logo_url") || "");
   const logo_file = formData.get("logo_file") as File;
@@ -58,6 +51,9 @@ async function saveBrandingAction(formData: FormData) {
     preset_palette,
     bg_color,
     accent_color,
+    text_heading_color,
+    text_body_color,
+    text_card_color,
     google_font_name,
     logo_url: logo_url || null,
     kennel_name,
@@ -91,6 +87,9 @@ export default async function BrandingPage() {
     preset_palette: "obsidian_platinum",
     bg_color: "#0A0B0F",
     accent_color: "#8B8D98",
+    text_heading_color: "#E5E7EB",
+    text_body_color: "#8B8D98",
+    text_card_color: "#FFFFFF",
     google_font_name: "Inter",
     logo_url: null,
     kennel_name: "Saját Kennel",
