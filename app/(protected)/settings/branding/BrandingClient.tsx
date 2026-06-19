@@ -13,7 +13,6 @@ type BrandingSettings = {
   ui_style: string;
   ui_radius: string;
   ui_animation: string;
-  ui_density: string;
   ui_font: string;
   kennel_name: string;
   owner_name: string;
@@ -91,43 +90,43 @@ export default function BrandingClient({ settings, saveBrandingAction }: Props) 
     <form onSubmit={submit} className="max-w-7xl mx-auto space-y-8">
       <div>
         <h1 className="text-4xl font-black">Appearance & Branding</h1>
-        <p className="opacity-60">Teljes körű white-label adatok és token alapú felületvezérlés.</p>
+        <p className="opacity-60">Prémium white-label architektúra és központi téma tokenizálás.</p>
       </div>
 
       <div className="grid lg:grid-cols-2 gap-8">
         <section className="space-y-6">
           
-          {/* TÖRZSDATOK (White-label szekció dokumentumgeneráláshoz) */}
-          <div className="p-5 rounded-2xl bg-zinc-900/50 border border-zinc-800 space-y-4">
-            <h3 className="font-bold text-amber-400">🏢 Kennel Hivatalos Törzsadatok</h3>
+          {/* TÖRZSDATOK (White-label) */}
+          <div className="p-5 rounded-2xl bg-zinc-900/40 border border-zinc-800 space-y-4">
+            <h3 className="font-bold text-amber-400">🏢 Hivatalos Törzsadatok & Szerződés alapok</h3>
             <div>
               <label className="text-[11px] block mb-1">Kennel Megjelenítési Neve</label>
               <input type="text" value={kennelName} onChange={(e) => setKennelName(e.target.value)} className="w-full p-3 bg-black rounded-xl text-white border border-zinc-800" />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-[11px] block mb-1">Logó Feltöltése</label>
+                <label className="text-[11px] block mb-1">Logó Módosítása</label>
                 <input type="file" name="logo_file" accept="image/*" className="w-full p-2 bg-black rounded-xl text-zinc-400 border border-zinc-800 cursor-pointer" />
                 <input type="hidden" name="current_logo_url" value={settings.logo_url || ""} />
               </div>
               <div>
-                <label className="text-[11px] block mb-1">Tenyésztő Hivatalos Neve</label>
+                <label className="text-[11px] block mb-1">Tenyésztő Teljes Neve</label>
                 <input type="text" name="owner_name" defaultValue={settings.owner_name} placeholder="pl. Kovács Péter" className="w-full p-3 bg-black rounded-xl text-white border border-zinc-800" />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-[11px] block mb-1">Székhely Címe (Szerződésekhez)</label>
+                <label className="text-[11px] block mb-1">Tenyészet Székhely Címe</label>
                 <input type="text" name="kennel_address" defaultValue={settings.kennel_address} placeholder="pl. Budapest, Fő u. 1." className="w-full p-3 bg-black rounded-xl text-white border border-zinc-800" />
               </div>
               <div>
-                <label className="text-[11px] block mb-1">Adószám / Hatósági azonosító</label>
+                <label className="text-[11px] block mb-1">Adószám / Regisztrációs szám</label>
                 <input type="text" name="tax_number" defaultValue={settings.tax_number} placeholder="pl. 12345678-2-41" className="w-full p-3 bg-black rounded-xl text-white border border-zinc-800" />
               </div>
             </div>
           </div>
 
-          {/* RENDDSZER PARAMÉTEREK */}
+          {/* ALAP MÓDOK */}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <h3 className="font-bold mb-2">Theme Mode</h3>
@@ -138,19 +137,19 @@ export default function BrandingClient({ settings, saveBrandingAction }: Props) 
               </select>
             </div>
             <div>
-              <h3 className="font-bold mb-2">Betűtípus (Font Stílus)</h3>
+              <h3 className="font-bold mb-2">Betűtípus (Font)</h3>
               <select value={font} onChange={(e) => setFont(e.target.value)} className="w-full p-3 bg-black rounded-xl border border-zinc-800 text-white">
-                <option value="inter">Inter (Modern letisztult)</option>
+                <option value="inter">Inter (Letisztult modern)</option>
                 <option value="poppins">Poppins (Geometrikus tech)</option>
-                <option value="cinzel">Cinzel (Klasszikus luxus)</option>
+                <option value="cinzel">Cinzel (Luxus serif)</option>
                 <option value="montserrat">Montserrat (Prémium széles)</option>
               </select>
             </div>
           </div>
 
-          {/* PALETTÁK DOBOZAI */}
+          {/* PALETTA SELECTION */}
           <div>
-            <h3 className="font-bold mb-3">Márka Paletták (Midnight Neon fókusszal)</h3>
+            <h3 className="font-bold mb-3">Márka Paletták</h3>
             <div className="grid grid-cols-2 gap-3">
               {PALETTES.map((p) => (
                 <button key={p.id} type="button" onClick={() => selectPalette(p.id)} className={`rounded-2xl p-4 border text-left transition-all ${palette === p.id ? "border-purple-500 bg-zinc-900" : "border-zinc-800 bg-black"}`}>
@@ -164,24 +163,24 @@ export default function BrandingClient({ settings, saveBrandingAction }: Props) 
             </div>
           </div>
 
-          {/* CUSTOM SZÍNVÁLASZTÓK */}
+          {/* CUSTOM PICKERS */}
           {palette === "custom" && (
             <div className="grid grid-cols-2 gap-3 p-4 bg-black rounded-xl border border-zinc-900 animate-slideDown">
               <div><label className="text-[10px] block mb-0.5">Primary (Violet)</label><input type="color" value={primary} onChange={(e) => setPrimary(e.target.value)} className="w-full h-8 bg-transparent cursor-pointer" /></div>
               <div><label className="text-[10px] block mb-0.5">Accent (Lime)</label><input type="color" value={accent} onChange={(e) => setAccent(e.target.value)} className="w-full h-8 bg-transparent cursor-pointer" /></div>
-              <div><label className="text-[10px] block mb-0.5">Background Color</label><input type="color" value={bg} onChange={(e) => setBg(e.target.value)} className="w-full h-8 bg-transparent cursor-pointer" /></div>
-              <div><label className="text-[10px] block mb-0.5">Card Base Color</label><input type="color" value={card} onChange={(e) => setCard(e.target.value)} className="w-full h-8 bg-transparent cursor-pointer" /></div>
+              <div><label className="text-[10px] block mb-0.5">Background</label><input type="color" value={bg} onChange={(e) => setBg(e.target.value)} className="w-full h-8 bg-transparent cursor-pointer" /></div>
+              <div><label className="text-[10px] block mb-0.5">Card Base</label><input type="color" value={card} onChange={(e) => setCard(e.target.value)} className="w-full h-8 bg-transparent cursor-pointer" /></div>
             </div>
           )}
 
-          {/* EXTRA FELÜLETI STÍLUSOK */}
-          <div className="grid grid-cols-3 gap-2 pt-2">
+          {/* EFFEKT TUNING */}
+          <div className="grid grid-cols-3 gap-2">
             <div>
               <label className="text-[10px] font-bold block mb-1">STYLE</label>
               <select value={style} onChange={(e) => setStyle(e.target.value)} className="w-full p-2.5 bg-black border border-zinc-800 rounded-xl text-white">
                 <option value="flat">flat</option>
-                <option value="glass">glass</option>
-                <option value="neon">neon</option>
+                <option value="glass">glass (üveghatás)</option>
+                <option value="neon">neon (izzás)</option>
               </select>
             </div>
             <div>
@@ -202,25 +201,26 @@ export default function BrandingClient({ settings, saveBrandingAction }: Props) 
             </div>
           </div>
 
-          <button disabled={pending} className="w-full h-14 rounded-2xl bg-lime-300 text-black font-black uppercase tracking-wider text-xs transition-all hover:opacity-90">
-            {pending ? "Rendszer frissítése..." : "🚀 ARCULAT ÉS TÖRZSDATOK MENTÉSE"}
+          {/* IGAZI, AKTÍV SUBMIT GOMB */}
+          <button type="submit" disabled={pending} className="w-full h-14 rounded-2xl text-black font-black uppercase tracking-wider text-xs transition-all hover:opacity-90">
+            {pending ? "Élesítés folyamatban..." : "🚀 ARCULATI STRATÉGIA ÉLESÍTÉSE"}
           </button>
+
         </section>
 
-        {/* JOBB OSZLOP: TOKENSZABÁLYZOTT ELŐNÉZET */}
+        {/* PREVIEW PANEL */}
         <section className="sticky top-6">
           <div className="rounded-[32px] p-8 border border-white/10" style={{ background: `linear-gradient(135deg, ${primary}22, ${accent}11)` }}>
             <div className="rounded-3xl p-6 border" style={{ backgroundColor: card, borderColor: "rgba(255,255,255,0.05)" }}>
               <h2 className="text-xl font-black mb-4" style={{ color: primary }}>🐾 {kennelName}</h2>
               <div className="grid gap-3">
-                <div className="p-5 rounded-2xl border" style={{ background: `${primary}18`, borderColor: "rgba(255,255,255,0.03)" }}>Dashboard Kártya 1 (Violet tónus)</div>
-                <div className="p-5 rounded-2xl border" style={{ background: `${accent}15`, borderColor: "rgba(255,255,255,0.03)" }}>Dashboard Kártya 2 (Lime tónus)</div>
-                <div className="p-5 rounded-2xl border" style={{ background: `${primary}0C`, borderColor: "rgba(255,255,255,0.03)" }}>Dashboard Kártya 3 (Mély árnyalat)</div>
+                <div className="p-5 rounded-2xl border" style={{ background: `linear-gradient(135deg, ${primary}25, ${primary}05)`, borderColor: "rgba(255,255,255,0.03)" }}>Dashboard Kártya 1 (Violet átmenet)</div>
+                <div className="p-5 rounded-2xl border" style={{ background: `linear-gradient(135deg, ${accent}20, ${accent}05)`, borderColor: "rgba(255,255,255,0.03)", color: "#000000" }}>Dashboard Kártya 2 (Lime átmenet)</div>
+                <div className="p-5 rounded-2xl border" style={{ background: `linear-gradient(135deg, ${primary}15, ${accent}10)`, borderColor: "rgba(255,255,255,0.03)" }}>Dashboard Kártya 3 (Vegyes neon tónus)</div>
               </div>
             </div>
           </div>
         </section>
-
       </div>
     </form>
   );
