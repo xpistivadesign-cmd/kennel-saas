@@ -1,8 +1,3 @@
-import type { Database } from "@/lib/db/types";
-
-type Branding =
-  Database["public"]["Tables"]["branding_settings"]["Row"];
-
 export const THEMES = {
   midnight: {
     primary: "#7D39EB",
@@ -14,94 +9,150 @@ export const THEMES = {
 
   aurora: {
     primary: "#4F46E5",
-    accent: "#06B6D4",
+    accent: "#22D3EE",
     bg: "#050816",
-    surface: "#111827",
+    surface: "#0D1325",
     text: "#FFFFFF",
   },
 
   emerald: {
     primary: "#10B981",
-    accent: "#A3E635",
-    bg: "#02120D",
-    surface: "#06261C",
+    accent: "#6EE7B7",
+    bg: "#03110E",
+    surface: "#08231D",
     text: "#FFFFFF",
   },
 
   royal: {
-    primary: "#D4AF37",
-    accent: "#FFE082",
-    bg: "#090909",
-    surface: "#171717",
+    primary: "#A855F7",
+    accent: "#FACC15",
+    bg: "#070707",
+    surface: "#111111",
     text: "#FFFFFF",
   },
 } as const;
 
+type ThemeName = keyof typeof THEMES;
+
+type BrandingSettings = {
+  preset_palette?: string | null;
+
+  theme_mode?: string | null;
+
+  primary_color?: string | null;
+
+  accent_color?: string | null;
+
+  bg_color?: string | null;
+
+  card_color?: string | null;
+
+  ui_radius?: string | null;
+
+  ui_animation?: string | null;
+
+  ui_style?: string | null;
+};
+
 export function buildThemeTokens(
-  settings: Partial<Branding> | null
+  settings?: BrandingSettings | null
 ) {
-  const palette =
-    (settings?.preset_palette ??
-      "midnight") as keyof typeof THEMES;
-
   const selected =
-    THEMES[palette] ??
-    THEMES.midnight;
+    THEMES[
+      (
+        settings?.preset_palette ??
+        "midnight"
+      ) as ThemeName
+    ] ?? THEMES.midnight;
 
-  const mode =
-    settings?.theme_mode ??
-    "dark";
+  const custom =
+    settings?.preset_palette === "custom";
 
-  const isLight =
-    mode === "light";
+  const dark =
+    settings?.theme_mode !== "light";
 
-  const bg =
-    isLight
-      ? "#FFFFFF"
-      : settings?.bg_color ||
-        selected.bg;
+  const radius =
+    settings?.ui_radius === "sharp"
+      ? "0px"
+      : settings?.ui_radius === "soft"
+      ? "28px"
+      : "18px";
 
-  const surface =
-    isLight
-      ? "#F7F8FA"
-      : settings?.card_color ||
-        selected.surface;
+  const transition =
+    settings?.ui_animation === "minimal"
+      ? "0s"
+      : settings?.ui_animation === "dynamic"
+      ? "420ms cubic-bezier(.2,.8,.2,1)"
+      : "220ms ease";
+
+  const glass =
+    settings?.ui_style === "glass"
+      ? "blur(20px)"
+      : "blur(0px)";
+
+  const shadow =
+    settings?.ui_style === "neon"
+      ? `0 0 50px ${
+          custom
+            ? settings.primary_color
+            : selected.primary
+        }22`
+      : "none";
+
+  const bg = custom
+    ? settings?.bg_color || "#000000"
+    : dark
+    ? selected.bg
+    : "#FFFFFF";
+
+  const surface = custom
+    ? settings?.card_color || "#090A0F"
+    : dark
+    ? selected.surface
+    : "#F8FAFC";
+
+  const text = dark
+    ? "#FFFFFF"
+    : "#0F172A";
+
+  const primary = custom
+    ? settings?.primary_color || "#7D39EB"
+    : selected.primary;
+
+  const accent = custom
+    ? settings?.accent_color || "#C6FF33"
+    : selected.accent;
 
   return {
-    primary:
-      settings?.primary_color ||
-      selected.primary,
-
-    accent:
-      settings?.accent_color ||
-      selected.accent,
+    primary,
+    accent,
 
     bg,
 
     surface,
 
-    text:
-      isLight
-        ? "#111111"
-        : selected.text,
+    text,
+
+    border:
+      dark
+        ? "rgba(255,255,255,.08)"
+        : "rgba(0,0,0,.08)",
 
     card1:
-      settings?.primary_color
-        ? `${settings.primary_color}14`
-        : `${selected.primary}14`,
+      `${primary}18`,
 
     card2:
-      settings?.accent_color
-        ? `${settings.accent_color}14`
-        : `${selected.accent}14`,
+      `${accent}18`,
 
     card3:
-      settings?.primary_color
-        ? `${settings.primary_color}22`
-        : `${selected.primary}22`,
+      `${primary}10`,
 
-    border: isLight
-      ? "#00000010"
-      : "#FFFFFF10",
+    radius,
+
+    transition,
+
+    glass,
+
+    shadow,
   };
 }
