@@ -201,7 +201,6 @@ export default function BrandingClient({ settings, saveBrandingAction }: Props) 
             </div>
           </div>
 
-          {/* IGAZI, STRUKTURÁLIS SUBMIT GOMB */}
           <button type="submit" disabled={pending} className="w-full h-14 rounded-2xl bg-lime-300 text-black font-black uppercase tracking-wider text-xs transition-all hover:opacity-95">
             {pending ? "Rendszer frissítése..." : "🚀 ARCULATI STRATÉGIA ÉLESÍTÉSE"}
           </button>
