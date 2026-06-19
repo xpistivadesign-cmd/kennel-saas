@@ -10,6 +10,8 @@ type BrandingSettings = {
   accent_color: string;
   bg_color: string;
   card_color: string;
+  text_heading_color: string;
+  text_body_color: string;
   ui_style: string;
   ui_radius: string;
   ui_animation: string;
@@ -46,6 +48,8 @@ export default function BrandingClient({ settings, saveBrandingAction }: Props) 
   const [accent, setAccent] = useState(settings.accent_color ?? "#C6FF33");
   const [bg, setBg] = useState(settings.bg_color ?? "#000000");
   const [card, setCard] = useState(settings.card_color ?? "#090A0F");
+  const [textHeading, setTextHeading] = useState(settings.text_heading_color || "#FFFFFF");
+  const [textBody, setTextBody] = useState(settings.text_body_color || "#A1A1AA");
 
   const [style, setStyle] = useState(settings.ui_style ?? "glass");
   const [radius, setRadius] = useState(settings.ui_radius ?? "medium");
@@ -66,18 +70,15 @@ export default function BrandingClient({ settings, saveBrandingAction }: Props) 
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (pending) return;
-
-    const formElement = e.currentTarget;
-    const fd = new FormData(formElement);
-    
-    // Explicit adatinjekció a szinkronitásért
+    const fd = new FormData(e.currentTarget);
     fd.set("theme_mode", themeMode);
     fd.set("preset_palette", palette);
     fd.set("primary_color", primary);
     fd.set("accent_color", accent);
     fd.set("bg_color", bg);
     fd.set("card_color", card);
+    fd.set("text_heading_color", textHeading);
+    fd.set("text_body_color", textBody);
     fd.set("ui_style", style);
     fd.set("ui_radius", radius);
     fd.set("ui_animation", animation);
@@ -85,23 +86,17 @@ export default function BrandingClient({ settings, saveBrandingAction }: Props) 
     fd.set("kennel_name", kennelName);
 
     startTransition(async () => {
-      try {
-        await saveBrandingAction(fd);
-        router.refresh();
-        // Azonnali hard reload, hogy a CSS változók garantáltan újraolvasásra kerüljenek
-        window.location.reload();
-      } catch (err) {
-        alert("Hiba történt a mentés során! Kérlek nézd meg a konzolt.");
-        console.error(err);
-      }
+      await saveBrandingAction(fd);
+      router.refresh();
+      setTimeout(() => { location.reload(); }, 150);
     });
   }
 
   return (
     <form onSubmit={submit} className="max-w-7xl mx-auto space-y-8">
       <div>
-        <h1 className="text-4xl font-black">Appearance & Branding</h1>
-        <p className="opacity-60">Prémium white-label törzsadatok és tokenizált felületvezérlés.</p>
+        <h1 className="text-4xl font-black">Appearance & Architecture Control</h1>
+        <p className="opacity-60">Személyre szabott betűtípusok, egyedi betűszínek és white-label konfiguráció.</p>
       </div>
 
       <div className="grid lg:grid-cols-2 gap-8">
@@ -109,56 +104,52 @@ export default function BrandingClient({ settings, saveBrandingAction }: Props) 
           
           {/* TÖRZSDATOK */}
           <div className="p-5 rounded-2xl bg-zinc-900/40 border border-zinc-800 space-y-4">
-            <h3 className="font-bold text-amber-400">🏢 Hivatalos Törzsadatok (Dokumentumgeneráláshoz)</h3>
+            <h3 className="font-bold text-amber-400">🏢 Kennel Alapadatok</h3>
             <div>
               <label className="text-[11px] block mb-1">Kennel Megjelenítési Neve</label>
               <input type="text" value={kennelName} onChange={(e) => setKennelName(e.target.value)} className="w-full p-3 bg-black rounded-xl text-white border border-zinc-800" />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-[11px] block mb-1">Logó Cseréje</label>
+                <label className="text-[11px] block mb-1">Logó Feltöltése</label>
                 <input type="file" name="logo_file" accept="image/*" className="w-full p-2 bg-black rounded-xl text-zinc-400 border border-zinc-800 cursor-pointer" />
                 <input type="hidden" name="current_logo_url" value={settings.logo_url || ""} />
               </div>
               <div>
-                <label className="text-[11px] block mb-1">Tenyésztő Teljes Neve</label>
-                <input type="text" name="owner_name" defaultValue={settings.owner_name} placeholder="pl. Kovács Péter" className="w-full p-3 bg-black rounded-xl text-white border border-zinc-800" />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-[11px] block mb-1">Tenyészet Székhely Címe</label>
-                <input type="text" name="kennel_address" defaultValue={settings.kennel_address} placeholder="pl. Budapest, Fő u. 1." className="w-full p-3 bg-black rounded-xl text-white border border-zinc-800" />
-              </div>
-              <div>
-                <label className="text-[11px] block mb-1">Adószám / Regisztrációs szám</label>
-                <input type="text" name="tax_number" defaultValue={settings.tax_number} placeholder="pl. 12345678-2-41" className="w-full p-3 bg-black rounded-xl text-white border border-zinc-800" />
+                <label className="text-[11px] block mb-1">Tenyésztő Neve</label>
+                <input type="text" name="owner_name" defaultValue={settings.owner_name} className="w-full p-3 bg-black rounded-xl text-white border border-zinc-800" />
               </div>
             </div>
           </div>
 
-          {/* ALAP MÓDOK */}
+          {/* ALAP MÓDOK & 10 RENDELKEZÉSRE ÁLLÓ BETŰTÍPUS */}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <h3 className="font-bold mb-2">Theme Mode</h3>
-              <select value={themeMode} onChange={(e) => { setThemeMode(e.target.value); if(palette !== "custom") setBg(e.target.value === "light" ? "#FFFFFF" : "#000000"); }} className="w-full p-3 bg-black rounded-xl border border-zinc-800 text-white">
+              <select value={themeMode} onChange={(e) => setThemeMode(e.target.value)} className="w-full p-3 bg-black rounded-xl border border-zinc-800 text-white">
                 <option value="dark">dark</option>
                 <option value="light">light</option>
                 <option value="system">system</option>
               </select>
             </div>
             <div>
-              <h3 className="font-bold mb-2">Betűtípus (Font Stílus)</h3>
+              <h3 className="font-bold mb-2">Betűtípus (10 Prémium Google Font)</h3>
               <select value={font} onChange={(e) => setFont(e.target.value)} className="w-full p-3 bg-black rounded-xl border border-zinc-800 text-white">
                 <option value="inter">Inter (Letisztult modern)</option>
                 <option value="poppins">Poppins (Geometrikus tech)</option>
-                <option value="cinzel">Cinzel (Luxus serif)</option>
+                <option value="cinzel">Cinzel (Luxus Serif)</option>
                 <option value="montserrat">Montserrat (Prémium széles)</option>
+                <option value="outfit">Outfit (Lágy lekerekített)</option>
+                <option value="manrope:">Manrope (Karakteres szoftveres)</option>
+                <option value="playfair">Playfair Display (Elegáns serif)</option>
+                <option value="roboto">Roboto (Klasszikus gyári)</option>
+                <option value="oswald">Oswald (Vastag tömörített)</option>
+                <option value="ubuntu">Ubuntu (Lágy íves)</option>
               </select>
             </div>
           </div>
 
-          {/* PALETTÁK DOBOZAI */}
+          {/* PALETTÁK */}
           <div>
             <h3 className="font-bold mb-3">Márka Paletták</h3>
             <div className="grid grid-cols-2 gap-3">
@@ -174,13 +165,21 @@ export default function BrandingClient({ settings, saveBrandingAction }: Props) 
             </div>
           </div>
 
-          {/* CUSTOM PICKERS */}
+          {/* CUSTOM BUILDER: BETŰSZÍNEKKEL KIEGÉSZÍTVE */}
           {palette === "custom" && (
-            <div className="grid grid-cols-2 gap-3 p-4 bg-black rounded-xl border border-zinc-900 animate-slideDown">
-              <div><label className="text-[10px] block mb-0.5">Primary (Violet)</label><input type="color" value={primary} onChange={(e) => setPrimary(e.target.value)} className="w-full h-8 bg-transparent cursor-pointer" /></div>
-              <div><label className="text-[10px] block mb-0.5">Accent (Lime)</label><input type="color" value={accent} onChange={(e) => setAccent(e.target.value)} className="w-full h-8 bg-transparent cursor-pointer" /></div>
-              <div><label className="text-[10px] block mb-0.5">Background</label><input type="color" value={bg} onChange={(e) => setBg(e.target.value)} className="w-full h-8 bg-transparent cursor-pointer" /></div>
-              <div><label className="text-[10px] block mb-0.5">Card Base</label><input type="color" value={card} onChange={(e) => setCard(e.target.value)} className="w-full h-8 bg-transparent cursor-pointer" /></div>
+            <div className="p-4 bg-black rounded-xl border border-zinc-900 space-y-3 animate-slideDown">
+              <div className="grid grid-cols-2 gap-2">
+                <div><label className="text-[10px] block mb-0.5">Primary (Violet)</label><input type="color" value={primary} onChange={(e) => setPrimary(e.target.value)} className="w-full h-8 bg-transparent cursor-pointer" /></div>
+                <div><label className="text-[10px] block mb-0.5">Accent (Lime)</label><input type="color" value={accent} onChange={(e) => setAccent(e.target.value)} className="w-full h-8 bg-transparent cursor-pointer" /></div>
+              </div>
+              <div className="grid grid-cols-2 gap-2 border-t border-zinc-900 pt-2">
+                <div><label className="text-[10px] block mb-0.5">Háttérszín</label><input type="color" value={bg} onChange={(e) => setBg(e.target.value)} className="w-full h-8 bg-transparent cursor-pointer" /></div>
+                <div><label className="text-[10px] block mb-0.5">Kártya Alapszín</label><input type="color" value={card} onChange={(e) => setCard(e.target.value)} className="w-full h-8 bg-transparent cursor-pointer" /></div>
+              </div>
+              <div className="grid grid-cols-2 gap-2 border-t border-zinc-900 pt-2">
+                <div><label className="text-[10px] block mb-0.5">✍️ Főcímek betűszíne</label><input type="color" value={textHeading} onChange={(e) => setTextHeading(e.target.value)} className="w-full h-8 bg-transparent cursor-pointer" /></div>
+                <div><label className="text-[10px] block mb-0.5">📝 Leírások betűszíne</label><input type="color" value={textBody} onChange={(e) => setTextBody(e.target.value)} className="w-full h-8 bg-transparent cursor-pointer" /></div>
+              </div>
             </div>
           )}
 
@@ -212,26 +211,19 @@ export default function BrandingClient({ settings, saveBrandingAction }: Props) 
             </div>
           </div>
 
-          <button type="submit" disabled={pending} className="w-full h-14 rounded-2xl bg-lime-300 text-black font-black uppercase tracking-wider text-xs transition-all hover:opacity-95 flex items-center justify-center gap-2">
-            {pending ? (
-              <>
-                <span className="animate-spin inline-block w-4 h-4 border-2 border-black border-t-transparent rounded-full"></span>
-                Rendszer frissítése...
-              </>
-            ) : "🚀 ARCULATI STRATÉGIA ÉLESÍTÉSE"}
+          <button type="submit" disabled={pending} className="w-full h-14 rounded-2xl bg-lime-300 text-black font-black uppercase tracking-wider text-xs transition-all hover:opacity-95">
+            {pending ? "Rendszer élesítése..." : "🚀 ARCULATI STRATÉGIA ÉLESÍTÉSE"}
           </button>
 
         </section>
 
-        {/* PREVIEW PANEL */}
+        {/* PREVIEW */}
         <section className="sticky top-6">
           <div className="rounded-[32px] p-8 border border-white/10" style={{ background: `linear-gradient(135deg, ${primary}22, ${accent}11)` }}>
             <div className="rounded-3xl p-6 border" style={{ backgroundColor: card, borderColor: "rgba(255,255,255,0.05)" }}>
-              <h2 className="text-xl font-black mb-4" style={{ color: primary }}>🐾 {kennelName}</h2>
+              <h2 className="text-xl font-black mb-4" style={{ color: textHeading }}>🐾 {kennelName}</h2>
               <div className="grid gap-3">
-                <div className="p-5 rounded-2xl border" style={{ background: `linear-gradient(135deg, ${primary}25, ${primary}05)`, borderColor: "rgba(255,255,255,0.03)" }}>Dashboard Kártya 1 (Violet átmenet)</div>
-                <div className="p-5 rounded-2xl border" style={{ background: `linear-gradient(135deg, ${accent}20, ${accent}05)`, borderColor: "rgba(255,255,255,0.03)", color: "#000000" }}>Dashboard Kártya 2 (Lime átmenet)</div>
-                <div className="p-5 rounded-2xl border" style={{ background: `linear-gradient(135deg, ${primary}15, ${accent}10)`, borderColor: "rgba(255,255,255,0.03)" }}>Dashboard Kártya 3 (Vegyes neon tónus)</div>
+                <div className="p-5 rounded-2xl border" style={{ background: `linear-gradient(135deg, ${primary}25, ${primary}05)`, color: textBody }}>Kártya Szövegszín Előnézet</div>
               </div>
             </div>
           </div>
