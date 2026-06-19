@@ -34,7 +34,7 @@ export const THEMES = {
 
 type ThemeKey = keyof typeof THEMES;
 
-type BrandingSettings = {
+export type BrandingSettings = {
   preset_palette?: string | null;
   theme_mode?: string | null;
 
@@ -48,47 +48,76 @@ type BrandingSettings = {
   ui_style?: string | null;
 };
 
+export type ThemeTokens = {
+  primary: string;
+  accent: string;
+
+  bg: string;
+  surface: string;
+  text: string;
+
+  border: string;
+
+  card1: string;
+  card2: string;
+  card3: string;
+
+  radius: string;
+
+  transition: string;
+
+  glass: string;
+
+  glow: string;
+
+  shadow: string;
+
+  sidebar: string;
+
+  style: string;
+};
+
 export function buildThemeTokens(
   settings?: BrandingSettings | null
-) {
-  const selected =
+): ThemeTokens {
+  const palette =
     THEMES[
       (settings?.preset_palette ??
         "midnight") as ThemeKey
     ] ?? THEMES.midnight;
 
-  const custom =
+  const isCustom =
     settings?.preset_palette === "custom";
 
-  const dark =
+  const isDark =
     settings?.theme_mode !== "light";
 
   const primary =
-    custom
+    isCustom
       ? settings?.primary_color || "#7D39EB"
-      : selected.primary;
+      : palette.primary;
 
   const accent =
-    custom
+    isCustom
       ? settings?.accent_color || "#C6FF33"
-      : selected.accent;
+      : palette.accent;
 
   const bg =
-    custom
+    isCustom
       ? settings?.bg_color || "#000000"
-      : dark
-      ? selected.bg
+      : isDark
+      ? palette.bg
       : "#FFFFFF";
 
   const surface =
-    custom
+    isCustom
       ? settings?.card_color || "#090A0F"
-      : dark
-      ? selected.surface
+      : isDark
+      ? palette.surface
       : "#F8FAFC";
 
   const text =
-    dark
+    isDark
       ? "#FFFFFF"
       : "#111827";
 
@@ -106,25 +135,29 @@ export function buildThemeTokens(
       ? "400ms cubic-bezier(.2,.8,.2,1)"
       : "240ms ease";
 
+  const style =
+    settings?.ui_style ||
+    "glass";
+
   const glass =
-    settings?.ui_style === "glass"
+    style === "glass"
       ? "blur(18px)"
       : "none";
 
   const glow =
-    settings?.ui_style === "neon"
+    style === "neon"
       ? `${primary}55`
       : "transparent";
 
   const shadow =
-    settings?.ui_style === "glass"
-      ? "0 10px 40px rgba(0,0,0,.15)"
-      : settings?.ui_style === "neon"
+    style === "glass"
+      ? "0 12px 60px rgba(0,0,0,.15)"
+      : style === "neon"
       ? `0 0 40px ${primary}25`
       : "none";
 
   const sidebar =
-    dark
+    isDark
       ? "rgba(255,255,255,.03)"
       : "rgba(255,255,255,.92)";
 
@@ -137,7 +170,7 @@ export function buildThemeTokens(
     text,
 
     border:
-      dark
+      isDark
         ? "rgba(255,255,255,.08)"
         : "rgba(0,0,0,.08)",
 
@@ -146,12 +179,17 @@ export function buildThemeTokens(
     card3: `${primary}0C`,
 
     radius,
+
     transition,
 
     glass,
+
     glow,
+
     shadow,
 
     sidebar,
+
+    style,
   };
 }
