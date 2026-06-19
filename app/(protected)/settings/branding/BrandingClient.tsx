@@ -66,7 +66,12 @@ export default function BrandingClient({ settings, saveBrandingAction }: Props) 
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const fd = new FormData(e.currentTarget);
+    if (pending) return;
+
+    const formElement = e.currentTarget;
+    const fd = new FormData(formElement);
+    
+    // Explicit adatinjekció a szinkronitásért
     fd.set("theme_mode", themeMode);
     fd.set("preset_palette", palette);
     fd.set("primary_color", primary);
@@ -80,9 +85,15 @@ export default function BrandingClient({ settings, saveBrandingAction }: Props) 
     fd.set("kennel_name", kennelName);
 
     startTransition(async () => {
-      await saveBrandingAction(fd);
-      router.refresh();
-      setTimeout(() => { location.reload(); }, 150);
+      try {
+        await saveBrandingAction(fd);
+        router.refresh();
+        // Azonnali hard reload, hogy a CSS változók garantáltan újraolvasásra kerüljenek
+        window.location.reload();
+      } catch (err) {
+        alert("Hiba történt a mentés során! Kérlek nézd meg a konzolt.");
+        console.error(err);
+      }
     });
   }
 
@@ -130,7 +141,7 @@ export default function BrandingClient({ settings, saveBrandingAction }: Props) 
           <div className="grid grid-cols-2 gap-4">
             <div>
               <h3 className="font-bold mb-2">Theme Mode</h3>
-              <select value={themeMode} onChange={(e) => setThemeMode(e.target.value)} className="w-full p-3 bg-black rounded-xl border border-zinc-800 text-white">
+              <select value={themeMode} onChange={(e) => { setThemeMode(e.target.value); if(palette !== "custom") setBg(e.target.value === "light" ? "#FFFFFF" : "#000000"); }} className="w-full p-3 bg-black rounded-xl border border-zinc-800 text-white">
                 <option value="dark">dark</option>
                 <option value="light">light</option>
                 <option value="system">system</option>
@@ -201,8 +212,13 @@ export default function BrandingClient({ settings, saveBrandingAction }: Props) 
             </div>
           </div>
 
-          <button type="submit" disabled={pending} className="w-full h-14 rounded-2xl bg-lime-300 text-black font-black uppercase tracking-wider text-xs transition-all hover:opacity-95">
-            {pending ? "Rendszer frissítése..." : "🚀 ARCULATI STRATÉGIA ÉLESÍTÉSE"}
+          <button type="submit" disabled={pending} className="w-full h-14 rounded-2xl bg-lime-300 text-black font-black uppercase tracking-wider text-xs transition-all hover:opacity-95 flex items-center justify-center gap-2">
+            {pending ? (
+              <>
+                <span className="animate-spin inline-block w-4 h-4 border-2 border-black border-t-transparent rounded-full"></span>
+                Rendszer frissítése...
+              </>
+            ) : "🚀 ARCULATI STRATÉGIA ÉLESÍTÉSE"}
           </button>
 
         </section>
