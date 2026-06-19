@@ -11,11 +11,12 @@ export default async function ProtectedLayout({ children }: { children: React.Re
   if (!user) redirect("/login");
 
   const { data: branding } = await supabase.from("branding_settings").select("*").eq("user_id", user.id).maybeSingle();
-
   const theme = buildThemeTokens(branding);
+  
   const kennelName = branding?.kennel_name || "Saját Kennel";
   const logoUrl = branding?.logo_url || null;
 
+  // Hiánytalan, fix menürendszer
   const navItems = [
     { href: "/dashboard", label: "📊 Dashboard" },
     { href: "/dogs", label: "🐕 Kutyák" },
@@ -29,8 +30,7 @@ export default async function ProtectedLayout({ children }: { children: React.Re
 
   return (
     <div className="app-shell">
-      {/* Google Fonts betöltése dinamikusan a kiválasztott font alapján */}
-      <link rel="stylesheet" href={`https://fonts.googleapis.com/css2?family=Inter:wght@400;600;900&family=Poppins:wght@400;600;900&family=Cinzel:wght@400;700;900&family=Montserrat:wght@400;600;900&display=swap`} />
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;900&family=Poppins:wght@400;600;900&family=Cinzel:wght@400;700;900&family=Montserrat:wght@400;600;900&display=swap" />
 
       <style dangerouslySetInnerHTML={{ __html: `
         :root {
@@ -39,52 +39,51 @@ export default async function ProtectedLayout({ children }: { children: React.Re
           --bg: ${theme.bg};
           --surface: ${theme.surface};
           --text: ${theme.text};
-          --card-1: ${theme.card1};
-          --card-2: ${theme.card2};
-          --card-3: ${theme.card3};
           --radius: ${theme.radius};
           --transition: ${theme.transition};
-          --glass: ${theme.glass};
-          --glow: ${theme.glow};
-          --sidebar: ${theme.sidebar};
           --font-family: ${theme.font};
-          --gradient: linear-gradient(135deg, ${theme.primary}20, ${theme.accent}10);
         }
 
-        html, body, .app-shell, main, div[className*="bg-zinc-950"], div[className*="bg-black"] {
+        html, body, .app-shell, main {
           background: var(--bg) !important;
           color: var(--text) !important;
           font-family: var(--font-family) !important;
-          transition: all var(--transition);
+          transition: background var(--transition), color var(--transition);
+          margin: 0;
+          box-sizing: border-box;
         }
 
         * { box-sizing: border-box; }
         .app-shell { display: flex; min-height: 100vh; }
 
-        /* Szuperkényszerített kártya felülírás az összes aloldalra */
+        /* Központi kártya architektúra (Glassmorphism & Neon támogatással) */
         .card, div[className*="rounded-xl"], div[className*="rounded-2xl"], section[className*="bg-zinc-"] {
-          background-color: var(--surface) !important;
-          border: 1px solid ${theme.text}10 !important;
+          background: ${theme.style === "glass" ? `rgba(255,255,255,0.03)` : "var(--surface)"} !important;
+          backdrop-filter: ${theme.glass} !important;
+          border: 1px solid var(--border) !important;
           border-radius: var(--radius) !important;
           box-shadow: ${theme.shadow} !important;
+          border: 1px solid ${theme.text}15 !important;
+          ${theme.style === "neon" ? `box-shadow: ${theme.glow} !important;` : ""}
         }
 
-        /* Gombok kényszerítése az Accent (Lime) színre */
+        /* Dashboard grid: 3 teljesen különböző Violet / Lime gradiens árnyalat */
+        .dashboard-grid div:nth-child(1), .dashboard-grid div[className*="rounded-"]:nth-child(1) { background: ${theme.card1} !important; }
+        .dashboard-grid div:nth-child(2), .dashboard-grid div[className*="rounded-"]:nth-child(2) { background: ${theme.card2} !important; }
+        .dashboard-grid div:nth-child(3), .dashboard-grid div[className*="rounded-"]:nth-child(3) { background: ${theme.card3} !important; }
+
+        /* Globális akciógombok igazítása az Accent (Lime) színre */
         button, button[type="submit"], .bg-emerald-500, .bg-purple-600, .bg-amber-500, button[className*="bg-"] {
           background: var(--accent) !important;
           color: #000000 !important;
           border-radius: var(--radius) !important;
           font-weight: 900 !important;
           border: none !important;
-          box-shadow: 0 0 15px ${theme.accent}30 !important;
+          box-shadow: 0 4px 15px ${theme.accent}30 !important;
+          cursor: pointer;
         }
 
-        /* Dashboard grid egyedi kártyaszínei */
-        .dashboard-grid div:nth-child(1) { background: var(--card-1) !important; }
-        .dashboard-grid div:nth-child(2) { background: var(--card-2) !important; }
-        .dashboard-grid div:nth-child(3) { background: var(--card-3) !important; }
-
-        /* Input mezők és select panelek idomítása, hogy olvashatóak legyenek */
+        /* Beviteli mezők intelligens színkezelése, hogy minden módban tökéletesen olvasható legyen */
         input, textarea, select {
           background: ${theme.text}08 !important;
           color: var(--text) !important;
@@ -95,8 +94,8 @@ export default async function ProtectedLayout({ children }: { children: React.Re
 
         .sidebar {
           width: 270px;
-          background: var(--sidebar);
-          border-right: 1px solid rgba(255,255,255,.06);
+          background: ${theme.sidebar};
+          border-right: 1px solid ${theme.text}10;
           backdrop-filter: blur(20px);
           padding: 30px;
         }
@@ -112,23 +111,15 @@ export default async function ProtectedLayout({ children }: { children: React.Re
           font-weight: 600;
           transition: all var(--transition);
         }
-
-        .sidebar-link:hover {
-          background: rgba(255,255,255,.04);
-          transform: translateX(3px);
-        }
+        .sidebar-link:hover { background: ${theme.text}05; transform: translateX(3px); }
 
         .main { flex: 1; padding: 36px; }
         h1, h2, h3, .text-white { color: var(--text) !important; }
       `}} />
 
       <aside className="sidebar">
-        <div className="mb-10 flex items-center gap-3">
-          {logoUrl ? (
-            <img src={logoUrl} alt="Logo" className="h-9 max-w-[190px] object-contain rounded" />
-          ) : (
-            <div style={{ fontSize: 24, fontWeight: 900 }}>⚡ {kennelName}</div>
-          )}
+        <div className="mb-10 font-black text-2xl tracking-tight" style={{ color: "var(--text)" }}>
+          {logoUrl ? <img src={logoUrl} alt="Logo" className="h-9 max-w-[180px] object-contain" /> : `⚡ ${kennelName}`}
         </div>
         <nav style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {navItems.map((item) => (
