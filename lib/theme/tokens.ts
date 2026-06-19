@@ -1,46 +1,10 @@
 export const THEMES = {
-  midnight: {
-    primary: "#7D39EB",
-    accent: "#C6FF33",
-    bg: "#000000",
-    surface: "#090A0F",
-    text: "#FFFFFF",
-  },
-  aurora: {
-    primary: "#6D28D9",
-    accent: "#22D3EE",
-    bg: "#030712",
-    surface: "#111827",
-    text: "#FFFFFF",
-  },
-  electric: {
-    primary: "#4F46E5",
-    accent: "#00FFA3",
-    bg: "#050505",
-    surface: "#111111",
-    text: "#FFFFFF",
-  },
-  royal: {
-    primary: "#D4AF37",
-    accent: "#FFF4CC",
-    bg: "#080808",
-    surface: "#181818",
-    text: "#FFFFFF",
-  },
-  lime: {
-    primary: "#7D39EB",
-    accent: "#C6FF33",
-    bg: "#000000",
-    surface: "#101010",
-    text: "#FFFFFF",
-  },
-  custom: {
-    primary: "#7D39EB",
-    accent: "#C6FF33",
-    bg: "#000000",
-    surface: "#090A0F",
-    text: "#FFFFFF",
-  }
+  midnight: { primary: "#7D39EB", accent: "#C6FF33", bg: "#000000", surface: "#090A0F", text: "#FFFFFF" },
+  aurora:   { primary: "#6D28D9", accent: "#22D3EE", bg: "#030712", surface: "#111827", text: "#FFFFFF" },
+  electric: { primary: "#4F46E5", accent: "#00FFA3", bg: "#050505", surface: "#111111", text: "#FFFFFF" },
+  royal:    { primary: "#D4AF37", accent: "#FFF4CC", bg: "#080808", surface: "#181818", text: "#FFFFFF" },
+  lime:     { primary: "#7D39EB", accent: "#C6FF33", bg: "#000000", surface: "#101010", text: "#FFFFFF" },
+  custom:   { primary: "#7D39EB", accent: "#C6FF33", bg: "#000000", surface: "#090A0F", text: "#FFFFFF" },
 } as const;
 
 type ThemeKey = keyof typeof THEMES;
@@ -55,7 +19,7 @@ export type BrandingSettings = {
   ui_radius?: string | null;
   ui_animation?: string | null;
   ui_style?: string | null;
-  kennel_name?: string | null;
+  ui_font?: string | null;
 };
 
 export type ThemeTokens = {
@@ -75,6 +39,7 @@ export type ThemeTokens = {
   shadow: string;
   sidebar: string;
   style: string;
+  font: string;
 };
 
 export function buildThemeTokens(settings?: BrandingSettings | null): ThemeTokens {
@@ -84,51 +49,32 @@ export function buildThemeTokens(settings?: BrandingSettings | null): ThemeToken
 
   const primary = isCustom ? settings?.primary_color || "#7D39EB" : palette.primary;
   const accent = isCustom ? settings?.accent_color || "#C6FF33" : palette.accent;
-  
-  const bg = isCustom 
-    ? settings?.bg_color || "#000000" 
-    : isDark ? palette.bg : "#FFFFFF";
-
-  const surface = isCustom 
-    ? settings?.card_color || "#090A0F" 
-    : isDark ? palette.surface : "#F8FAFC";
-
+  const bg = isCustom ? settings?.bg_color || "#000000" : isDark ? palette.bg : "#FFFFFF";
+  const surface = isCustom ? settings?.card_color || "#090A0F" : isDark ? palette.surface : "#F8FAFC";
   const text = isDark ? "#FFFFFF" : "#111827";
 
-  const radius = settings?.ui_radius === "sharp" 
-    ? "0px" 
-    : settings?.ui_radius === "soft" ? "28px" : "18px";
-
-  const transition = settings?.ui_animation === "minimal" 
-    ? "0s" 
-    : settings?.ui_animation === "dynamic" ? "400ms cubic-bezier(.2,.8,.2,1)" : "240ms ease";
+  const radius = settings?.ui_radius === "sharp" ? "0px" : settings?.ui_radius === "soft" ? "28px" : "18px";
+  const transition = settings?.ui_animation === "minimal" ? "0s" : settings?.ui_animation === "dynamic" ? "400ms cubic-bezier(.2,.8,.2,1)" : "240ms ease";
 
   const style = settings?.ui_style || "glass";
   const glass = style === "glass" ? "blur(18px)" : "none";
   const glow = style === "neon" ? `${primary}55` : "transparent";
-
-  const shadow = style === "glass" 
-    ? "0 12px 60px rgba(0,0,0,.15)" 
-    : style === "neon" ? `0 0 40px ${primary}25` : "none";
-
+  const shadow = style === "glass" ? "0 12px 60px rgba(0,0,0,.15)" : style === "neon" ? `0 0 40px ${primary}25` : "none";
   const sidebar = isDark ? "rgba(255,255,255,.03)" : "rgba(0,0,0,.03)";
+  
+  // Kiválasztott betűtípus kezelése mappinggel
+  const fontMap: Record<string, string> = {
+    inter: "'Inter', sans-serif",
+    poppins: "'Poppins', sans-serif",
+    cinzel: "'Cinzel', serif",
+    montserrat: "'Montserrat', sans-serif"
+  };
+  const font = fontMap[settings?.ui_font || "inter"] || "'Inter', sans-serif";
 
   return {
-    primary,
-    accent,
-    bg,
-    surface,
-    text,
+    primary, accent, bg, surface, text,
     border: isDark ? "rgba(255,255,255,.08)" : "rgba(0,0,0,.08)",
-    card1: `${primary}18`,
-    card2: `${accent}18`,
-    card3: `${primary}0C`,
-    radius,
-    transition,
-    glass,
-    glow,
-    shadow,
-    sidebar,
-    style,
+    card1: `${primary}18`, card2: `${accent}15`, card3: `${primary}0C`,
+    radius, transition, glass, glow, shadow, sidebar, style, font
   };
 }
