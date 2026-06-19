@@ -1,9 +1,24 @@
 import Link from "next/link";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { BRANDING_PRESETS } from "./settings/branding/BrandingClient";
 
 export const dynamic = "force-dynamic";
+
+// Szerveroldali biztonságos paletta-adatok (Nem importálunk klienstől!)
+const SERVER_PRESETS = {
+  obsidian_platinum: { name: "Obsidian Platinum (Mérnöki)", bg: "#0A0B0F", heading: "#E5E7EB", body: "#8B8D98", accent: "#8B8D98" },
+  royal_gold: { name: "Royal Navy & Gold (Luxus)", bg: "#060B16", heading: "#E2D1B3", body: "#A2B3C6", accent: "#C6A675" },
+  creme_burgundy: { name: "Creme & Deep Burgundy", bg: "#F4EFEA", heading: "#4A0E17", body: "#7A6865", accent: "#A11A4B" },
+  cyber_neon: { name: "Cyberpunk Tech (Élénk)", bg: "#07040F", heading: "#00FFCC", body: "#EEA0FF", accent: "#5A4EFF" },
+  swiss_emerald: { name: "Swiss Green (Letisztult)", bg: "#061310", heading: "#E2F4F0", body: "#789A93", accent: "#22C55E" },
+  sandstone_cosy: { name: "Sandstone Beige (Meleg)", bg: "#151210", heading: "#E7CFA4", body: "#A19284", accent: "#C19A6B" },
+  arctic_white: { name: "Arctic Minimal (Világos)", bg: "#F8FAFC", heading: "#0F172A", body: "#64748B", accent: "#06B6D4" },
+  burnt_peach: { name: "Burnt Peach & Sage", bg: "#1A1512", heading: "#F4A27E", body: "#9FB1A5", accent: "#E67E22" },
+  inkwell_eclipse: { name: "Inkwell Dark Chrome", bg: "#121318", heading: "#FFFFFF", body: "#71717A", accent: "#E2E8F0" },
+  forest_heritage: { name: "Forest Prestige", bg: "#0B140F", heading: "#D1E7DD", body: "#748E81", accent: "#81C784" },
+  monetto_flat: { name: "Monetto Terracotta", bg: "#FDFBF7", heading: "#EA2E00", body: "#5A6E72", accent: "#9DBDB8" },
+  graphite_monochrome: { name: "Graphite Studio", bg: "#09090B", heading: "#FFFFFF", body: "#71717A", accent: "#FFFFFF" },
+};
 
 export default async function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const supabase = createServerSupabase();
@@ -15,12 +30,13 @@ export default async function ProtectedLayout({ children }: { children: React.Re
 
   const isPreset = (branding?.theme_mode || "preset") === "preset";
   const currentPresetKey = branding?.preset_palette || "obsidian_platinum";
-  const presetData = BRANDING_PRESETS[currentPresetKey as keyof typeof BRANDING_PRESETS] || BRANDING_PRESETS.obsidian_platinum;
+  const presetData = SERVER_PRESETS[currentPresetKey as keyof typeof SERVER_PRESETS] || SERVER_PRESETS.obsidian_platinum;
 
-  // FEJLESZTETT 3-SZINTŰ SZÍNKIVÁLASZTÓ LOGIKA
+  // Globális színek kinyerése
   const bgColor = isPreset ? presetData.bg : (branding?.bg_color || "#0A0B0F");
   const accentColor = isPreset ? presetData.accent : (branding?.accent_color || "#8B8D98");
   
+  // 3-Szintű Szövegszín kezelés
   const headingColor = isPreset ? presetData.heading : (branding?.text_heading_color || "#FFFFFF");
   const bodyColor = isPreset ? presetData.body : (branding?.text_body_color || "#A1A1AA");
   const cardTextColor = isPreset ? presetData.heading : (branding?.text_card_color || "#FFFFFF");
@@ -53,16 +69,13 @@ export default async function ProtectedLayout({ children }: { children: React.Re
     <div className="min-h-screen flex transition-all duration-300" style={{ backgroundColor: bgColor, color: bodyColor, fontFamily: `'${googleFontName}', sans-serif` }}>
       <link rel="stylesheet" href={`https://fonts.googleapis.com/css2?family=${googleFontName.replace(/ /g, "+")}:wght@400;600;900&display=swap`} />
 
-      {/* 🚀 MESTER SZINTŰ RENDERSZABÁLYZAT INJEKCIÓ */}
       <style dangerouslySetInnerHTML={{ __html: `
         body, html { background-color: ${bgColor} !important; }
         
-        /* 1. HÁROM FÜGGETLEN BETŰSZÍN KÉNYSZERÍTÉSE */
         h1, h2, h3, h4, th, .text-white, strong, b { color: ${headingColor} !important; }
         p, span, label, li, .text-zinc-400, .text-zinc-300 { color: ${bodyColor} !important; }
         td, div[className*="rounded-xl"] span, div[className*="rounded-xl"] p { color: ${cardTextColor} !important; }
 
-        /* Globális akciógombok */
         button[type="submit"], .bg-emerald-500, .bg-blue-500, .bg-blue-600, .bg-zinc-100, 
         button:contains("+"), button:contains("MENTÉS"), button[className*="bg-emerald"], .bg-amber-500 {
           background-color: ${accentColor} !important;
@@ -72,7 +85,6 @@ export default async function ProtectedLayout({ children }: { children: React.Re
           box-shadow: 0 4px 24px ${accentColor}25 !important;
         }
 
-        /* 🪐 LÁTVÁNYOS KÁRTYA RECEPT: A főcímszín 5%-os vetülete (Így világos és sötét háttérnél is hibátlan és kontrasztos) */
         .bg-zinc-950, .bg-zinc-900, .bg-black, .bg-zinc-800, .bg-zinc-800\\/50, .rounded-xl.border, .border-zinc-800 {
           background-color: ${headingColor}0d !important;
           border: 1px solid ${headingColor}15 !important;
@@ -86,14 +98,12 @@ export default async function ProtectedLayout({ children }: { children: React.Re
           transform: translateY(-2px);
         }
 
-        /* 🔲 IKON BOXOK DESIGN */
         aside span[className*="rounded-lg"], main span[className*="bg-zinc-900"] {
           background-color: ${accentColor}12 !important;
           border: 1px solid ${accentColor}25 !important;
           color: ${accentColor} !important;
         }
 
-        /* Inputok */
         input, select, textarea {
           background-color: ${headingColor}05 !important;
           border: 1px solid ${headingColor}15 !important;
