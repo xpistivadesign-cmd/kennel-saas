@@ -1,7 +1,6 @@
 import { createServerSupabase } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-// Beimportáljuk az új, interaktív kalkulátorunkat
 import GestationCalculator from "./GestationCalculator";
 
 export const dynamic = "force-dynamic";
@@ -10,11 +9,8 @@ export default async function DashboardPage() {
   const supabase = createServerSupabase();
 
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    redirect("/login");
-  }
+  if (!user) redirect("/login");
 
-  // Ezres csoportosító függvény a prémium pénzügyi megjelenítéshez
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("hu-HU", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(amount);
   };
@@ -33,7 +29,7 @@ export default async function DashboardPage() {
     .order("created_at", { ascending: false })
     .limit(3);
 
-  // 3. Közelgő tüzelések (Heats)
+  // 3. Közelgő tüzelések
   const todayStr = new Date().toISOString().split("T")[0];
   const { data: upcomingHeats } = await supabase
     .from("heats")
@@ -51,15 +47,22 @@ export default async function DashboardPage() {
 
   let totalRevenue = 0;
   let totalExpenses = 0;
-
   transactions?.forEach((t) => {
     if (t.type === "income") totalRevenue += Number(t.amount || 0);
     if (t.type === "expense") totalExpenses += Number(t.amount || 0);
   });
-
   const netProfit = totalRevenue - totalExpenses;
 
-  // 5. SÜRGŐS KÖZELGŐ ESEMÉNYEK (Mai naptól számított 7 napon belülre növelve, hogy biztosan lásd az ellést is!)
+  // 5. ÉLŐ ÁLLATORVOSI RIASZTÁSOK LEKÉRÉSE (A korábbi statikus szöveg helyett!)
+  const { data: liveVetVisits } = await supabase
+    .from("vet_visits")
+    .select("id, purpose, date")
+    .eq("user_id", user.id)
+    .eq("status", "planned")
+    .order("date", { ascending: true })
+    .limit(2);
+
+  // 6. Sürgős naptár események
   const limitDate = new Date();
   limitDate.setDate(limitDate.getDate() + 7);
   const limitStr = limitDate.toISOString().split("T")[0];
@@ -67,16 +70,8 @@ export default async function DashboardPage() {
   const { data: urgentEvents } = await supabase
     .from("events")
     .select(`
-      id,
-      title,
-      event_type,
-      date,
-      location,
-      event_entries (
-        dogs (
-          name
-        )
-      )
+      id, title, event_type, date, location,
+      event_entries ( dogs ( name ) )
     `)
     .eq("user_id", user.id)
     .gte("date", todayStr)
@@ -85,102 +80,101 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      {/* HEADER BANNER */}
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-black text-white">Breeder Dashboard</h1>
+        <h1 className="text-3xl font-black">Breeder Dashboard</h1>
         <div className="flex gap-2">
-          <Link href="/dogs" className="bg-zinc-800 hover:bg-zinc-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-colors">+ Add Dog</Link>
-          <Link href="/heats" className="bg-zinc-800 hover:bg-zinc-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-colors">+ Log Heat</Link>
-          <Link href="/finance" className="bg-amber-500 hover:bg-amber-400 text-black px-3 py-1.5 rounded-lg text-xs font-bold transition-colors">+ Transaction</Link>
+          <Link href="/dogs" className="bg-zinc-800 hover:opacity-90 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-all">+ Add Dog</Link>
+          <Link href="/heats" className="bg-zinc-800 hover:opacity-90 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-all">+ Log Heat</Link>
+          <Link href="/finance" className="bg-primary-btn text-black px-4 py-1.5 rounded-lg text-xs font-bold transition-all">+ Transaction</Link>
         </div>
       </div>
 
       {/* SÜRGŐS RIASZTÁSOK BOX */}
       {urgentEvents && urgentEvents.length > 0 && (
-        <div className="bg-amber-950/40 border border-amber-500/50 p-4 rounded-xl space-y-3">
+        <div className="p-4 rounded-xl border border-amber-500/20 bg-amber-950/20 space-y-3">
           <h2 className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-2">
             🚨 SÜRGŐS KÖZELGŐ ESEMÉNY / TEENDŐ!
           </h2>
           {urgentEvents.map((ev: any) => (
-            <div key={ev.id} className="bg-black/40 p-3 rounded-lg border border-amber-500/20">
+            <div key={ev.id} className="bg-black/40 p-3 rounded-lg border border-amber-500/10">
               <span className="text-zinc-200 font-bold text-sm">🏆 {ev.title}</span>
-              <span className="text-xs text-zinc-400 ml-2">({ev.event_type})</span>
-              <p className="text-xs text-zinc-400 mt-1">
-                📅 Időpont: <span className="text-amber-400 font-mono font-bold">{ev.date}</span> • 📍 Helyszín: {ev.location || "Nincs megadva"}
-              </p>
-              <p className="text-[11px] text-zinc-500 italic mt-1">
-                {ev.event_entries && ev.event_entries.length > 0 
-                  ? `Benevezve: ${ev.event_entries.map((en: any) => en.dogs?.name).filter(Boolean).join(", ")}`
-                  : "Nincs kutya külön hozzárendelve."}
-              </p>
+              <span className="text-xs opacity-40 ml-2">({ev.event_type})</span>
+              <p className="text-xs opacity-60 mt-1">📅 Időpont: <span className="text-amber-400 font-mono font-bold">{ev.date}</span></p>
             </div>
           ))}
         </div>
       )}
 
-      {/* INFÓ DOBOZOK */}
+      {/* ARCULAT-VEZÉRELT PROGESTERONE & MEDICAL INFÓS GRID */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-zinc-900/40 border border-amber-500/30 p-4 rounded-xl">
-          <h3 className="text-xs font-bold text-amber-400 uppercase tracking-wider mb-1">Optimal Breeding Window</h3>
-          <p className="text-zinc-400 text-xs">Monitor progesterone levels between 5.0 - 10.0 ng/ml for ovulation detection.</p>
+        <div className="card p-5 border border-purple-500/20" style={{ background: "linear-gradient(135deg, var(--primary)15, transparent)" }}>
+          <h3 className="text-xs font-black text-purple-400 uppercase tracking-wider mb-1">Optimal Breeding Window</h3>
+          <p className="text-xs opacity-70">Monitor progesterone levels between 5.0 - 10.0 ng/ml for ovulation detection.</p>
         </div>
-        <div className="bg-zinc-900/40 border border-blue-500/30 p-4 rounded-xl">
-          <h3 className="text-xs font-bold text-blue-400 uppercase tracking-wider mb-1">Veterinary Tasks</h3>
-          <p className="text-zinc-400 text-xs">Upcoming vaccinations and health checks require attention.</p>
-        </div>
-      </div>
-
-      {/* METRIKÁK FORMÁZOTT ÖSSZEGEKKEL */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-zinc-950 border border-zinc-800 p-4 rounded-xl">
-          <span className="text-zinc-500 text-xs block">Active Dogs</span>
-          <strong className="text-xl text-white font-mono">{activeDogsCount || 0}</strong>
-        </div>
-        <div className="bg-zinc-950 border border-zinc-800 p-4 rounded-xl">
-          <span className="text-emerald-500 text-xs block">Revenue</span>
-          <strong className="text-xl text-emerald-400 font-mono">{formatCurrency(totalRevenue)}</strong>
-        </div>
-        <div className="bg-zinc-950 border border-zinc-800 p-4 rounded-xl">
-          <span className="text-red-500 text-xs block">Expenses</span>
-          <strong className="text-xl text-red-400 font-mono">{formatCurrency(totalExpenses)}</strong>
-        </div>
-        <div className="bg-zinc-950 border border-zinc-800 p-4 rounded-xl">
-          <span className="text-blue-500 text-xs block">Net Profit</span>
-          <strong className="text-xl text-blue-400 font-mono">{formatCurrency(netProfit)}</strong>
+        <div className="card p-5 border border-lime-500/20" style={{ background: "linear-gradient(135deg, var(--accent)10, transparent)" }}>
+          <h3 className="text-xs font-black text-lime-400 uppercase tracking-wider mb-1">Veterinary Alerts & Tasks</h3>
+          {liveVetVisits && liveVetVisits.length > 0 ? (
+            <div className="space-y-1 mt-1">
+              {liveVetVisits.map((v: any) => (
+                <p key={v.id} className="text-xs text-white">⚠️ <span className="font-bold">{v.purpose}</span> esedékes ekkor: <span className="font-mono text-lime-400">{v.date}</span></p>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs opacity-70">Nincs elmaradt állatorvosi feladat vagy esedékes oltás.</p>
+          )}
         </div>
       </div>
 
-      {/* ALSÓ SZEKCIÓ */}
+      {/* METRIKÁK METAMORPHOSISA: Alkalmazzuk a layout-szintű atomi kártyaosztályokat! */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 dashboard-grid">
+        <div className="card widget-dogs-card p-5">
+          <span className="text-xs block opacity-50">Active Dogs</span>
+          <strong className="text-2xl font-mono font-black">{activeDogsCount || 0}</strong>
+        </div>
+        <div className="card widget-litters-card p-5">
+          <span className="text-xs block opacity-50">Revenue</span>
+          <strong className="text-2xl font-mono font-black">{formatCurrency(totalRevenue)}</strong>
+        </div>
+        <div className="card widget-heats-card p-5">
+          <span className="text-xs block opacity-50">Expenses</span>
+          <strong className="text-2xl font-mono font-black">{formatCurrency(totalExpenses)}</strong>
+        </div>
+        <div className="card widget-finance-card p-5">
+          <span className="text-xs block opacity-50">Net Profit</span>
+          <strong className="text-2xl font-mono font-black">{formatCurrency(netProfit)}</strong>
+        </div>
+      </div>
+
+      {/* ALSÓ STRUKTURÁLIS GRID */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="bg-zinc-950 border border-zinc-800 p-4 rounded-xl space-y-3">
-          <h3 className="text-sm font-bold text-zinc-300">Latest Dogs</h3>
+        <div className="card p-5 space-y-3">
+          <h3 className="text-sm font-black opacity-80">Latest Dogs</h3>
           <div className="space-y-2">
             {latestDogs?.map((dog) => (
-              <div key={dog.id} className="bg-zinc-900/60 p-3 rounded-lg">
+              <div key={dog.id} className="bg-black/30 p-3 rounded-xl border border-white/5">
                 <p className="text-xs font-bold text-zinc-200">{dog.name}</p>
-                <p className="text-[11px] text-zinc-500">{dog.breed}</p>
+                <p className="text-[11px] opacity-40">{dog.breed}</p>
               </div>
             ))}
-            {(!latestDogs || latestDogs.length === 0) && <p className="text-zinc-600 text-xs italic">No dogs added yet.</p>}
           </div>
         </div>
 
-        <div className="bg-zinc-950 border border-zinc-800 p-4 rounded-xl space-y-3">
-          <h3 className="text-sm font-bold text-zinc-300">Upcoming Heats</h3>
+        <div className="card p-5 space-y-3">
+          <h3 className="text-sm font-black opacity-80">Upcoming Heats</h3>
           <div className="space-y-2">
             {upcomingHeats?.map((heat: any) => {
-              const dogData = heat.dogs;
-              const dogName = Array.isArray(dogData) ? dogData[0]?.name : dogData?.name;
+              const dogName = Array.isArray(heat.dogs) ? heat.dogs[0]?.name : heat.dogs?.name;
               return (
-                <div key={heat.id} className="bg-zinc-900/60 p-3 rounded-lg text-xs text-zinc-400 font-mono">
-                  {heat.start_date} — <span className="text-zinc-200 font-sans font-bold">{dogName || "Unknown Dog"}</span>
+                <div key={heat.id} className="bg-black/30 p-3 rounded-xl border border-white/5 text-xs font-mono">
+                  {heat.start_date} — <span className="font-sans font-bold text-white">{dogName || "Unknown Dog"}</span>
                 </div>
               );
             })}
-            {(!upcomingHeats || upcomingHeats.length === 0) && <p className="text-zinc-600 text-xs italic">No active or upcoming heats logged.</p>}
           </div>
         </div>
 
-        {/* AZ ÚJ INTERAKTÍV KALKULÁTORUNK */}
+        {/* INTERAKTÍV VEMHESSÉGI PANEL */}
         <GestationCalculator />
       </div>
     </div>
