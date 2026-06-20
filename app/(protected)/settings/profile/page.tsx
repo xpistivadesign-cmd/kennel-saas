@@ -17,7 +17,7 @@ export default function KennelProfilePage() {
   useEffect(() => {
     async function loadProfile() {
       try {
-        const res = await fetch("/api/branding/get-current"); // Létrehozzuk ezt a segéd-végpontot alább
+        const res = await fetch("/api/branding/get-current");
         if (res.ok) {
           const data = await res.json();
           if (data.settings) {
@@ -35,7 +35,7 @@ export default function KennelProfilePage() {
       }
     }
     loadProfile();
-  } [], []);
+  }, []); // ⚡ FIXED: Megtisztított, szabályos React hook lezárás!
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -43,7 +43,6 @@ export default function KennelProfilePage() {
     setIsSaving(true);
 
     const fd = new FormData(e.currentTarget);
-    // Kényszerítjük a mezőket a biztonság kedvéért
     fd.set("kennel_name", kennelName);
     fd.set("owner_name", ownerName);
     fd.set("kennel_address", kennelAddress);
@@ -69,7 +68,7 @@ export default function KennelProfilePage() {
   }
 
   if (isLoading) {
-    return <div className="text-xs opacity-50 animate-pulse">Profil mátrix inicializálása...</div>;
+    return <div className="text-xs opacity-50 p-6">Profil mátrix inicializálása...</div>;
   }
 
   return (
@@ -98,7 +97,6 @@ export default function KennelProfilePage() {
               accept="image/*" 
               className="w-full p-2 bg-black rounded-xl text-xs text-zinc-400 border border-zinc-800 cursor-pointer" 
             />
-            <p className="text-[10px] opacity-40">Támogatott formátumok: PNG, JPG, WEBP. Ajánlott méret: 512x512px.</p>
           </div>
         </div>
 
