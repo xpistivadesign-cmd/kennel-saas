@@ -51,7 +51,7 @@ export default async function DashboardPage() {
 
       {/* SÜRGŐS RIASZTÁSOK */}
       {urgentEvents && urgentEvents.length > 0 && (
-        <div className="p-4 rounded-xl border border-amber-500/30 bg-amber-950/20 backdrop-blur-md space-y-2 shadow-2xl" style={{ boxShadow: "inset 0 0 15px rgba(245, 158, 11, 0.1)" }}>
+        <div className="p-4 rounded-xl border border-amber-500/30 bg-amber-950/20 backdrop-blur-md space-y-2 shadow-2xl" style={{ boxShadow: "inset 0 1px 2px rgba(255,255,255,0.1)" }}>
           <h2 className="text-xs font-black text-amber-400 uppercase tracking-wider flex items-center gap-2">🚨 SÜRGŐS TEENDŐ!</h2>
           {urgentEvents.map((ev: any) => (
             <div key={ev.id} className="bg-black/30 p-3 rounded-xl border border-amber-500/10">
@@ -92,55 +92,53 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* PRÉMIUM 3D METRIKÁK METAMORPHOSISA */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* 🔮 ULTRA 3D GRADIENT METRICS GRID (Concept 4 & Concept 2 hibrid) */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
         
-        {/* CARD 1: ACTIVE DOGS */}
-        <div className="p-5 border rounded-2xl transition-all duration-300 hover:translate-y-[-2px]" 
+        {/* CARD 1: ACTIVE DOGS - Deep Neon Violet 3D */}
+        <div className="p-5 rounded-2xl transition-all duration-300 active:scale-95 cursor-pointer hover:translate-y-[-4px]" 
              style={{ 
-               background: "linear-gradient(135deg, rgba(125,57,235,0.18) 0%, rgba(10,10,12,0.85) 100%)", 
-               borderColor: "rgba(125,57,235,0.3)",
-               boxShadow: "inset 0 1px 2px rgba(255,255,255,0.15), inset 0 -4px 12px rgba(0,0,0,0.4), 0 12px 24px rgba(0,0,0,0.6)",
-               filter: "drop-shadow(0 4px 12px rgba(125,57,235,0.15))"
+               background: "linear-gradient(145deg, #7d39eb 0%, #3b1180 100%)", 
+               boxShadow: "inset 0 3px 5px rgba(255, 255, 255, 0.5), inset 0 -5px 10px rgba(0, 0, 0, 0.6), 0 15px 30px rgba(125, 57, 235, 0.35)",
+               border: "1px solid rgba(255, 255, 255, 0.15)"
              }}>
-          <span className="text-[11px] font-black uppercase tracking-wider text-purple-400 block mb-1 opacity-80">Active Dogs</span>
-          <strong className="text-3xl font-mono font-black text-white tracking-tight">{activeDogsCount || 0}</strong>
+          <span className="text-[11px] font-black uppercase tracking-widest text-purple-200 block mb-1 drop-shadow-[0_1px_2px_rgba(0,0,0,0.4)]">Active Dogs</span>
+          <strong className="text-4xl font-mono font-black text-white tracking-tight drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">{activeDogsCount || 0}</strong>
         </div>
 
-        {/* CARD 2: REVENUE */}
-        <div className="p-5 border rounded-2xl transition-all duration-300 hover:translate-y-[-2px]" 
+        {/* CARD 2: REVENUE - Electric Blue Glow 3D */}
+        <div className="p-5 rounded-2xl transition-all duration-300 active:scale-95 cursor-pointer hover:translate-y-[-4px]" 
              style={{ 
-               background: "linear-gradient(135deg, rgba(2,63,249,0.15) 0%, rgba(8,12,18,0.85) 100%)", 
-               borderColor: "rgba(2,63,249,0.3)",
-               boxShadow: "inset 0 1px 2px rgba(255,255,255,0.15), inset 0 -4px 12px rgba(0,0,0,0.4), 0 12px 24px rgba(0,0,0,0.6)",
-               filter: "drop-shadow(0 4px 12px rgba(52,211,153,0.1))"
+               background: "linear-gradient(145deg, #023ff9 0%, #001ba0 100%)", 
+               boxShadow: "inset 0 3px 5px rgba(255, 255, 255, 0.5), inset 0 -5px 10px rgba(0, 0, 0, 0.6), 0 15px 30px rgba(2, 63, 249, 0.35)",
+               border: "1px solid rgba(255, 255, 255, 0.15)"
              }}>
-          <span className="text-[11px] font-black uppercase tracking-wider text-blue-400 block mb-1 opacity-80">Revenue</span>
-          <strong className="text-3xl font-mono font-black text-emerald-400 tracking-tight">{formatCurrency(totalRevenue)}</strong>
+          <span className="text-[11px] font-black uppercase tracking-widest text-blue-100 block mb-1 drop-shadow-[0_1px_2px_rgba(0,0,0,0.4)]">Revenue</span>
+          <strong className="text-4xl font-mono font-black text-white tracking-tight drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">{formatCurrency(totalRevenue)}</strong>
         </div>
 
-        {/* CARD 3: EXPENSES */}
-        <div className="p-5 border rounded-2xl transition-all duration-300 hover:translate-y-[-2px]" 
+        {/* CARD 3: EXPENSES - Vivid Crimson Volcano 3D */}
+        <div className="p-5 rounded-2xl transition-all duration-300 active:scale-95 cursor-pointer hover:translate-y-[-4px]" 
              style={{ 
-               background: "linear-gradient(135deg, rgba(239,68,68,0.12) 0%, rgba(12,10,10,0.85) 100%)", 
-               borderColor: "rgba(239,68,68,0.25)",
-               boxShadow: "inset 0 1px 2px rgba(255,255,255,0.15), inset 0 -4px 12px rgba(0,0,0,0.4), 0 12px 24px rgba(0,0,0,0.6)",
-               filter: "drop-shadow(0 4px 12px rgba(239,68,68,0.1))"
+               background: "linear-gradient(145deg, #ef4444 0%, #991b1b 100%)", 
+               boxShadow: "inset 0 3px 5px rgba(255, 255, 255, 0.5), inset 0 -5px 10px rgba(0, 0, 0, 0.6), 0 15px 30px rgba(239, 68, 68, 0.3)",
+               border: "1px solid rgba(255, 255, 255, 0.15)"
              }}>
-          <span className="text-[11px] font-black uppercase tracking-wider text-red-400 block mb-1 opacity-80">Expenses</span>
-          <strong className="text-3xl font-mono font-black text-red-400 tracking-tight">{formatCurrency(totalExpenses)}</strong>
+          <span className="text-[11px] font-black uppercase tracking-widest text-red-100 block mb-1 drop-shadow-[0_1px_2px_rgba(0,0,0,0.4)]">Expenses</span>
+          <strong className="text-4xl font-mono font-black text-white tracking-tight drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">{formatCurrency(totalExpenses)}</strong>
         </div>
 
-        {/* CARD 4: NET PROFIT (⚡ FIXED: Érvényes filter szintaxis dropShadow helyett) */}
-        <div className="p-5 border rounded-2xl transition-all duration-300 hover:translate-y-[-2px]" 
+        {/* CARD 4: NET PROFIT - Radioactive Lime Matrix 3D */}
+        <div className="p-5 rounded-2xl transition-all duration-300 active:scale-95 cursor-pointer hover:translate-y-[-4px]" 
              style={{ 
-               background: "linear-gradient(135deg, rgba(198,255,52,0.14) 0%, rgba(10,12,10,0.85) 100%)", 
-               borderColor: "rgba(198,255,52,0.25)",
-               boxShadow: "inset 0 1px 2px rgba(255,255,255,0.15), inset 0 -4px 12px rgba(0,0,0,0.4), 0 12px 24px rgba(0,0,0,0.6)",
-               filter: netProfit >= 0 ? "drop-shadow(0 4px 12px rgba(198,255,52,0.2))" : "drop-shadow(0 4px 12px rgba(239,68,68,0.2))"
+               background: netProfit >= 0 ? "linear-gradient(145deg, #bbf7d0 0%, #22c55e 100%)" : "linear-gradient(145deg, #fca5a5 0%, #dc2626 100%)", 
+               boxShadow: netProfit >= 0 
+                 ? "inset 0 3px 5px rgba(255, 255, 255, 0.8), inset 0 -5px 10px rgba(0, 0, 0, 0.5), 0 15px 30px rgba(34, 197, 94, 0.35)" 
+                 : "inset 0 3px 5px rgba(255, 255, 255, 0.8), inset 0 -5px 10px rgba(0, 0, 0, 0.5), 0 15px 30px rgba(220, 38, 38, 0.35)",
+               border: "1px solid rgba(255, 255, 255, 0.3)"
              }}>
-          <span className="text-[11px] font-black uppercase tracking-wider text-lime-400 block mb-1 opacity-80">Net Profit</span>
-          <strong className="text-3xl font-mono font-black tracking-tight" style={{ color: netProfit >= 0 ? "#C6FF33" : "#EF4444" }}>{formatCurrency(netProfit)}</strong>
+          <span className="text-[11px] font-black uppercase tracking-widest block mb-1 drop-shadow-[0_1px_1px_rgba(255,255,255,0.2)]" style={{ color: netProfit >= 0 ? "#14532d" : "#7f1d1d" }}>Net Profit</span>
+          <strong className="text-4xl font-mono font-black tracking-tight drop-shadow-[0_1px_3px_rgba(0,0,0,0.3)]" style={{ color: netProfit >= 0 ? "#052e16" : "#450a0a" }}>{formatCurrency(netProfit)}</strong>
         </div>
 
       </div>
@@ -177,7 +175,7 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        {/* GESTATION CALCULATOR */}
+        {/* GESTATION CALCULATOR CONTAINER */}
         <GestationCalculator />
 
       </div>
