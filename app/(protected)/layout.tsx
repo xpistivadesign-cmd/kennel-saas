@@ -16,10 +16,11 @@ export default async function ProtectedLayout({ children }: { children: React.Re
   const kennelName = branding?.kennel_name || "Saját Kennel";
   const logoUrl = branding?.logo_url || null;
 
-  // 📊 1. FŐ OPERATÍV NAVIGÁCIÓ (Ami most hiányzott!)
+  // 📊 1. FŐ OPERATÍV NAVIGÁCIÓ (Bővítve az új Veterinary & Health modullal!)
   const mainNav = [
     { href: "/dashboard", label: "📊 Dashboard" },
     { href: "/dogs", label: "🐕 Kutyák" },
+    { href: "/veterinary", label: "🩺 Veterinary & Health" }, // 🔥 Új egészségügyi központ menüpont
     { href: "/heats", label: "🩸 Tüzelések" },
     { href: "/litters", label: "🐾 Almok" },
     { href: "/shows", label: "🏆 Shows" },
