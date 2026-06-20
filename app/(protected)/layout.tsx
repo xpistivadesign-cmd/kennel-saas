@@ -16,11 +16,23 @@ export default async function ProtectedLayout({ children }: { children: React.Re
   const kennelName = branding?.kennel_name || "Saját Kennel";
   const logoUrl = branding?.logo_url || null;
 
+  // 📊 1. FŐ OPERATÍV NAVIGÁCIÓ (Ami most hiányzott!)
+  const mainNav = [
+    { href: "/dashboard", label: "📊 Dashboard" },
+    { href: "/dogs", label: "🐕 Kutyák" },
+    { href: "/heats", label: "🩸 Tüzelések" },
+    { href: "/litters", label: "🐾 Almok" },
+    { href: "/shows", label: "🏆 Shows" },
+    { href: "/buyers", label: "👥 Buyers & Waitlist" },
+    { href: "/finance", label: "💰 Finance" },
+  ];
+
+  // ⚙️ 2. RÉSZLETES BEÁLLÍTÁSOK NAVIGÁCIÓ
   const settingsNav = [
     { href: "/settings/profile", label: "🏢 Kennel Profile" },
     { href: "/settings/branding", label: "🎨 Appearance" },
-    { href: "/settings/dashboard", label: "📊 Dashboard" },
-    { href: "/settings/dogs", label: "🐕 Dogs" },
+    { href: "/settings/dashboard", label: "📊 Dashboard Layout" },
+    { href: "/settings/dogs", label: "🐕 Dogs Settings" },
     { href: "/settings/notifications", label: "🔔 Notifications" },
     { href: "/settings/localization", label: "🌍 Localization" },
     { href: "/settings/security", label: "🔐 Security" },
@@ -63,16 +75,12 @@ export default async function ProtectedLayout({ children }: { children: React.Re
           letter-spacing: ${theme.letterSpacing};
         }
 
-        /* 🌍 GLOBÁLIS MINTÁZAT INJEKTÁLÁS MAINEKRE */
-        main {
-          position: relative;
-        }
+        main { position: relative; }
         main::before {
           content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 0;
           ${patternCss}
         }
 
-        /* 💎 ATOMI KÁRTYA REKLAMÁCIÓ (Az összes Tailwind alapú rounded és bg felülbírálása) */
         .card, div[className*="bg-zinc-900"], section[className*="bg-zinc-"], div[className*="rounded-xl"] {
           background: var(--surface) !important;
           border: 1px solid var(--border) !important;
@@ -80,13 +88,11 @@ export default async function ProtectedLayout({ children }: { children: React.Re
           position: relative; z-index: 1;
         }
 
-        /* 📊 DASHBOARD ATOMI WIDGET KÁRTYÁK EGYEDI AUTOMATIKUS VEZÉRLÉSE */
         .widget-dogs-card { background: ${theme.widgetDogsBg} !important; }
         .widget-litters-card { background: ${theme.widgetLittersBg} !important; }
         .widget-heats-card { background: ${theme.widgetHeatsBg} !important; }
         .widget-finance-card { background: ${theme.widgetFinanceBg} !important; }
 
-        /* FŐCÍMEK ÉS ALCÍMEK STRATÉGIÁJA */
         h1, h2, h3, .text-white, div[className*="font-black"] {
           color: ${theme.headingColor} !important;
           text-transform: ${theme.headingUppercase} !important;
@@ -95,7 +101,6 @@ export default async function ProtectedLayout({ children }: { children: React.Re
           color: ${theme.subHeadingColor} !important;
         }
 
-        /* PRIMARY GOMBOK HIERARCHIÁJA */
         button, button[type="submit"], .bg-primary-btn {
           background: ${theme.btnPrimaryBg} !important;
           color: ${theme.btnPrimaryText} !important;
@@ -106,7 +111,6 @@ export default async function ProtectedLayout({ children }: { children: React.Re
         }
         button:hover { transform: scale(1.02); }
 
-        /* INPUT PANELS IDOMÍTÁSA */
         input, textarea, select {
           background: ${theme.inputBg} !important;
           border: 1px solid ${theme.inputBorder} !important;
@@ -119,7 +123,7 @@ export default async function ProtectedLayout({ children }: { children: React.Re
           background: ${theme.sidebarBg};
           border-right: 1px solid var(--border);
           padding: 24px;
-          display: flex; flex-direction: column; gap: 20px;
+          display: flex; flex-direction: column; gap: 24px;
         }
         .sidebar-link {
           display: flex; items-center; gap: 10px; padding: 10px 14px;
@@ -133,12 +137,24 @@ export default async function ProtectedLayout({ children }: { children: React.Re
       `}} />
 
       <aside className="sidebar">
-        <div className="font-black text-xl tracking-tight px-3">
+        {/* LOGÓ VAGY KENNEL NÉV */}
+        <div className="font-black text-xl tracking-tight px-3" style={{ color: "var(--text)" }}>
           {logoUrl ? <img src={logoUrl} alt="Logo" className="h-8 object-contain" /> : `⚡ ${kennelName}`}
         </div>
         
+        {/* 📊 SZEKCIÓ 1: FŐ FUNKCIÓK */}
+        <div className="space-y-1">
+          <span className="text-[9px] uppercase font-black opacity-30 block px-3 mb-2">🐾 Management</span>
+          <nav className="space-y-1">
+            {mainNav.map((item) => (
+              <Link key={item.href} href={item.href} className="sidebar-link">{item.label}</Link>
+            ))}
+          </nav>
+        </div>
+        
+        {/* ⚙️ SZEKCIÓ 2: CONFIGURATION MATRIX */}
         <div className="pt-4 border-t" style={{ borderColor: "var(--border)" }}>
-          <span className="text-[9px] uppercase font-black opacity-30 block px-3 mb-2">⚙️ System Configuration</span>
+          <span className="text-[9px] uppercase font-black opacity-30 block px-3 mb-2">⚙️ System Matrix</span>
           <nav className="space-y-1">
             {settingsNav.map((item) => (
               <Link key={item.href} href={item.href} className="sidebar-link">{item.label}</Link>
