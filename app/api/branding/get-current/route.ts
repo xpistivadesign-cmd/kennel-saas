@@ -7,12 +7,19 @@ export async function GET() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const { data: settings } = await supabase.from("branding_settings").select("*").eq("user_id", user.id).maybeSingle();
-    // ⚡ KUTYÁK LISTÁJÁNAK KIEGÉSZÍTÉSE: Lekérjük az aktív törzskönyvezett kutyákat
-    const { data: dogs } = await supabase.from("dogs").select("id, name").eq("user_id", user.id);
+    const { data: settings } = await supabase
+      .from("branding_settings")
+      .select("*")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    const { data: dogs } = await supabase
+      .from("dogs")
+      .select("id, name")
+      .eq("user_id", user.id);
 
     return NextResponse.json({ 
-      settings: settings || {}, 
+      settings: settings || { kennel_name: "Saját Kennel", theme_mode: "dark" }, 
       dogs: dogs || [] 
     });
   } catch (error: any) {
