@@ -7,7 +7,7 @@ export default function BrandingClient({ settings }: any) {
 
   // 1. Brand Colors States
   const [themeMode, setThemeMode] = useState(settings.theme_mode || "dark");
-  const [palette, setPalette] = useState(settings.preset_palette || "midnight");
+  const [palette, setPalette] = useState(settings.preset_palette || "obsidian_dark");
   const [primary, setPrimary] = useState(settings.primary_color || "#7D39EB");
   const [accent, setAccent] = useState(settings.accent_color || "#C6FF33");
   const [bg, setBg] = useState(settings.bg_color || "#000000");
@@ -48,7 +48,7 @@ export default function BrandingClient({ settings }: any) {
   const [sidebarActiveBg, setSidebarActiveBg] = useState(settings.sidebar_active_bg || "#7D39EB");
   const [sidebarWidth, setSidebarWidth] = useState(settings.sidebar_width || 270);
 
-  // 6. Core Framework & Layout States (⚡ FIXED: uiStyle expliciten deklarálva)
+  // 6. Core Framework & Layout States
   const [uiRadius, setUiRadius] = useState(settings.ui_radius || "medium");
   const [uiAnimation, setUiAnimation] = useState(settings.ui_animation || "normal");
   const [uiStyle, setUiStyle] = useState(settings.ui_style || "glass");
@@ -84,8 +84,8 @@ export default function BrandingClient({ settings }: any) {
     fd.set("accent_color", accent);
     fd.set("bg_color", bg);
     fd.set("surface_color", surface);
-    fd.set("text_color", text);
-    fd.set("border_color", border);
+    fd.set("text_color", textColor);
+    fd.set("border_color", borderColor);
     fd.set("bg_gradient_enabled", String(bgGradEnabled));
     fd.set("bg_gradient_from", bgGradFrom);
     fd.set("bg_gradient_to", bgGradTo);
@@ -140,74 +140,5 @@ export default function BrandingClient({ settings }: any) {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6">
           
-          {/* SZEKCIÓ 1: CORE PRESETS */}
-          <div className="card p-6 space-y-4">
-            <h3 className="font-bold text-xs uppercase tracking-wider text-purple-400">1. Core Presets (A 4 Hivatalos Arculat)</h3>
-            <div className="grid grid-cols-2 gap-3">
-              {PALETTES.map(p => (
-                <button key={p.id} type="button" onClick={() => selectPalette(p)} className={`p-4 rounded-xl text-left text-xs font-bold border transition-all ${palette === p.id ? "border-purple-500 bg-zinc-900/60" : "border-zinc-800 bg-black"}`}>
-                  {p.name}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* SZEKCIÓ 2: Haladó Custom Designer Panel */}
-          {palette === "custom" && (
-            <div className="space-y-6 animate-fadeIn">
-              
-              {/* GLOBAL COLORS & BACKGROUND */}
-              <div className="card p-6 space-y-4">
-                <h3 className="font-bold text-xs uppercase text-blue-400">Global & App Background</h3>
-                <div className="grid grid-cols-3 gap-2">
-                  <div><label className="text-[10px] block">Primary</label><input type="color" value={primary} onChange={e => setPrimary(e.target.value)} className="w-full h-8 bg-transparent cursor-pointer" /></div>
-                  <div><label className="text-[10px] block">Accent</label><input type="color" value={accent} onChange={e => setAccent(e.target.value)} className="w-full h-8 bg-transparent cursor-pointer" /></div>
-                  <div><label className="text-[10px] block">Background</label><input type="color" value={bg} onChange={e => setBg(e.target.value)} className="w-full h-8 bg-transparent cursor-pointer" /></div>
-                  <div><label className="text-[10px] block">Surface (Card)</label><input type="color" value={surface} onChange={e => setSurface(e.target.value)} className="w-full h-8 bg-transparent cursor-pointer" /></div>
-                  <div><label className="text-[10px] block">Text Color</label><input type="color" value={text} onChange={e => setText(e.target.value)} className="w-full h-8 bg-transparent cursor-pointer" /></div>
-                  <div><label className="text-[10px] block">Border Color</label><input type="color" value={border} onChange={e => setBorder(e.target.value)} className="w-full h-8 bg-transparent cursor-pointer" /></div>
-                </div>
-
-                <div className="pt-2 border-t border-zinc-900 space-y-3">
-                  <label className="flex items-center gap-3 cursor-pointer text-xs">
-                    <input type="checkbox" checked={bgGradEnabled} onChange={e => setBgGradientEnabled(e.target.checked)} className="w-4 h-4 rounded border-zinc-800 bg-black text-purple-600 focus:ring-0" />
-                    <span>Background Gradient Átmenet Aktiválása</span>
-                  </label>
-                  {bgGradEnabled && (
-                    <div className="grid grid-cols-3 gap-2 animate-slideDown">
-                      <div><label className="text-[10px] block">Gradient Start</label><input type="color" value={bgGradFrom} onChange={e => setBgGradientFrom(e.target.value)} className="w-full h-7 bg-transparent" /></div>
-                      <div><label className="text-[10px] block">Gradient End</label><input type="color" value={bgGradTo} onChange={e => setBgGradientTo(e.target.value)} className="w-full h-7 bg-transparent" /></div>
-                      <div><label className="text-[10px] block">Angle ({bgGradAngle}°)</label><input type="number" value={bgGradAngle} onChange={e => setBgGradientAngle(Number(e.target.value))} className="w-full bg-black p-1 text-xs border rounded" /></div>
-                    </div>
-                  )}
-                  <div>
-                    <label className="text-[10px] block mb-1">Dashboard Background Pattern (Mintázat)</label>
-                    <select value={bgPattern} onChange={e => setBgPattern(e.target.value)} className="w-full bg-black p-2 rounded text-xs text-white">
-                      <option value="none">None (Tiszta solid)</option>
-                      <option value="dots">Dots (Finom pöttyözött)</option>
-                      <option value="grid">Grid (Technikai rácsháló)</option>
-                      <option value="noise">Noise (Prémium szemcsézett)</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              {/* TYPOGRAPHY & HEADINGS */}
-              <div className="card p-6 space-y-4">
-                <h3 className="font-bold text-xs uppercase text-amber-400">Typography & Headings Matrix</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-[11px] block mb-1">Font Family</label>
-                    <select value={fontFamily} onChange={e => setFontFamily(e.target.value)} className="w-full bg-black p-2 rounded text-xs text-white">
-                      <option value="inter">Inter Framework</option>
-                      <option value="manrope">Manrope Corporate</option>
-                      <option value="sora">Sora Interface</option>
-                      <option value="poppins">Poppins Geometric</option>
-                      <option value="jakarta">Plus Jakarta Sans</option>
-                      <option value="grotesk">Space Grotesk</option>
-                    </select>
-                  </div>
-                  <div className="grid grid-cols-3 gap-1">
-                    <div><label className="text-[9px] block">Scale (%)</label><input type="number" value={fontScale} onChange={e => setFontScale(Number(e.target.value))} className="w-full bg-black p-1.5 text-xs border rounded text-white" /></div>
-                    <div><label className="text-[9px] block">Weight</label><input type="number" value={fontWeight} onChange={e => setFontWeight(Number(e.target.value))} className="w-full bg-black p-1.5 text-xs border rounded text-white" /></div>
-                    <div><label className="text-[9px] block">Spacing</
+          {/* 1. CORE PRESETS */}
+          <div className="card p-6 space-
