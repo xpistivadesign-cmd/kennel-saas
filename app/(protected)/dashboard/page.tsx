@@ -9,66 +9,50 @@ function StatCard({
   icon,
   title,
   value,
-  tone = "primary",
+  cardBg,
+  titleColor = "rgba(255,255,255,0.6)",
+  valueColor = "#ffffff",
 }: {
   icon: React.ReactNode;
   title: string;
   value: string | number;
-  tone?: "primary" | "accent";
+  cardBg: string;
+  titleColor?: string;
+  valueColor?: string;
 }) {
   return (
     <div
       className="group relative overflow-hidden rounded-[28px] p-6 transition-all duration-300 hover:-translate-y-1"
       style={{
-        background: `
-          linear-gradient(
-            145deg,
-            color-mix(in srgb, var(--surface) 88%, white),
-            color-mix(in srgb, var(--surface) 94%, black)
-          )
-        `,
+        background: cardBg,
         boxShadow: `
-          inset 0 2px 3px rgba(255,255,255,.08),
-          inset 0 -12px 22px rgba(0,0,0,.35),
-          0 25px 60px rgba(0,0,0,.35)
+          inset 0 2px 4px rgba(255,255,255,.15),
+          inset 0 -8px 20px rgba(0,0,0,.3),
+          0 20px 45px rgba(0,0,0,.4)
         `,
         border: "1px solid var(--border)",
       }}
     >
-      <div
-        className="absolute right-[-40px] top-[-40px] h-36 w-36 rounded-full blur-3xl"
-        style={{
-          background: tone === "primary" ? "var(--primary)" : "var(--accent)",
-          opacity: 0.12,
-        }}
-      />
-
       <div className="relative z-10">
         <div className="flex items-center justify-between">
           <div>
-            <p
-              className="uppercase tracking-[0.2em] text-[10px] font-black"
-              style={{
-                color: tone === "primary" ? "var(--primary)" : "var(--accent)",
-              }}
-            >
+            <p className="uppercase tracking-[0.2em] text-[10px] font-black" style={{ color: titleColor }}>
               {title}
             </p>
-
-            <h2 className="mt-3 text-4xl font-black" style={{ color: "var(--text)" }}>
+            <h2 className="mt-3 text-4xl font-black" style={{ color: valueColor }}>
               {value}
             </h2>
           </div>
 
+          {/* ⚡ A SZÜRKE, SÜLLYESZTETT IKONFÉSZEK MEGTARTÁSA */}
           <div
-            className="h-16 w-16 rounded-[22px] flex items-center justify-center text-xl"
+            className="h-16 w-16 rounded-[22px] flex items-center justify-center text-xl text-white"
             style={{
-              background: tone === "primary" ? "var(--card-1)" : "var(--card-2)",
-              color: tone === "primary" ? "var(--primary)" : "var(--accent)",
+              background: "var(--card-1)",
               boxShadow: `
-                inset 0 2px 3px rgba(255,255,255,.12),
-                inset 0 -8px 18px rgba(0,0,0,.4),
-                0 10px 20px rgba(0,0,0,.25)
+                inset 0 2px 3px rgba(255,255,255,.05),
+                inset 0 -6px 15px rgba(0,0,0,.5),
+                0 8px 16px rgba(0,0,0,.3)
               `,
             }}
           >
@@ -93,11 +77,9 @@ export default async function DashboardPage() {
       maximumFractionDigits: 0,
     }).format(n);
 
-  // 1. Kutyák száma és listája
   const { count } = await supabase.from("dogs").select("*", { count: "exact", head: true }).eq("user_id", user.id);
   const { data: latestDogs } = await supabase.from("dogs").select("id,name,breed").eq("user_id", user.id).order("created_at", { ascending: false }).limit(4);
 
-  // 2. Pénzügyi adatok
   const { data: tx } = await supabase.from("payments").select("amount,type").eq("user_id", user.id);
   let income = 0;
   let expense = 0;
@@ -107,8 +89,6 @@ export default async function DashboardPage() {
   });
   const profit = income - expense;
 
-  // 3. Élő Állatorvosi adatok leérése a VeterinaryTasks fülhöz
-  const todayStr = new Date().toISOString().split("T")[0];
   const { data: liveVetVisits } = await supabase.from("vet_visits").select("id, purpose, date").eq("user_id", user.id).eq("status", "planned").order("date", { ascending: true }).limit(1);
 
   return (
@@ -130,7 +110,7 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* ⚠️ LIVE AUTOMATIC ALERTS AND VETERINARY WINDOW */}
+      {/* ALERTS */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="p-5 border rounded-2xl bg-zinc-950/20" style={{ borderColor: "var(--border)", boxShadow: "inset 0 1px 1px rgba(255,255,255,0.05)" }}>
           <h3 className="text-xs font-black text-purple-400 uppercase tracking-wider mb-1">Optimal Breeding Window</h3>
@@ -146,36 +126,48 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* 3D KPI SZEKCIÓ A HIVATALOS NEON IKONOKKAL */}
+      {/* 🔮 HIVATALOS MÁRKA-SZÍNES KPI GRID */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-6">
+        
+        {/* DOGS: A MI LILÁNK */}
         <StatCard
           icon={<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5c.67 0 1.35.09 2 .26a4 4 0 0 1 3 3.74c0 .5-.15.99-.42 1.41A4 4 0 0 1 18 14c0 1.5-1 2.5-2.5 2.5h-7C7 16.5 6 15.5 6 14a4 4 0 0 1 1.42-3.59c-.27-.42-.42-.91-.42-1.41a4 4 0 0 1 3-3.74c.65-.17 1.33-.26 2-.26Z"/><circle cx="6" cy="4" r="1"/><circle cx="10" cy="2" r="1"/><circle cx="14" cy="2" r="1"/><circle cx="18" cy="4" r="1"/></svg>}
           title="Dogs"
           value={count || 0}
+          cardBg="linear-gradient(145deg, #7D39EB 0%, #4c1ca6 100%)"
+          titleColor="rgba(255,255,255,0.7)"
         />
 
+        {/* REVENUE: ELECTRIC KÉK */}
         <StatCard
           icon={<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" x2="12" y1="2" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>}
           title="Revenue"
           value={money(income)}
-          tone="accent"
+          cardBg="linear-gradient(145deg, #023FF9 0%, #01229c 100%)"
+          titleColor="rgba(255,255,255,0.7)"
         />
 
+        {/* EXPENSES: SÖTÉTKÉK */}
         <StatCard
           icon={<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg>}
           title="Expenses"
           value={money(expense)}
+          cardBg="linear-gradient(145deg, #011A2E 0%, #000c14 100%)"
+          titleColor="rgba(255,255,255,0.4)"
         />
 
+        {/* PROFIT: LIME SZÍNÜNK */}
         <StatCard
           icon={<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>}
           title="Profit"
           value={money(profit)}
-          tone="accent"
+          cardBg="linear-gradient(145deg, #C6FF33 0%, #90cf00 100%)"
+          titleColor="rgba(0,0,0,0.6)"
+          valueColor="#000000"
         />
       </div>
 
-      {/* MAIN ARCULATI BLOKKOK */}
+      {/* MAIN DATA BLOCK */}
       <div className="grid lg:grid-cols-3 gap-6">
         <div
           className="rounded-[30px] p-7"
