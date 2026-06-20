@@ -53,11 +53,16 @@ export type BrandingSettings = {
   sidebar_hover?: string | null;
   sidebar_width?: number | null;
 
+  ui_radius?: string | null; // ⚡ FIXED: Explicit hozzáadva a BrandingSettings típushoz!
+  ui_animation?: string | null;
+  ui_style?: string | null;
+  
   animation?: string | null;
   hover_lift?: number | null;
   cursor_glow?: boolean | null;
   parallax_enabled?: boolean | null;
   custom_css?: string | null;
+  kennel_name?: string | null;
 };
 
 export function buildThemeTokens(settings?: BrandingSettings | null) {
@@ -89,7 +94,7 @@ export function buildThemeTokens(settings?: BrandingSettings | null) {
     card1 = `${accent}20`; card2 = `${accent}15`; card3 = `${accent}10`; card4 = `${accent}05`;
   }
 
-  // Lekerekítési mapping (Radius token explicit rögzítése)
+  // Lekerekítési mapping
   const radiusMap: Record<string, string> = {
     sharp: "0px",
     small: "6px",
@@ -150,14 +155,4 @@ export function buildThemeTokens(settings?: BrandingSettings | null) {
     buttonGlow: settings?.button_glow ?? 0,
     sidebarBg: settings?.sidebar_bg || (isDark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.02)"),
     sidebarActive: settings?.sidebar_active || primary,
-    sidebarHover: settings?.sidebar_hover || "rgba(255,255,255,0.04)",
-    sidebarWidth: `${settings?.sidebar_width || 270}px`,
-    animation: settings?.animation || "normal",
-    hoverLift: `${settings?.hover_lift || 0}px`,
-    cursorGlow: settings?.cursor_glow ?? false,
-    parallaxEnabled: settings?.parallax_enabled ?? false,
-    customCss: settings?.custom_css || "",
-    radius, // <-- ⚡ AZ ELVESZETT TOKEN explicit rögzítése!
-    transition
-  };
-}
+    sidebarHover: settings?.sidebar_
