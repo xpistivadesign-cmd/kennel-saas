@@ -36,10 +36,11 @@ function StatCard({
       <div className="relative z-10">
         <div className="flex items-center justify-between">
           <div>
-            <p className="uppercase tracking-[0.2em] text-[10px] font-black" style={{ color: titleColor }}>
+            {/* ⚡ KÉNYSZERÍTETT INLINE SZÍNEZÉS AZ INJECTION ELLEN */}
+            <p className="uppercase tracking-[0.2em] text-[10px] font-black" style={{ color: `${titleColor} !important` }}>
               {title}
             </p>
-            <h2 className="mt-3 text-4xl font-black" style={{ color: valueColor }}>
+            <h2 className="mt-3 text-4xl font-black" style={{ color: `${valueColor} !important` }}>
               {value}
             </h2>
           </div>
@@ -128,7 +129,7 @@ export default async function DashboardPage() {
       {/* KPI GRID */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-6">
         
-        {/* DOGS: VIOLET */}
+        {/* DOGS */}
         <StatCard
           icon={<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5c.67 0 1.35.09 2 .26a4 4 0 0 1 3 3.74c0 .5-.15.99-.42 1.41A4 4 0 0 1 18 14c0 1.5-1 2.5-2.5 2.5h-7C7 16.5 6 15.5 6 14a4 4 0 0 1 1.42-3.59c-.27-.42-.42-.91-.42-1.41a4 4 0 0 1 3-3.74c.65-.17 1.33-.26 2-.26Z"/><circle cx="6" cy="4" r="1"/><circle cx="10" cy="2" r="1"/><circle cx="14" cy="2" r="1"/><circle cx="18" cy="4" r="1"/></svg>}
           title="Dogs"
@@ -138,7 +139,7 @@ export default async function DashboardPage() {
           valueColor="#ffffff"
         />
 
-        {/* REVENUE: ELECTRIC BLUE */}
+        {/* REVENUE */}
         <StatCard
           icon={<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" x2="12" y1="2" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>}
           title="Revenue"
@@ -148,7 +149,7 @@ export default async function DashboardPage() {
           valueColor="#ffffff"
         />
 
-        {/* EXPENSES: DEEP BLUE */}
+        {/* EXPENSES */}
         <StatCard
           icon={<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg>}
           title="Expenses"
@@ -158,14 +159,14 @@ export default async function DashboardPage() {
           valueColor="#ffffff"
         />
 
-        {/* PROFIT: LIME SURFACE + FEHÉR IKON + ELECTRIC KÉK BETŰK ÉS SZÁMOK */}
+        {/* PROFIT: LIME SURFACE + INLINE ELECTRIC BLUE TEXTS OVERRIDE */}
         <StatCard
           icon={<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>}
           title="Profit"
           value={money(profit)}
           cardBg="linear-gradient(145deg, #C6FF33 0%, #90cf00 100%)"
-          titleColor="#023FF9"   // ⚡ Csak a felirat Electric Kék
-          valueColor="#023FF9"   // ⚡ Csak a szám/összeg Electric Kék
+          titleColor="#023FF9"
+          valueColor="#023FF9"
         />
       </div>
 
