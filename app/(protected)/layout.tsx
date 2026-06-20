@@ -16,31 +16,94 @@ export default async function ProtectedLayout({ children }: { children: React.Re
   const kennelName = branding?.kennel_name || "Saját Kennel";
   const logoUrl = branding?.logo_url || null;
 
-  // 📊 1. FŐ OPERATÍV NAVIGÁCIÓ (Bővítve az új Veterinary & Health modullal!)
+  // 📊 1. FŐ OPERATÍV NAVIGÁCIÓ A HIVATALOS IKON SZETTEL
   const mainNav = [
-    { href: "/dashboard", label: "📊 Dashboard" },
-    { href: "/dogs", label: "🐕 Kutyák" },
-    { href: "/veterinary", label: "🩺 Veterinary & Health" }, // 🔥 Új egészségügyi központ menüpont
-    { href: "/heats", label: "🩸 Tüzelések" },
-    { href: "/litters", label: "🐾 Almok" },
-    { href: "/shows", label: "🏆 Shows" },
-    { href: "/buyers", label: "👥 Buyers & Waitlist" },
-    { href: "/finance", label: "💰 Finance" },
+    { 
+      href: "/dashboard", 
+      label: "Dashboard",
+      icon: <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+    },
+    { 
+      href: "/dogs", 
+      label: "Kutyák",
+      icon: <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5c.67 0 1.35.09 2 .26a4 4 0 0 1 3 3.74c0 .5-.15.99-.42 1.41A4 4 0 0 1 18 14c0 1.5-1 2.5-2.5 2.5h-7C7 16.5 6 15.5 6 14a4 4 0 0 1 1.42-3.59c-.27-.42-.42-.91-.42-1.41a4 4 0 0 1 3-3.74c.65-.17 1.33-.26 2-.26Z"/><circle cx="6" cy="4" r="1"/><circle cx="10" cy="2" r="1"/><circle cx="14" cy="2" r="1"/><circle cx="18" cy="4" r="1"/></svg>
+    },
+    { 
+      href: "/veterinary", 
+      label: "Veterinary & Health",
+      icon: <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+    },
+    { 
+      href: "/heats", 
+      label: "Tüzelések",
+      icon: <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg> 
+    },
+    { 
+      href: "/litters", 
+      label: "Almok",
+      icon: <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M12 6v12M6 12h12"/></svg>
+    },
+    { 
+      href: "/shows", 
+      label: "Shows",
+      icon: <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>
+    },
+    { 
+      href: "/buyers", 
+      label: "Buyers & Waitlist",
+      icon: <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    },
+    { 
+      href: "/finance", 
+      label: "Finance",
+      icon: <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" x2="12" y1="2" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+    },
   ];
 
-  // ⚙️ 2. RÉSZLETES BEÁLLÍTÁSOK NAVIGÁCIÓ
+  // ⚙️ 2. RÉSZLETES BEÁLLÍTÁSOK NAVIGÁCIÓ (SYSTEM MATRIX)
   const settingsNav = [
-    { href: "/settings/profile", label: "🏢 Kennel Profile" },
-    { href: "/settings/branding", label: "🎨 Appearance" },
-    { href: "/settings/dashboard", label: "📊 Dashboard Layout" },
-    { href: "/settings/dogs", label: "🐕 Dogs Settings" },
-    { href: "/settings/notifications", label: "🔔 Notifications" },
-    { href: "/settings/localization", label: "🌍 Localization" },
-    { href: "/settings/security", label: "🔐 Security" },
-    { href: "/settings/labs", label: "🧪 Labs" },
+    { 
+      href: "/settings/profile", 
+      label: "Kennel Profile",
+      icon: <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    },
+    { 
+      href: "/settings/branding", 
+      label: "Appearance",
+      icon: <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+    },
+    { 
+      href: "/settings/dashboard", 
+      label: "Dashboard Layout",
+      icon: <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+    },
+    { 
+      href: "/settings/dogs", 
+      label: "Dogs Settings",
+      icon: <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    },
+    { 
+      href: "/settings/notifications", 
+      label: "Notifications",
+      icon: <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+    },
+    { 
+      href: "/settings/localization", 
+      label: "Localization",
+      icon: <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+    },
+    { 
+      href: "/settings/security", 
+      label: "Security",
+      icon: <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+    },
+    { 
+      href: "/settings/labs", 
+      label: "Labs",
+      icon: <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 2v4a2 2 0 0 1-.58 1.41l-4.83 4.83A2 2 0 0 0 4 13.66V20a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-6.34a2 2 0 0 0-.59-1.42l-4.83-4.83A2 2 0 0 1 14 6V2z"/></svg>
+    },
   ];
 
-  // Háttérmintázatok CSS generátora
   let patternCss = "";
   if (theme.bgPattern === "dots") {
     patternCss = `background-image: radial-gradient(var(--border) 1px, transparent 1px); background-size: 20px 20px;`;
@@ -89,11 +152,6 @@ export default async function ProtectedLayout({ children }: { children: React.Re
           position: relative; z-index: 1;
         }
 
-        .widget-dogs-card { background: ${theme.widgetDogsBg} !important; }
-        .widget-litters-card { background: ${theme.widgetLittersBg} !important; }
-        .widget-heats-card { background: ${theme.widgetHeatsBg} !important; }
-        .widget-finance-card { background: ${theme.widgetFinanceBg} !important; }
-
         h1, h2, h3, .text-white, div[className*="font-black"] {
           color: ${theme.headingColor} !important;
           text-transform: ${theme.headingUppercase} !important;
@@ -110,7 +168,6 @@ export default async function ProtectedLayout({ children }: { children: React.Re
           border: none !important;
           transition: transform 0.2s ease;
         }
-        button:hover { transform: scale(1.02); }
 
         input, textarea, select {
           background: ${theme.inputBg} !important;
@@ -126,11 +183,24 @@ export default async function ProtectedLayout({ children }: { children: React.Re
           padding: 24px;
           display: flex; flex-direction: column; gap: 24px;
         }
+        
         .sidebar-link {
-          display: flex; items-center; gap: 10px; padding: 10px 14px;
+          display: flex; items-center; gap: 12px; padding: 10px 14px;
           border-radius: var(--radius); color: ${theme.sidebarTextColor}; text-decoration: none; font-weight: 600;
+          transition: all var(--transition);
         }
-        .sidebar-link:hover { background: rgba(255,255,255,0.03); }
+        .sidebar-link:hover { 
+          background: rgba(255,255,255,0.03); 
+          color: var(--primary);
+        }
+        .sidebar-link svg {
+          opacity: 0.6;
+          transition: transform 0.2s ease;
+        }
+        .sidebar-link:hover svg {
+          opacity: 1;
+          transform: scale(1.05);
+        }
         
         .main-shell { flex: 1; padding: 40px; overflow-y: auto; position: relative; }
 
@@ -139,7 +209,7 @@ export default async function ProtectedLayout({ children }: { children: React.Re
 
       <aside className="sidebar">
         {/* LOGÓ VAGY KENNEL NÉV */}
-        <div className="font-black text-xl tracking-tight px-3" style={{ color: "var(--text)" }}>
+        <div className="font-black text-xl tracking-tight px-3 flex items-center gap-2" style={{ color: "var(--text)" }}>
           {logoUrl ? <img src={logoUrl} alt="Logo" className="h-8 object-contain" /> : `⚡ ${kennelName}`}
         </div>
         
@@ -148,7 +218,10 @@ export default async function ProtectedLayout({ children }: { children: React.Re
           <span className="text-[9px] uppercase font-black opacity-30 block px-3 mb-2">🐾 Management</span>
           <nav className="space-y-1">
             {mainNav.map((item) => (
-              <Link key={item.href} href={item.href} className="sidebar-link">{item.label}</Link>
+              <Link key={item.href} href={item.href} className="sidebar-link">
+                <span className="flex-shrink-0" style={{ color: "var(--primary)" }}>{item.icon}</span>
+                <span>{item.label}</span>
+              </Link>
             ))}
           </nav>
         </div>
@@ -158,7 +231,10 @@ export default async function ProtectedLayout({ children }: { children: React.Re
           <span className="text-[9px] uppercase font-black opacity-30 block px-3 mb-2">⚙️ System Matrix</span>
           <nav className="space-y-1">
             {settingsNav.map((item) => (
-              <Link key={item.href} href={item.href} className="sidebar-link">{item.label}</Link>
+              <Link key={item.href} href={item.href} className="sidebar-link">
+                <span className="flex-shrink-0" style={{ color: "var(--accent)" }}>{item.icon}</span>
+                <span className="text-xs">{item.label}</span>
+              </Link>
             ))}
           </nav>
         </div>
