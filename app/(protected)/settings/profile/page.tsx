@@ -13,7 +13,6 @@ export default function KennelProfilePage() {
   const [taxNumber, setTaxNumber] = useState("");
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
 
-  // Adatok beolvasása betöltéskor az API-ból
   useEffect(() => {
     async function loadProfile() {
       try {
@@ -35,7 +34,7 @@ export default function KennelProfilePage() {
       }
     }
     loadProfile();
-  }, []); // ⚡ FIXED: Megtisztított, szabályos React hook lezárás!
+  }, []);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -43,6 +42,8 @@ export default function KennelProfilePage() {
     setIsSaving(true);
 
     const fd = new FormData(e.currentTarget);
+    // ⚡ KÖTELEZŐ AKCIÓ JELZÉS AZ API FELÉ
+    fd.set("action_type", "save_profile");
     fd.set("kennel_name", kennelName);
     fd.set("owner_name", ownerName);
     fd.set("kennel_address", kennelAddress);
@@ -58,11 +59,12 @@ export default function KennelProfilePage() {
         alert("🏢 Kennel profil adatai sikeresen elmentve!");
         window.location.reload();
       } else {
-        alert("Szerver hiba történt a mentés során.");
+        const errData = await res.json();
+        alert("Szerver hiba történt: " + errData.error);
+        setIsSaving(false);
       }
     } catch (err) {
       console.error(err);
-    } finally {
       setIsSaving(false);
     }
   }
@@ -79,7 +81,6 @@ export default function KennelProfilePage() {
       </div>
 
       <div className="card p-6 space-y-6">
-        
         {/* LOGÓ SZEKCIÓ */}
         <div className="flex items-center gap-6 border-b border-zinc-900 pb-6">
           <div className="w-20 h-20 rounded-2xl bg-black border border-zinc-800 flex items-center justify-center overflow-hidden">
@@ -112,7 +113,6 @@ export default function KennelProfilePage() {
               className="w-full bg-black p-3 rounded-xl border border-zinc-800 text-sm text-white focus:outline-none focus:border-purple-500"
             />
           </div>
-
           <div>
             <label className="text-[11px] block mb-1 uppercase tracking-wider font-bold opacity-70">Tulajdonos / Vezető Neve (Owner)</label>
             <input 
@@ -137,7 +137,6 @@ export default function KennelProfilePage() {
               className="w-full bg-black p-3 rounded-xl border border-zinc-800 text-sm text-white focus:outline-none focus:border-purple-500"
             />
           </div>
-
           <div>
             <label className="text-[11px] block mb-1 uppercase tracking-wider font-bold opacity-70">Adószám / Nyilvántartási szám (Tax ID)</label>
             <input 
@@ -149,7 +148,6 @@ export default function KennelProfilePage() {
             />
           </div>
         </div>
-
       </div>
 
       <button 
