@@ -53,7 +53,7 @@ export type BrandingSettings = {
   sidebar_hover?: string | null;
   sidebar_width?: number | null;
 
-  ui_radius?: string | null; // ⚡ FIXED: Explicit hozzáadva a BrandingSettings típushoz!
+  ui_radius?: string | null;
   ui_animation?: string | null;
   ui_style?: string | null;
   
@@ -131,8 +131,17 @@ export function buildThemeTokens(settings?: BrandingSettings | null) {
   const fontScale = (settings?.font_scale || 100) / 100;
 
   return {
-    primary, accent, bg, surface, text, border,
-    cardMode, card1, card2, card3, card4,
+    primary,
+    accent,
+    bg,
+    surface,
+    text,
+    border,
+    cardMode,
+    card1,
+    card2,
+    card3,
+    card4,
     cardGlow: settings?.card_glow ?? 0,
     cardBlur: settings?.card_blur ?? 0,
     cardOpacity: settings?.card_opacity ?? 100,
@@ -147,7 +156,8 @@ export function buildThemeTokens(settings?: BrandingSettings | null) {
     glassOpacity: settings?.glass_opacity ?? 20,
     glassBorderGlow: settings?.glass_border_glow ?? 0,
     glassShadow: settings?.glass_shadow ?? 15,
-    font, fontScale,
+    font,
+    fontScale,
     fontWeight: settings?.font_weight || 400,
     letterSpacing: `${(settings?.letter_spacing ?? 0) * 0.1}px`,
     buttonStyle: settings?.button_style || "solid",
@@ -155,4 +165,14 @@ export function buildThemeTokens(settings?: BrandingSettings | null) {
     buttonGlow: settings?.button_glow ?? 0,
     sidebarBg: settings?.sidebar_bg || (isDark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.02)"),
     sidebarActive: settings?.sidebar_active || primary,
-    sidebarHover: settings?.sidebar_
+    sidebarHover: settings?.sidebar_hover || "rgba(255,255,255,0.04)",
+    sidebarWidth: `${settings?.sidebar_width || 270}px`,
+    animation: settings?.animation || "normal",
+    hoverLift: `${settings?.hover_lift || 0}px`,
+    cursorGlow: settings?.cursor_glow ?? false,
+    parallaxEnabled: settings?.parallax_enabled ?? false,
+    customCss: settings?.custom_css || "",
+    radius,
+    transition
+  };
+}
