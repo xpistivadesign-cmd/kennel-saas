@@ -1,19 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@supabase/supabase-js";
-
-// Létrehozzuk a klienst a környezeti változókból, ami Next.js alatt automatikusan elérhető a böngészőben is
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export default function GestationCalculator() {
   const [matingDate, setMatingDate] = useState<string>("");
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
 
-  // A kutya vemhességi ideje fixen ~63 nap
   const calculateMilestone = (days: number) => {
     if (!matingDate) return "";
     const date = new Date(matingDate);
@@ -25,60 +18,57 @@ export default function GestationCalculator() {
   const implantationDate = calculateMilestone(21);
   const heartbeatDate = calculateMilestone(28);
 
+  // ⚡ FELEJTSD EL A KLIENSOLDALI SUPABASE INSERETET - API-T HASZNÁLUNK!
   const handleSaveToEvents = async () => {
     if (!matingDate || isSaving) return;
     setIsSaving(true);
     setSaveStatus(null);
 
-    try {
-      // Felhasználó lekérése a kliensből
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) throw new Error("Nem vagy bejelentkezve!");
+    const fd = new FormData();
+    fd.set("action_type", "create_gestation_event");
+    fd.set("due_date", dueDate);
 
-      // Elmentjük a várható ellést a naptár események közé
-      const { error } = await supabase.from("events").insert({
-        user_id: session.user.id,
-        title: "🐶 Várható ellési időpont (Alom)",
-        event_type: "Vemhesség",
-        date: dueDate,
-        location: "Kennel",
+    try {
+      const res = await fetch("/api/veterinary/save-event", {
+        method: "POST",
+        body: fd
       });
 
-      if (error) throw error;
-
-      setSaveStatus("Sikeresen mentve a naptárba! 🎉");
-    } catch (err: any) {
-      console.error(err);
-      setSaveStatus(err.message || "Hiba történt a mentés során. ❌");
+      if (res.ok) {
+        setSaveStatus("Sikeresen mentve a naptárba! 🎉");
+        setTimeout(() => { window.location.reload(); }, 600);
+      } else {
+        setSaveStatus("Szerveroldali elutasítás. ❌");
+      }
+    } catch (err) {
+      setSaveStatus("Hálózati hiba történt. ❌");
     } finally {
       setIsSaving(false);
     }
   };
 
   return (
-    <div className="bg-zinc-950 border border-zinc-800 p-4 rounded-xl space-y-3">
-      <h3 className="text-sm font-bold text-zinc-300">Gestation Calculator</h3>
+    <div className="card p-5 space-y-3">
+      <h3 className="text-sm font-black opacity-80">Gestation Calculator</h3>
       <div className="space-y-3">
         <div>
-          <label className="text-[11px] text-zinc-500 uppercase font-bold tracking-wider block mb-1">
-            Fedeztetés dátuma
-          </label>
+          <label className="text-[10px] uppercase font-black opacity-40 block mb-1">Fedeztetés dátuma</label>
           <input
             type="date"
             value={matingDate}
             onChange={(e) => setMatingDate(e.target.value)}
-            className="w-full bg-black border border-zinc-800 p-2 rounded text-white text-xs focus:outline-none focus:border-amber-500 transition-colors"
+            className="w-full bg-black p-2.5 text-xs text-white"
           />
         </div>
 
         {matingDate ? (
-          <div className="bg-black/40 border border-zinc-900 p-3 rounded-lg space-y-2 text-xs">
-            <div className="flex justify-between border-b border-zinc-900 pb-1.5">
-              <span className="text-zinc-400">Beágyazódás (~21. nap):</span>
+          <div className="bg-black/30 border border-white/5 p-3 rounded-xl space-y-2 text-xs">
+            <div className="flex justify-between border-b border-white/5 pb-1.5">
+              <span className="opacity-50">Beágyazódás (~21. nap):</span>
               <span className="font-mono text-zinc-200 font-bold">{implantationDate}</span>
             </div>
-            <div className="flex justify-between border-b border-zinc-900 pb-1.5">
-              <span className="text-zinc-400">Szívhang (~28. nap):</span>
+            <div className="flex justify-between border-b border-white/5 pb-1.5">
+              <span className="opacity-50">Szívhang (~28. nap):</span>
               <span className="font-mono text-zinc-200 font-bold">{heartbeatDate}</span>
             </div>
             <div className="flex justify-between pt-0.5">
@@ -89,18 +79,16 @@ export default function GestationCalculator() {
             <button
               onClick={handleSaveToEvents}
               disabled={isSaving}
-              className="w-full mt-2 bg-amber-500 hover:bg-amber-400 disabled:bg-zinc-800 text-black font-bold text-[11px] py-1.5 rounded transition-colors uppercase tracking-wider"
+              className="w-full mt-2 h-9 bg-lime-300 text-black font-bold text-[11px] rounded-lg uppercase tracking-wider transition-all"
             >
               {isSaving ? "Mentés..." : "💾 Mentés a naptárba"}
             </button>
             {saveStatus && (
-              <p className="text-[10px] text-center italic text-zinc-400 mt-1">{saveStatus}</p>
+              <p className="text-[10px] text-center italic opacity-60 mt-1">{saveStatus}</p>
             )}
           </div>
         ) : (
-          <div className="text-zinc-600 space-y-1 text-xs italic">
-            Válassz egy dátumot a mérföldkövek automatikus kiszámításához!
-          </div>
+          <div className="opacity-40 text-xs italic">Válassz egy dátumot a mérföldkövek kiszámításához!</div>
         )}
       </div>
     </div>
