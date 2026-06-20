@@ -12,11 +12,8 @@ export default async function ProtectedLayout({ children }: { children: React.Re
 
   const { data: branding } = await supabase.from("branding_settings").select("*").eq("user_id", user.id).maybeSingle();
   const theme = buildThemeTokens(branding);
-  
-  const kennelName = branding?.kennel_name || "Saját Kennel";
-  const logoUrl = branding?.logo_url || null;
 
-  const navItems = [
+  const mainNav = [
     { href: "/dashboard", label: "📊 Dashboard" },
     { href: "/dogs", label: "🐕 Kutyák" },
     { href: "/heats", label: "🩸 Tüzelések" },
@@ -24,13 +21,22 @@ export default async function ProtectedLayout({ children }: { children: React.Re
     { href: "/shows", label: "🏆 Shows" },
     { href: "/buyers", label: "👥 Buyers & Waitlist" },
     { href: "/finance", label: "💰 Finance" },
-    { href: "/settings/branding", label: "🎨 Branding & Stílus" },
+  ];
+
+  const settingsNav = [
+    { href: "/settings/profile", label: "🏢 Kennel Profile" },
+    { href: "/settings/branding", label: "🎨 Appearance" },
+    { href: "/settings/dashboard", label: "📊 Dashboard Layout" },
+    { href: "/settings/dogs", label: "🐕 Dogs Settings" },
+    { href: "/settings/notifications", label: "🔔 Notifications" },
+    { href: "/settings/localization", label: "🌍 Localization" },
+    { href: "/settings/security", label: "🔐 Security" },
+    { href: "/settings/labs", label: "🧪 Labs" },
   ];
 
   return (
-    <div className="app-shell" style={{ display: "flex", minHeight: "100vh", backgroundColor: theme.bg, color: theme.textBody, fontFamily: theme.font }}>
-      {/* Mind a 10 prémium Google font család importálása */}
-      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Inter:wght@400;600;900&family=Manrope:wght@400;600;800&family=Montserrat:wght@400;600;900&family=Oswald:wght@400;600&family=Outfit:wght@400;600;800&family=Playfair+Display:wght@400;700;900&family=Poppins:wght@400;600;900&family=Roboto:wght@400;700&family=Ubuntu:wght@400;700&display=swap" />
+    <div className="app-shell" style={{ display: "flex", minHeight: "100vh", backgroundColor: theme.bg, color: theme.text }}>
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;900&family=Poppins:wght@300;400;600;900&family=Manrope:wght@300;400;600;800&family=Sora:wght@300;400;600;800&display=swap" />
 
       <style dangerouslySetInnerHTML={{ __html: `
         :root {
@@ -38,78 +44,106 @@ export default async function ProtectedLayout({ children }: { children: React.Re
           --accent: ${theme.accent};
           --bg: ${theme.bg};
           --surface: ${theme.surface};
-          --text-heading: ${theme.textHeading};
-          --text-body: ${theme.textBody};
+          --text: ${theme.text};
+          --border: ${theme.border};
           --radius: ${theme.radius};
           --transition: ${theme.transition};
-          --border: ${theme.border};
+          --sidebar-width: ${theme.sidebarWidth};
+          --font-scale: ${theme.fontScale};
         }
 
         html, body, .app-shell {
           background-color: var(--bg) !important;
-          color: var(--text-body) !important;
+          color: var(--text) !important;
           font-family: ${theme.font} !important;
-          transition: background var(--transition), color var(--transition);
+          font-size: calc(14px * var(--font-scale)) !important;
+          letter-spacing: ${theme.letterSpacing};
+          font-weight: ${theme.fontWeight};
         }
 
-        main, [className*="bg-zinc-950"], [className*="bg-black"], [className*="bg-slate-950"] {
-          background-color: var(--bg) !important;
-        }
-
-        .card, div[className*="bg-zinc-900"], div[className*="bg-zinc-800"], section[className*="bg-zinc-"], div[className*="rounded-xl"] {
-          background: ${theme.style === "glass" ? `rgba(255, 255, 255, 0.03)` : "var(--surface)"} !important;
-          backdrop-filter: ${theme.glass} !important;
+        /* 💎 KÁRTYA STÍLUS ÉS GRADIENT ENGINE */
+        .card, div[className*="bg-zinc-900"], section[className*="bg-zinc-"], div[className*="rounded-xl"] {
+          background: ${theme.glassEnabled ? `rgba(255,255,255,calc(${theme.glassOpacity} / 100))` : "var(--surface)"} !important;
+          backdrop-filter: ${theme.glassEnabled ? `blur(${theme.glassBlur}px)` : "none"} !important;
           border: 1px solid var(--border) !important;
           border-radius: var(--radius) !important;
-          box-shadow: ${theme.shadow} !important;
-          ${theme.style === "neon" ? `box-shadow: ${theme.glow} !important;` : ""}
+          box-shadow: ${theme.glassEnabled ? `0 8px 32px rgba(0,0,0,calc(${theme.glassShadow} / 100))` : "none"} !important;
+          transition: all var(--transition);
         }
 
-        .dashboard-grid > div:nth-child(1) { background: ${theme.card1} !important; }
-        .dashboard-grid > div:nth-child(2) { background: ${theme.card2} !important; }
-        .dashboard-grid > div:nth-child(3) { background: ${theme.card3} !important; }
-
-        /* 🚨 BETŰSZÍN KÉNYSZERÍTÉS: Itt fehérednek ki a láthatatlan szövegek a kutyáknál és a dashboardon */
-        h1, h2, h3, h4, th, .text-white, strong, [className*="text-zinc-100"], [className*="text-zinc-200"], div[className*="font-bold"] { 
-          color: var(--text-heading) !important; 
-        }
-        p, span, label, td, option, li, [className*="text-zinc-400"], [className*="text-zinc-300"], [className*="text-gray-"] { 
-          color: var(--text-body) !important;
+        .card:hover {
+          transform: translateY(-${theme.hoverLift});
         }
 
-        button, button[type="submit"], .bg-emerald-500, .bg-purple-600, .bg-amber-500, button[className*="bg-"] {
-          background: var(--accent) !important;
+        /* 📊 DASHBOARD SPECIFIKUS KÁRTYA ÁRNYALATOK */
+        .dashboard-grid > div:nth-child(1), .dashboard-grid > a:nth-child(1) { background: ${theme.card1} !important; }
+        .dashboard-grid > div:nth-child(2), .dashboard-grid > a:nth-child(2) { background: ${theme.card2} !important; }
+        .dashboard-grid > div:nth-child(3), .dashboard-grid > a:nth-child(3) { background: ${theme.card3} !important; }
+        .dashboard-grid > div:nth-child(4), .dashboard-grid > a:nth-child(4) { background: ${theme.card4} !important; }
+
+        /* BUTTON ARCHITECTURE */
+        button, button[type="submit"], .bg-primary-btn {
+          background: ${theme.buttonStyle === "gradient" ? `linear-gradient(135deg, var(--primary), var(--accent))` : "var(--accent)"} !important;
           color: #000000 !important;
-          border-radius: var(--radius) !important;
-          font-weight: 900 !important;
-          border: none !important;
+          border-radius: ${theme.buttonRadius} !important;
+          font-weight: 800 !important;
+          border: ${theme.buttonStyle === "outline" ? "2px solid var(--primary)" : "none"} !important;
+          box-shadow: 0 4px 15px rgba(0,0,0,calc(${theme.buttonGlow} / 100)) !important;
         }
 
-        input, textarea, select {
-          background: rgba(255,255,255,0.04) !important;
-          color: var(--text-heading) !important;
-          border: 1px solid var(--border) !important;
-          border-radius: var(--radius) !important;
+        .sidebar {
+          width: var(--sidebar-width);
+          background: ${theme.sidebarBg};
+          border-right: 1px solid var(--border);
+          backdrop-filter: blur(20px);
+          padding: 24px;
+          display: flex;
+          flex-direction: column;
+          justify-between: space-between;
         }
 
-        .sidebar { width: 270px; background: ${theme.sidebar}; border-right: 1px solid var(--border); backdrop-filter: blur(20px); padding: 30px; }
-        .sidebar-link { display: flex; align-items: center; gap: 12px; padding: 14px; border-radius: var(--radius); color: var(--text-heading); text-decoration: none; font-weight: 600; }
-        .sidebar-link:hover { background: rgba(255,255,255,0.04); }
-        .main { flex: 1; padding: 36px; min-width: 0; }
+        .sidebar-link {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 10px 14px;
+          border-radius: var(--radius);
+          color: var(--text);
+          text-decoration: none;
+          font-weight: 600;
+          font-size: 0.9em;
+        }
+        .sidebar-link:hover { background: ${theme.sidebarHover}; }
+        .sidebar-link.active { background: ${theme.sidebarActive} !important; color: #000000 !important; }
+
+        .main-content { flex: 1; padding: 40px; min-width: 0; overflow-y: auto; }
+
+        /* Felhasználói egyedi CSS injekció lefutása */
+        ${theme.customCss}
       `}} />
 
       <aside className="sidebar">
-        <div className="mb-10 font-black text-2xl tracking-tight" style={{ color: "var(--text-heading)" }}>
-          {logoUrl ? <img src={logoUrl} alt="Logo" className="h-9 max-w-[180px] object-contain" /> : `⚡ ${kennelName}`}
+        <div className="space-y-6">
+          <div className="font-black text-xl px-2">⚡ {branding?.kennel_name || "Kennel OS"}</div>
+          
+          <nav className="space-y-1">
+            {mainNav.map((item) => (
+              <Link key={item.href} href={item.href} className="sidebar-link">{item.label}</Link>
+            ))}
+          </nav>
+
+          <div className="pt-4 border-t" style={{ borderColor: "var(--border)" }}>
+            <span className="text-[10px] uppercase font-bold opacity-40 block px-4 mb-2">⚙️ Settings Matrix</span>
+            <nav className="space-y-1">
+              {settingsNav.map((item) => (
+                <Link key={item.href} href={item.href} className="sidebar-link">{item.label}</Link>
+              ))}
+            </nav>
+          </div>
         </div>
-        <nav style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {navItems.map((item) => (
-            <Link key={item.href} href={item.href} className="sidebar-link">{item.label}</Link>
-          ))}
-        </nav>
       </aside>
 
-      <main className="main">{children}</main>
+      <main className="main-content">{children}</main>
     </div>
   );
 }
