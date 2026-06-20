@@ -89,6 +89,31 @@ export function buildThemeTokens(settings?: BrandingSettings | null) {
     card1 = `${accent}20`; card2 = `${accent}15`; card3 = `${accent}10`; card4 = `${accent}05`;
   }
 
+  // Lekerekítési mapping (Radius token explicit rögzítése)
+  const radiusMap: Record<string, string> = {
+    sharp: "0px",
+    small: "6px",
+    medium: "14px",
+    soft: "22px",
+    luxury: "32px"
+  };
+  const radius = radiusMap[settings?.ui_radius || "medium"] || "14px";
+
+  // Animációk & Átmenetek
+  const transition = settings?.ui_animation === "off" 
+    ? "0s" 
+    : settings?.ui_animation === "minimal" 
+    ? "120ms ease" 
+    : settings?.ui_animation === "dynamic" 
+    ? "400ms cubic-bezier(.2,.8,.2,1)" 
+    : "240ms ease";
+
+  // Stílusjegyek
+  const style = settings?.ui_style || "glass";
+  const glass = style === "glass" ? `blur(${settings?.glass_blur || 18}px)` : "none";
+  const glow = style === "neon" ? `0 0 ${settings?.card_glow || 25}px ${primary}40` : "none";
+  const shadow = style === "glass" ? `0 8px 32px rgba(0,0,0,calc(${(settings?.glass_shadow || 15)} / 100))` : "none";
+
   // 3. Typography Mapper
   const fontMap: Record<string, string> = {
     inter: "'Inter', sans-serif",
@@ -131,6 +156,8 @@ export function buildThemeTokens(settings?: BrandingSettings | null) {
     hoverLift: `${settings?.hover_lift || 0}px`,
     cursorGlow: settings?.cursor_glow ?? false,
     parallaxEnabled: settings?.parallax_enabled ?? false,
-    customCss: settings?.custom_css || ""
+    customCss: settings?.custom_css || "",
+    radius, // <-- ⚡ AZ ELVESZETT TOKEN explicit rögzítése!
+    transition
   };
 }
