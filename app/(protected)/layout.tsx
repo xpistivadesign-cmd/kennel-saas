@@ -16,7 +16,7 @@ export default async function ProtectedLayout({ children }: { children: React.Re
   const kennelName = branding?.kennel_name || "Saját Kennel";
   const logoUrl = branding?.logo_url || null;
 
-  // 📊 1. FŐ OPERATÍV NAVIGÁCIÓ A HIVATALOS IKON SZETTEL
+  // 📊 NAVIGÁCIÓS MÁTRIX TŰPONTOSAN A HIVATALOS ICON SET ALAPJÁN
   const mainNav = [
     { 
       href: "/dashboard", 
@@ -36,12 +36,14 @@ export default async function ProtectedLayout({ children }: { children: React.Re
     { 
       href: "/heats", 
       label: "Tüzelések",
-      icon: <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg> 
+      // ⚡ HIVATALOS HEATS IKON: Tiszta láng szimbólum az Icon Set-ből
+      icon: <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg> 
     },
     { 
       href: "/litters", 
       label: "Almok",
-      icon: <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M12 6v12M6 12h12"/></svg>
+      // ⚡ HIVATALOS LITTERS IKON: Cumisüveg szimbólum az Icon Set-ből
+      icon: <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 2h4v2h-4zM9 7h6l1 3v10a2 2 0 0 1-2 2H10a2 2 0 0 1-2-2V10z"/><path d="M10 11h4v4h-4z"/></svg>
     },
     { 
       href: "/shows", 
@@ -60,7 +62,6 @@ export default async function ProtectedLayout({ children }: { children: React.Re
     },
   ];
 
-  // ⚙️ 2. RÉSZLETES BEÁLLÍTÁSOK NAVIGÁCIÓ (SYSTEM MATRIX)
   const settingsNav = [
     { 
       href: "/settings/profile", 
@@ -185,7 +186,7 @@ export default async function ProtectedLayout({ children }: { children: React.Re
         }
         
         .sidebar-link {
-          display: flex; items-center; gap: 12px; padding: 10px 14px;
+          display: flex; align-items: center; gap: 12px; padding: 10px 14px;
           border-radius: var(--radius); color: ${theme.sidebarTextColor}; text-decoration: none; font-weight: 600;
           transition: all var(--transition);
         }
@@ -208,12 +209,10 @@ export default async function ProtectedLayout({ children }: { children: React.Re
       `}} />
 
       <aside className="sidebar">
-        {/* LOGÓ VAGY KENNEL NÉV */}
         <div className="font-black text-xl tracking-tight px-3 flex items-center gap-2" style={{ color: "var(--text)" }}>
           {logoUrl ? <img src={logoUrl} alt="Logo" className="h-8 object-contain" /> : `⚡ ${kennelName}`}
         </div>
         
-        {/* 📊 SZEKCIÓ 1: FŐ FUNKCIÓK */}
         <div className="space-y-1">
           <span className="text-[9px] uppercase font-black opacity-30 block px-3 mb-2">🐾 Management</span>
           <nav className="space-y-1">
@@ -226,7 +225,6 @@ export default async function ProtectedLayout({ children }: { children: React.Re
           </nav>
         </div>
         
-        {/* ⚙️ SZEKCIÓ 2: CONFIGURATION MATRIX */}
         <div className="pt-4 border-t" style={{ borderColor: "var(--border)" }}>
           <span className="text-[9px] uppercase font-black opacity-30 block px-3 mb-2">⚙️ System Matrix</span>
           <nav className="space-y-1">
