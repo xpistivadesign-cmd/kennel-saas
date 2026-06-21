@@ -28,26 +28,31 @@ export async function POST(req: Request) {
       }
     );
 
-    // 3️⃣ Beléptetés (a háttérben a setAll() automatikusan belepakolja a tokeneket a `response`-ba)
+    // 3️⃣ Autentikáció indítása (a háttérben a setAll() automatikusan belepakolja a tokeneket a `response`-ba)
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
+    // 4️⃣ Hiba kezelése (Úgy módosítjuk az objektumot, hogy a sütik megmaradjanak a fejlécben!)
     if (error) {
-      // ⚠️ FIX: Ha hiba van, akkor is a 'response' objektumot kell módosítani és visszaadni, 
-      // különben a Next.js és a Supabase belső cookie-állapota szétesik!
-      return NextResponse.json(
-        { error: error.message },
-        { status: 401 }
+      return new NextResponse(
+        JSON.stringify({ error: error.message }),
+        { 
+          status: 401, 
+          headers: { 
+            "Content-Type": "application/json",
+            ...Object.fromEntries(response.headers.entries()) // Átmásoljuk a sütiket tartalmazó headereket
+          } 
+        }
       );
     }
 
-    // 4️⃣ Minden sikeres, visszaadjuk a sütikkel telepakolt választ
+    // 5️⃣ Minden sikeres, visszaadjuk a sütikkel telepakolt választ
     return response;
 
   } catch (e) {
-    console.error("Auth hiba:", e);
+    console.error("Auth API hiba:", e);
     return NextResponse.json(
       { error: "Authentication failed" },
       { status: 500 }
