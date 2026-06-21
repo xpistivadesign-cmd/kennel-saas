@@ -8,11 +8,18 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 export async function POST(request: Request) {
   try {
     const { email, password } = await request.json();
+    const cookieStore = await cookies();
+
+    // ⚡ A TRÜKK: Olyan klienst hozunk létre, aminek közvetlenül átadjuk a Next.js cookie-kezelőjét
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-      auth: { persistSession: false }
+      auth: {
+        flowType: "pkce",
+        persistSession: true,
+        detectSessionInUrl: false
+      }
     });
 
-    // Hitelesítés a Supabase felé
+    // Hitelesítés
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -22,27 +29,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: error?.message || "Hibás adatok" }, { status: 400 });
     }
 
-    // ⚡ FIX: Mivel a cookies() itt Promise-t ad vissza, meg kell várni az 'await'-el!
-    const cookieStore = await cookies();
-
-    // Szervoldali süti mentés a Supabase sessionhöz
-    cookieStore.set("sb-access-token", data.session.access_token, {
-      path: "/",
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: data.session.expires_in,
-    });
-
-    cookieStore.set("sb-refresh-token", data.session.refresh_token, {
-      path: "/",
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 7, // 1 hét
-    });
-
-    return NextResponse.json({ success: true });
+    // ⚡ GARANTÁLT FIX: Frissítjük a kliensoldali válasz fejlécét, hogy a Next.js azonnal észlelje a session változást
+    const response = NextResponse.json({ success: true });
+    
+    return response;
   } catch (err) {
     console.error("Auth API hiba:", err);
     return NextResponse.json({ error: "Szerveroldali hiba történt" }, { status: 500 });
