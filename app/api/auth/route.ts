@@ -9,7 +9,7 @@ export async function POST(request: Request) {
   try {
     const { email, password } = await request.json();
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-      auth: { persistSession: false } // Szerveroldalon ne tárolja lokálisan a belső state-et
+      auth: { persistSession: false }
     });
 
     // Hitelesítés a Supabase felé
@@ -22,9 +22,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: error?.message || "Hibás adatok" }, { status: 400 });
     }
 
-    const cookieStore = cookies();
+    // ⚡ FIX: Mivel a cookies() itt Promise-t ad vissza, meg kell várni az 'await'-el!
+    const cookieStore = await cookies();
 
-    // ⚡ SZERVEROLDALI SÜTI BEÉGETÉS FIX: Manuálisan elmentjük a Next.js számára a Supabase session cookie-kat
+    // Szervoldali süti mentés a Supabase sessionhöz
     cookieStore.set("sb-access-token", data.session.access_token, {
       path: "/",
       httpOnly: true,
