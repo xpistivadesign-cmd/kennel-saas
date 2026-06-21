@@ -10,7 +10,7 @@ export async function POST(req: Request) {
     // 1️⃣ Létrehozzuk a kiinduló válasz objektumot
     const response = NextResponse.json({ success: true });
 
-    // 2️⃣ Inicializáljuk a szerver klienst, ami KÖZVETLENÜL a válasz-objektumba írja a sütiket
+    // 2️⃣ Típusbiztos szerver kliens konfiguráció
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -19,7 +19,8 @@ export async function POST(req: Request) {
           getAll() {
             return cookieStore.getAll();
           },
-          setAll(cookiesToSet) {
+          // ⚡ FIX: Explicit típusdefiníció a cookiesToSet paraméternek, hogy a TS ne sírjon
+          setAll(cookiesToSet: Array<{ name: string; value: string; options: any }>) {
             cookiesToSet.forEach(({ name, value, options }) =>
               response.cookies.set(name, value, options)
             );
@@ -28,13 +29,13 @@ export async function POST(req: Request) {
       }
     );
 
-    // 3️⃣ Autentikáció indítása (a háttérben a setAll() automatikusan belepakolja a tokeneket a `response`-ba)
+    // 3️⃣ Autentikáció indítása
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
-    // 4️⃣ Hiba kezelése (Úgy módosítjuk az objektumot, hogy a sütik megmaradjanak a fejlécben!)
+    // 4️⃣ Hiba kezelése sütik átmásolásával
     if (error) {
       return new NextResponse(
         JSON.stringify({ error: error.message }),
@@ -42,13 +43,13 @@ export async function POST(req: Request) {
           status: 401, 
           headers: { 
             "Content-Type": "application/json",
-            ...Object.fromEntries(response.headers.entries()) // Átmásoljuk a sütiket tartalmazó headereket
+            ...Object.fromEntries(response.headers.entries())
           } 
         }
       );
     }
 
-    // 5️⃣ Minden sikeres, visszaadjuk a sütikkel telepakolt választ
+    // 5️⃣ Sikeres válasz visszaküldése
     return response;
 
   } catch (e) {
