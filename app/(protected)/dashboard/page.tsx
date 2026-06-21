@@ -36,18 +36,12 @@ function StatCard({
       <div className="relative z-10">
         <div className="flex items-center justify-between">
           <div>
-            {/* ⚡ !important INLINE BEFECSKENDEZÉS AZ INJECTION ELLEN */}
-            <p 
-              className="uppercase tracking-[0.2em] text-[10px] font-black" 
-              style={{ color: `${titleColor}` }}
-            >
-              <span style={{ color: `${titleColor} !important` } as any}>{title}</span>
+            {/* ⚡ TŰPONTOS STÍLUS FIX: Külön span-ekre bontva, tiszta string összefűzéssel, amit a böngésző kényszerítve beolvas */}
+            <p className="uppercase tracking-[0.2em] text-[10px] font-black">
+              <span style={{ color: titleColor }} className="important-text">{title}</span>
             </p>
-            <h2 
-              className="mt-3 text-4xl font-black" 
-              style={{ color: `${valueColor}` }}
-            >
-              <span style={{ color: `${valueColor} !important` } as any}>{value}</span>
+            <h2 className="mt-3 text-4xl font-black">
+              <span style={{ color: valueColor }} className="important-text">{value}</span>
             </h2>
           </div>
 
@@ -66,6 +60,11 @@ function StatCard({
           </div>
         </div>
       </div>
+      
+      {/* CSS injekció, ami letarolja a globális h1, h2 elnyomásokat */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        .important-text { color: inherit !important; }
+      `}} />
     </div>
   );
 }
@@ -97,6 +96,9 @@ export default async function DashboardPage() {
 
   const { data: liveVetVisits } = await supabase.from("vet_visits").select("id, purpose, date").eq("user_id", user.id).eq("status", "planned").order("date", { ascending: true }).limit(1);
 
+  // 📅 ÚJ: Lekérjük a legközelebbi, jövőbeli kiállítási eseményt a "shows" táblából
+  const { data: upcomingShows } = await supabase.from("shows").select("id, title, date").eq("user_id", user.id).gte("date", new Date().toISOString().split('T')[0]).order("date", { ascending: true }).limit(1);
+
   return (
     <div className="space-y-8">
       {/* HEADER */}
@@ -116,12 +118,24 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* ALERTS */}
+      {/* ALERTS WITH UPCOMING SHOWS INTEGRATION */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Bal oldali sáv: Ha van kiállítás, ide tesszük be, ha nincs, marad az optimal window */}
         <div className="p-5 border rounded-2xl bg-zinc-950/20" style={{ borderColor: "var(--border)", boxShadow: "inset 0 1px 1px rgba(255,255,255,0.05)" }}>
-          <h3 className="text-xs font-black text-purple-400 uppercase tracking-wider mb-1">Optimal Breeding Window</h3>
-          <p className="text-xs opacity-60">Monitor progesterone levels between 5.0 - 10.0 ng/ml for ovulation detection.</p>
+          {upcomingShows && upcomingShows.length > 0 ? (
+            <>
+              <h3 className="text-xs font-black text-purple-400 uppercase tracking-wider mb-1">Upcoming Show Event</h3>
+              <p className="text-xs text-zinc-300">🏆 <span className="font-bold">{upcomingShows[0].title}</span> is scheduled for: <span className="font-mono text-purple-400">{upcomingShows[0].date}</span></p>
+            </>
+          ) : (
+            <>
+              <h3 className="text-xs font-black text-purple-400 uppercase tracking-wider mb-1">Optimal Breeding Window</h3>
+              <p className="text-xs opacity-60">Monitor progesterone levels between 5.0 - 10.0 ng/ml for ovulation detection.</p>
+            </>
+          )}
         </div>
+        
+        {/* Jobb oldali sáv: Állatorvosi feladatok */}
         <div className="p-5 border rounded-2xl bg-zinc-950/20" style={{ borderColor: "var(--border)", boxShadow: "inset 0 1px 1px rgba(255,255,255,0.05)" }}>
           <h3 className="text-xs font-black text-lime-400 uppercase tracking-wider mb-1">Veterinary Alerts & Tasks</h3>
           {liveVetVisits && liveVetVisits.length > 0 ? (
@@ -161,7 +175,6 @@ export default async function DashboardPage() {
           valueColor="#ffffff"
         />
 
-        {/* ⚡ PROFIT CARD: ELECTRIC BLUE OVERRIDES */}
         <StatCard
           icon={<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>}
           title="Profit"
@@ -209,7 +222,7 @@ export default async function DashboardPage() {
             <Link href="/litters" className="block p-4 rounded-[20px] text-xs font-bold transition-all hover:opacity-80" style={{ background: "var(--surface)" }}>
               🐾 Litters Matrix
             </Link>
-            <Link href="/events" className="block p-4 rounded-[20px] text-xs font-bold transition-all hover:opacity-80" style={{ background: "var(--surface)" }}>
+            <Link href="/shows" className="block p-4 rounded-[20px] text-xs font-bold transition-all hover:opacity-80" style={{ background: "var(--surface)" }}>
               📅 Events & Shows
             </Link>
           </div>
