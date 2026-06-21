@@ -1,40 +1,56 @@
-import { createClient } from "@supabase/supabase-js";
+import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
-
-export async function POST(request: Request) {
+export async function POST(req: Request) {
   try {
-    const { email, password } = await request.json();
+    const { email, password } = await req.json();
     const cookieStore = await cookies();
 
-    // ⚡ A TRÜKK: Olyan klienst hozunk létre, aminek közvetlenül átadjuk a Next.js cookie-kezelőjét
-    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-      auth: {
-        flowType: "pkce",
-        persistSession: true,
-        detectSessionInUrl: false
-      }
-    });
+    // 1️⃣ Létrehozzuk a kiinduló válasz objektumot
+    const response = NextResponse.json({ success: true });
 
-    // Hitelesítés
-    const { data, error } = await supabase.auth.signInWithPassword({
+    // 2️⃣ Inicializáljuk a szerver klienst, ami KÖZVETLENÜL a válasz-objektumba írja a sütiket
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll();
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              response.cookies.set(name, value, options)
+            );
+          },
+        },
+      }
+    );
+
+    // 3️⃣ Beléptetés (a háttérben a setAll() automatikusan belepakolja a tokeneket a `response`-ba)
+    const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
-    if (error || !data.session) {
-      return NextResponse.json({ error: error?.message || "Hibás adatok" }, { status: 400 });
+    if (error) {
+      // ⚠️ FIX: Ha hiba van, akkor is a 'response' objektumot kell módosítani és visszaadni, 
+      // különben a Next.js és a Supabase belső cookie-állapota szétesik!
+      return NextResponse.json(
+        { error: error.message },
+        { status: 401 }
+      );
     }
 
-    // ⚡ GARANTÁLT FIX: Frissítjük a kliensoldali válasz fejlécét, hogy a Next.js azonnal észlelje a session változást
-    const response = NextResponse.json({ success: true });
-    
+    // 4️⃣ Minden sikeres, visszaadjuk a sütikkel telepakolt választ
     return response;
-  } catch (err) {
-    console.error("Auth API hiba:", err);
-    return NextResponse.json({ error: "Szerveroldali hiba történt" }, { status: 500 });
+
+  } catch (e) {
+    console.error("Auth hiba:", e);
+    return NextResponse.json(
+      { error: "Authentication failed" },
+      { status: 500 }
+    );
   }
 }
