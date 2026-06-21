@@ -1,11 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
-  const router = useRouter();
-  
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -18,7 +15,7 @@ export default function LoginPage() {
     setError(null);
 
     try {
-      // ⚡ Nem közvetlenül a Supabase-nek lőjük, hanem a saját szerveroldali API-nak, ami beállítja a sütiket
+      // ⚡ A belső API útvonalat hívjuk meg, ami szerveroldalon beégeti a sütiket
       const res = await fetch("/api/auth", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -31,9 +28,8 @@ export default function LoginPage() {
         throw new Error(result.error || "Sikertelen belépés");
       }
 
-      // Most már a szerver is tudja, hogy bent vagyunk, biztonságos az irányítás!
-      router.refresh();
-      router.push("/dashboard");
+      // ⚡ HARD REFRESH: Kényszerítjük a Next.js-t, hogy az új sütikkel olvassa be a dashboardot
+      window.location.href = "/dashboard";
 
     } catch (err: any) {
       console.error("Autentikációs hiba:", err);
