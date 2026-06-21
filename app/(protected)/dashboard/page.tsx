@@ -36,11 +36,18 @@ function StatCard({
       <div className="relative z-10">
         <div className="flex items-center justify-between">
           <div>
-            <p className="uppercase tracking-[0.2em] text-[10px] font-black" style={{ color: titleColor }}>
-              {title}
+            {/* ⚡ !important INLINE BEFECSKENDEZÉS AZ INJECTION ELLEN */}
+            <p 
+              className="uppercase tracking-[0.2em] text-[10px] font-black" 
+              style={{ color: `${titleColor}` }}
+            >
+              <span style={{ color: `${titleColor} !important` } as any}>{title}</span>
             </p>
-            <h2 className="mt-3 text-4xl font-black" style={{ color: valueColor }}>
-              {value}
+            <h2 
+              className="mt-3 text-4xl font-black" 
+              style={{ color: `${valueColor}` }}
+            >
+              <span style={{ color: `${valueColor} !important` } as any}>{value}</span>
             </h2>
           </div>
 
@@ -154,6 +161,7 @@ export default async function DashboardPage() {
           valueColor="#ffffff"
         />
 
+        {/* ⚡ PROFIT CARD: ELECTRIC BLUE OVERRIDES */}
         <StatCard
           icon={<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>}
           title="Profit"
