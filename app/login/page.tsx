@@ -2,11 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@supabase/supabase-js";
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export default function LoginPage() {
   const router = useRouter();
@@ -23,20 +18,22 @@ export default function LoginPage() {
     setError(null);
 
     try {
-      // 🔐 ÉLES SUPABASE BEJELENTKEZÉS
-      const { error: signInErr } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      // ⚡ Nem közvetlenül a Supabase-nek lőjük, hanem a saját szerveroldali API-nak, ami beállítja a sütiket
+      const res = await fetch("/api/auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
       });
-      if (signInErr) throw signInErr;
 
-      // ⚡ VÉGTELEN CIKLUS FIX: Előbb frissítjük a Next.js router router-cache-t és a cookie-kat,
-      // és csak utána kényszerítjük az átirányítást a dashboardra.
+      const result = await res.json();
+
+      if (!res.ok) {
+        throw new Error(result.error || "Sikertelen belépés");
+      }
+
+      // Most már a szerver is tudja, hogy bent vagyunk, biztonságos az irányítás!
       router.refresh();
-      
-      setTimeout(() => {
-        router.push("/dashboard");
-      }, 100);
+      router.push("/dashboard");
 
     } catch (err: any) {
       console.error("Autentikációs hiba:", err);
